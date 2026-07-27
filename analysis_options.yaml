@@ -1,0 +1,14 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "**/*.freezed.dart"
+    - "**/*.g.dart"
+
+linter:
+  rules:
+    - prefer_const_constructors
+    - require_trailing_commas
+    - avoid_print
+    # Missing await on futures matters in the ride flow — surface it.
+    - unawaited_futures

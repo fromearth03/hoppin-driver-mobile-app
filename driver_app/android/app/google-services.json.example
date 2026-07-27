@@ -1,0 +1,54 @@
+{
+  "_README": [
+    "TEMPLATE ONLY — this file is NOT read by the build. Copy it to",
+    "`google-services.json` (same directory) and replace every value with the",
+    "real ones from the Firebase console:",
+    "",
+    "  Firebase console -> Project settings -> Your apps -> Add app -> Android",
+    "  Package name: com.hoppin.hoppin_driver",
+    "  -> Download google-services.json -> place it at",
+    "     apps/driver/android/app/google-services.json",
+    "",
+    "`google-services.json` is GITIGNORED and must stay that way. It is not a",
+    "secret in the cryptographic sense (it ships inside the APK), but it is a",
+    "credential record for a real Firebase project, and a FABRICATED one in the",
+    "repo would be worse than none: `android/app/build.gradle.kts` only applies",
+    "the google-services plugin when the real file exists, so without it the app",
+    "boots on NoopDriverFcmGateway and SAYS push is unavailable. With a fake one",
+    "it would 'initialise' successfully and then fail every token request against",
+    "a project that does not exist — a green build that lies about being",
+    "push-capable.",
+    "",
+    "🔴 A REAL google-services.json IS NOT SUFFICIENT FOR PUSH TO WORK. Token",
+    "registration (`POST /me/device-tokens`, device_os: \"android\") is BOUND and",
+    "will succeed. DELIVERY is GATED on the backend's FCM_CREDENTIALS_FILE",
+    "(gaps #15/#16) — until that lands, the server cannot send. See",
+    "DOCS/06 and apps/driver/README.md's HUMAN-VERIFY section."
+  ],
+  "project_info": {
+    "project_number": "REPLACE_ME_SENDER_ID",
+    "project_id": "REPLACE_ME_PROJECT_ID",
+    "storage_bucket": "REPLACE_ME_PROJECT_ID.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "REPLACE_ME_APP_ID",
+        "android_client_info": {
+          "package_name": "com.hoppin.hoppin_driver"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "REPLACE_ME_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

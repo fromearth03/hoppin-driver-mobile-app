@@ -1,0 +1,20 @@
+gradle-wrapper.jar
+/.gradle
+/captures/
+/gradlew
+/gradlew.bat
+/local.properties
+GeneratedPluginRegistrant.java
+.cxx/
+
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/to/reference-keystore
+key.properties
+**/*.keystore
+**/*.jks
+
+# The real Firebase config for THIS project. Never committed — see
+# app/google-services.json.example for the shape and the reasoning. A fabricated
+# one in the repo would make the build look push-capable while every token
+# request failed against a project that does not exist.
+app/google-services.json

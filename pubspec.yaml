@@ -1,0 +1,9 @@
+name: hoppin_driver_workspace
+publish_to: none
+environment:
+  sdk: ^3.12.0
+workspace:
+  - packages/hoppin_shared
+  - packages/hoppin_demo
+  - packages/hoppin_ui
+  - driver_app

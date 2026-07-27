@@ -1,0 +1,44 @@
+name: hoppin_ui
+description: Hoppin design system — tokens, themes, brand components; pure presentation.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+
+resolution: workspace
+
+dependencies:
+  # Wall-clock seam: CountdownRing derives time via clock.now() so tests and
+  # the demo can pin/drive it. Already a workspace transitive of flutter_test.
+  clock: ^1.1.2
+  flutter:
+    sdk: flutter
+  # Map presentation stack — HopMap ONLY (house-rule amendment in README):
+  # no other file in the monorepo may import these (Phase 6 gate greps).
+  maplibre_gl: ^0.26.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  fonts:
+    # Poppins — the Figma "Passenger View" typeface. One file per weight.
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+    # Geist retained until legacy components stop referencing it (removed
+    # once the type scale swap lands).
+    - family: Geist
+      fonts:
+        - asset: assets/fonts/Geist-Variable.ttf
+    - family: GeistMono
+      fonts:
+        - asset: assets/fonts/GeistMono-Variable.ttf

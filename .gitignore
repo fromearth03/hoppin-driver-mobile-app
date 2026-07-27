@@ -1,0 +1,24 @@
+# Dart / Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+**/build/
+.packages
+pubspec.lock
+
+# IDE / tooling
+.idea/
+.vscode/
+*.iml
+.playwright-mcp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / local config — never commit
+**/google-services.json
+**/GoogleService-Info.plist
+*.env
+*defines.json

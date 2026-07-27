@@ -1,0 +1,8 @@
+{
+  "RIDE_SERVICE_URL": "https://api.hoppin.tech/api/v1",
+  "SUPABASE_URL": "https://YOUR-PROJECT.supabase.co",
+  "SUPABASE_ANON_KEY": "your-supabase-anon-key",
+  "DEMO_MODE": "true",
+  "DEMO_DRIVER_EMAIL": "demo-driver@example.com",
+  "DEMO_DRIVER_PASSWORD": "your-demo-password"
+}

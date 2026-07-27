@@ -1,0 +1,42 @@
+name: hoppin_demo
+description: Deterministic demo engine for the Hoppin apps — Wolverhampton-real seed data, scripted world simulator, fake repositories, and demo auth composed at the Riverpod root.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Typed models (Ride, Receipt, FareEstimate, …) and the provider surface the
+  # demo overrides slot beneath.
+  hoppin_shared:
+    path: ../hoppin_shared
+
+  # Root ProviderScope(overrides:) composition.
+  flutter_riverpod: ^3.3.2
+
+  # Type source for Session/User/AuthState — demo auth satisfies the same
+  # gotrue-typed surface the live AuthService exposes. No network use.
+  supabase_flutter: ^2.15.4
+
+  # BehaviorSubject-backed auth stream (replay-latest, same as gotrue itself).
+  rxdart: ^0.28.0
+
+  # clock.now() instead of DateTime.now() — fully controllable in fake_async.
+  clock: ^1.1.2
+
+  # sessionStorage snapshot store; imported ONLY behind a conditional import.
+  web: ^1.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  fake_async: ^1.3.3
+  flutter_lints: ^6.0.0
+
+flutter:

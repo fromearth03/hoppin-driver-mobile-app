@@ -1,0 +1,114 @@
+name: hoppin_driver
+description: Hoppin driver app — go online, receive ride offers, run the trip, upload compliance docs.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  hoppin_shared:
+    path: ../packages/hoppin_shared
+
+  # Demo engine — imported ONLY by lib/main_demo.dart. Live builds
+  # (-t lib/main.dart) tree-shake it: the compiler follows imports from the
+  # entrypoint, and nothing on the live path reaches this package.
+  hoppin_demo:
+    path: ../packages/hoppin_demo
+
+  # Design system — tokens, the four HoppinTheme builders, brand components.
+  hoppin_ui:
+    path: ../packages/hoppin_ui
+
+  flutter_riverpod: ^3.3.2
+  go_router: ^17.3.0
+  supabase_flutter: ^2.15.4
+
+  # clock.now() instead of DateTime.now() — countdown math stays fully
+  # controllable under fake_async (wave 3-4 interactors and their tests).
+  clock: ^1.1.2
+
+  # Offer chime playback (DRIVER-02) — web + Android safe.
+  audioplayers: ^6.8.1
+
+  # Location + OS permission. Driver-app-only, behind the LocationService seam
+  # (the isolation grep keeps geolocator/permission_handler OUT of
+  # hoppin_shared/hoppin_ui/hoppin_demo — the abstraction is pure Dart, the impl
+  # is app-local in BOTH apps).
+  #
+  # 🔴 PINNED TO THE RIDER'S RANGE, DELIBERATELY. This is a pub WORKSPACE with
+  # ONE shared lockfile: `^13` and `^14` are DISJOINT caret ranges, so if the
+  # two apps split on the major version `pub get` fails outright — for BOTH
+  # apps, not just the one that moved. The rider is on `^13.0.4` and is web;
+  # the driver is going Android. Both resolve to 13.0.4 today. Any bump is a
+  # SINGLE COMMIT touching both manifests, with the rider's location tests
+  # re-run. Never split them.
+  geolocator: ^13.0.4
+  permission_handler: ^11.4.0
+
+  # The Android FOREGROUND SERVICE (Phase 2, D6). The one GENUINELY NEW package
+  # in this milestone — everything else above and below was already resolved in
+  # the workspace lockfile via the rider.
+  #
+  # 🔴 THIS IS WHAT MAKES THE APP A DRIVER APP. `geolocator` alone stops
+  # delivering fixes the moment Android freezes the process — a driver who locks
+  # their phone and pockets it stops heartbeating, and the admin drops them from
+  # the dispatch pool 5 minutes later. A typed `foregroundServiceType="location"`
+  # service with a persistent notification is the ONLY sanctioned way on Android
+  # to keep reading location with the screen off, and it is precisely why D1
+  # dropped the web target: this has no web equivalent, not a hard one — none.
+  #
+  # It sits BEHIND the `DriverForegroundService` seam (features/presence/) so
+  # the plugin never reaches a test, a widget, or hoppin_shared. The isolation
+  # grep enforces it.
+  flutter_foreground_task: ^9.1.0
+
+  # FCM push rail. Isolated behind the app-local `DriverFcmGateway` seam,
+  # exactly as the rider isolates its own — never hoppin_shared/hoppin_demo.
+  #
+  # 🔴 GAP #69 DOES NOT BLOCK THE DRIVER. `POST /me/device-tokens` validates
+  # `device_os` against `{ios, android}` and rejects `"web"` — which blocks the
+  # RIDER (it ships web) and has always been read as blocking "push". Going
+  # Android UNBLOCKS driver token registration: `"android"` is a value the
+  # contract already accepts. What is still GATED is DELIVERY, on the backend's
+  # `FCM_CREDENTIALS_FILE` (#15/#16) — so the client registers a real token and
+  # simply never receives, which is the honest state, not a faked one.
+  #
+  # Versions pinned to the rider's, deliberately: ONE shared workspace lockfile.
+  firebase_core: ^4.11.0
+  firebase_messaging: ^16.4.1
+
+  # The presigned PUT rail. `dio` is already in the workspace lockfile (it is
+  # hoppin_shared's HTTP client) — declaring it DIRECTLY here is deliberate:
+  # the upload gateway constructs its OWN bare Dio and never goes near
+  # ApiClient. See features/documents/upload/presigned_put_gateway.dart for
+  # why that is not optional.
+  dio: ^5.10.0
+
+  # Document capture. A driver photographs their DVLA licence (camera/gallery)
+  # and picks a PDF of their insurance (files).
+  image_picker: ^1.1.2
+  file_picker: ^10.3.4
+
+  # Client-side downscale BEFORE the PUT. A modern phone camera routinely
+  # produces an 18 MB JPEG; `max_bytes` is 10485760 and the server RE-CHECKS
+  # it — an over-cap object comes back as a 500 the driver reads as "something
+  # went wrong" about a problem they could have solved in one tap.
+  image: ^4.5.4
+  mime: ^2.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  fake_async: ^1.3.3
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/audio/offer_chime.wav
