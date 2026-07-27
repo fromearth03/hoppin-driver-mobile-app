@@ -1,0 +1,23 @@
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: deploy-driver-web
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Rebuild & re-serve driver web on the VM
+        run: |
+          set -euo pipefail
+          APP=/home/c2o_ubuntu/hoppin-apps/hoppin-driver-mobile-app
+          git -C "$APP" fetch origin main
+          git -C "$APP" reset --hard origin/main
+          flock /tmp/hoppin-deploy.lock docker run --rm \
+            -v "$APP:/src" -w /src/driver_app ghcr.io/cirruslabs/flutter:stable \
+            bash -lc 'git config --global --add safe.directory /src && flutter pub get && flutter build web --release -t lib/main_demo.dart --dart-define-from-file=defines.json'
+          docker restart hoppin-driver-web
+          echo "deployed driver-web @ $(git -C "$APP" rev-parse --short HEAD)"
