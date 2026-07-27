@@ -18,6 +18,6 @@ jobs:
           git -C "$APP" reset --hard origin/main
           flock /tmp/hoppin-deploy.lock docker run --rm \
             -v "$APP:/src" -w /src/driver_app ghcr.io/cirruslabs/flutter:stable \
-            bash -lc 'git config --global --add safe.directory /src && flutter pub get && flutter build web --release -t lib/main_demo.dart --dart-define-from-file=defines.json'
+            bash -lc 'git config --global --add safe.directory /src && flutter pub get && flutter build web --release -t lib/main.dart --dart-define-from-file=defines.json'
           docker restart hoppin-driver-web
           echo "deployed driver-web @ $(git -C "$APP" rev-parse --short HEAD)"
