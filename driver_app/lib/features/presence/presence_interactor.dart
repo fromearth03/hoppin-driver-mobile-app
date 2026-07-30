@@ -88,14 +88,29 @@ class PresenceInteractor extends Notifier<PresenceState> {
   void _start() {
     if (_tick != null) return;
     _tick = Timer.periodic(cadence, (_) => unawaited(_ping(_generation)));
-    // Immediately, not in 20 seconds. `goOnline()` has already returned 200, so
-    // the driver is in the pool RIGHT NOW — a 20-second gap before the first
-    // ping is 20 seconds in which dispatch can match them from no fix at all.
-    unawaited(_ping(_generation));
+    // STAGE ONE of the permission flow, wired at GO — the one explicit gesture
+    // we get. The geolocator heartbeat path (`currentFix`) NEVER prompts on its
+    // own, so without this the driver's fix stays null forever and they sit at
+    // the #84 "no fix / undispatchable" rung having never been asked. Ping fires
+    // immediately after the grant resolves; `goOnline()` already returned 200 so
+    // the driver is already in the pool.
+    unawaited(_primeLocation(_generation));
     // The ANDROID FOREGROUND SERVICE (Phase 2). Started alongside the timer,
     // never instead of it: the service does not run the heartbeat, it keeps the
     // isolate that runs the heartbeat ALIVE with the screen off.
     unawaited(_startShift(_generation));
+  }
+
+  /// Requests foreground location permission at GO (stage one), then fires the
+  /// first heartbeat. This is the one place a permission dialog is appropriate:
+  /// the driver just tapped GO, so the request rides that gesture (required on
+  /// web) and is expected. The heartbeat's own `currentFix()` deliberately never
+  /// prompts, so the grant has to be seeded here or it never happens. We never
+  /// branch on the request's own answer — the ping asks the OS for a real fix.
+  Future<void> _primeLocation(int gen) async {
+    await ref.read(driverLocationServiceProvider).requestPermission();
+    if (gen != _generation) return;
+    await _ping(gen);
   }
 
   void _stop() {
