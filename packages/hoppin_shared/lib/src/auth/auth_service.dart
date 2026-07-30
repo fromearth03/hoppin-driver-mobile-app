@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// The app role stamped into every Supabase JWT as the top-level `user_role`
@@ -73,11 +75,18 @@ class AuthService {
   /// Emits on sign-in / sign-out / token-refresh. Drive routing off this.
   Stream<AuthState> get onAuthStateChange => _auth.onAuthStateChange;
 
-  /// The app role, read from the `user_role` claim the backend gates on.
+  /// The app role the backend gates on.
+  ///
+  /// Canonical source is the top-level `user_role` claim the
+  /// `custom_access_token_hook` stamps into the JWT from `public.users.role`.
+  /// Being top-level, it is NOT exposed on `appMetadata`/`userMetadata`, so it
+  /// can only be read by decoding the access token. Fallback: the `role` key
+  /// that admin (`app_metadata`) and driver (`user_metadata`) provisioning
+  /// writes — so a role still resolves if the hook ever fails to stamp.
   AppRole get role {
-    final claim =
-        _auth.currentUser?.appMetadata['user_role'] as String? ??
-        _auth.currentUser?.userMetadata?['user_role'] as String?;
+    final claim = _jwtRole() ??
+        _auth.currentUser?.appMetadata['role'] as String? ??
+        _auth.currentUser?.userMetadata?['role'] as String?;
     switch (claim) {
       case 'rider':
         return AppRole.rider;
@@ -87,6 +96,24 @@ class AuthService {
         return AppRole.admin;
       default:
         return AppRole.unknown;
+    }
+  }
+
+  /// Decodes the top-level `user_role` claim out of the current access-token
+  /// JWT. Null when signed out or the token is malformed.
+  String? _jwtRole() {
+    final token = accessToken;
+    if (token == null) return null;
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    try {
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      ) as Map<String, dynamic>;
+      final role = payload['user_role'];
+      return role is String && role.isNotEmpty ? role : null;
+    } catch (_) {
+      return null;
     }
   }
 

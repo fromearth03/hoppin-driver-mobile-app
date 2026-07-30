@@ -74,10 +74,24 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
 
     setState(() => _busy = true);
     try {
-      await ref.read(authServiceProvider).signInWithPassword(
+      final auth = ref.read(authServiceProvider);
+      await auth.signInWithPassword(
             email: _emailCtrl.text.trim(),
             password: _passwordCtrl.text,
           );
+      // Only drivers belong in the driver app. Any non-driver account (rider,
+      // admin, or role-less) is signed straight back out with guidance — this
+      // mirrors the backend driverOnly() gate. Strict by design: drivers are
+      // always admin-provisioned with role='driver', so a missing role is NOT
+      // a driver and must not be let in.
+      if (auth.role != AppRole.driver) {
+        await auth.signOut();
+        if (mounted) {
+          setState(() => _error =
+              'This is not a driver account. Please use the Hoppin Rider app.');
+        }
+        return;
+      }
       // Router redirect handles navigation via onAuthStateChange.
     } on Exception catch (e) {
       if (mounted) setState(() => _error = friendlyErrorMessage(e));
