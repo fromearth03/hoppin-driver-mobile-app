@@ -102,6 +102,12 @@ dependencies:
   image: ^4.5.4
   mime: ^2.0.0
 
+  # External URL hand-off (OT-16) — Stripe payout onboarding, the in-trip
+  # Navigate hand-off, and the force-update link. The ONE concrete launcher
+  # (features/comms/real_url_launcher.dart) is the only file in lib/ that may
+  # import this, behind the UrlLauncher seam (same isolation as geolocator).
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

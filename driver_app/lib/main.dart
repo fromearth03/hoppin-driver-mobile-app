@@ -11,6 +11,9 @@ import 'features/notifications/firebase_driver_fcm_gateway.dart';
 import 'features/documents/upload/platform_avatar_picker.dart';
 import 'features/presence/android_shift_service.dart';
 import 'features/presence/presence_builder.dart';
+import 'features/comms/real_url_launcher.dart';
+import 'features/comms/url_launcher_gateway.dart' as comms;
+import 'features/trip/trip_nav_handoff.dart' as nav;
 
 /// Entry point for the Hoppin DRIVER app — **ANDROID** (D1).
 ///
@@ -90,6 +93,11 @@ Future<void> main() async {
       // not depend on a plugin), so this is the only construction site of the
       // real picker; tests inject a plain Dart fake.
       avatarPickerProvider.overrideWithValue(PlatformAvatarPicker()),
+      // The real URL launcher — the single construction site (isolation
+      // contract). Wires payout onboarding, force-update, and the in-trip
+      // Navigate hand-off (both lane providers) to the OS, not the no-op.
+      comms.urlLauncherProvider.overrideWithValue(const RealUrlLauncher()),
+      nav.urlLauncherProvider.overrideWithValue(const RealUrlLauncher()),
     ],
     child: const DriverApp(),
   ));
