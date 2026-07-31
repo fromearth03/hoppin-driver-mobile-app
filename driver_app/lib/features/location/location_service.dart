@@ -224,10 +224,17 @@ class GeolocatorDriverLocationService implements DriverLocationService {
 
   @override
   Future<DriverLocationPermission> requestPermission() async {
-    if (!kIsWeb && !await _serviceEnabled()) {
-      return DriverLocationPermission.serviceDisabled;
+    try {
+      if (!kIsWeb && !await _serviceEnabled()) {
+        return DriverLocationPermission.serviceDisabled;
+      }
+      final p = _map(await _requestForeground());
+      if (kIsWeb) print('HOPPIN_LOC reqPerm ok=$p');
+      return p;
+    } catch (e) {
+      if (kIsWeb) print('HOPPIN_LOC reqPerm ERR: $e');
+      return DriverLocationPermission.denied;
     }
-    return _map(await _requestForeground());
   }
 
   @override
@@ -292,7 +299,9 @@ class GeolocatorDriverLocationService implements DriverLocationService {
       // Short-circuit rather than prompt. The heartbeat calls this on a timer;
       // an `await` on an OS permission dialog is an unbounded wait on a human,
       // and a dialog that surprises a driver mid-junction is a hazard.
-      if (!await _checkPermission()) return null;
+      final _has = await _checkPermission();
+      if (kIsWeb) print('HOPPIN_LOC checkPerm=$_has');
+      if (!_has) return null;
 
       // Belt AND braces on the bound: `timeLimit` is the plugin's own budget,
       // and `.timeout()` guards the platform that never honours it.
@@ -307,7 +316,8 @@ class GeolocatorDriverLocationService implements DriverLocationService {
         // take their keyboard away for it.
         speedMps: position.speedAccuracy > 0 ? position.speed : null,
       );
-    } catch (_) {
+    } catch (e) {
+      if (kIsWeb) print('HOPPIN_LOC currentFix ERR: $e');
       // Deliberately bare. TimeoutException, PermissionDeniedException,
       // LocationServiceDisabledException, an untyped platform refusal — all of
       // them mean exactly one thing to the caller: NO FIX. A typed catch would
