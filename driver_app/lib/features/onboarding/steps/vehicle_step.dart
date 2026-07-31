@@ -1,35 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoppin_shared/hoppin_shared.dart';
 import 'package:hoppin_ui/hoppin_ui.dart';
 
-import '../widgets/vehicle_registration_unavailable.dart';
-
-/// Registration3, re-purposed — **Vehicle**. Seam **#82**.
+/// Registration3 — **Vehicle** (seam #82, now live).
 ///
-/// 🔴 **THIS STEP COLLECTS NOTHING AND POSTS NOTHING, AND BOTH HALVES OF THAT
-/// ARE LOAD-BEARING.**
-///
-/// The Figma asks for a registration plate, a make and model, an insurance
-/// provider and an insurance expiry. Nothing on the backend accepts them
-/// (`vehicle_registration_unavailable.dart` has the full reasoning). So:
-///
-/// **There is no `TextField` and no `TextFormField` on this step — and not a
-/// DISABLED one either.** A greyed-out box labelled "Vehicle Reg" still tells
-/// the driver *"this is where your registration plate goes, and one day it will
-/// be saved"*. It will not be saved. There is nothing to save it to. What is
-/// shown instead is a set of **non-interactive labelled placeholders** inside
-/// the rung's frame, which reads as *"this is what we'll ask for when we can"*
-/// and never as *"type here"*.
-///
-/// **This step fires zero network calls.** `vehicle_step_zero_calls_test.dart`
-/// replaces every repository AND the `ApiClient` beneath them with fakes that
-/// fail the test on any method call whatsoever, then types into every field and
-/// taps every button. Zero invocations permitted.
-///
-/// The STRUCTURE survives — the section headers, the field rhythm, the two-up
-/// pairs — so that the day `POST /drivers/me/vehicle` lands, the real inputs
-/// drop straight into a layout the driver already recognises.
-class VehicleStep extends StatelessWidget {
-  /// Creates the vehicle step.
+/// Collects the driver's vehicle (reg / make / model / colour) + insurance
+/// (provider + expiry) and upserts it via `POST /drivers/me/vehicle` on Continue.
+/// Riders see the make/model/plate on the trip screen. A plate already on another
+/// driver's account comes back as PLATE_TAKEN and is shown inline; the step only
+/// advances after a successful save.
+class VehicleStep extends ConsumerStatefulWidget {
   const VehicleStep({
     required this.onBack,
     required this.onContinue,
@@ -37,124 +18,164 @@ class VehicleStep extends StatelessWidget {
     super.key,
   });
 
-  /// Back to the licence step. A pure local state transition.
   final VoidCallback onBack;
 
-  /// Forward to the attachments step. A pure local state transition — it saves
-  /// nothing, because there is nothing to save it to.
+  /// Advance to the attachments step — called only AFTER a successful save.
   final VoidCallback onContinue;
 
-  /// Route to support, from the rung.
+  /// Retained for API compatibility; the live form no longer shows a support rung.
   final VoidCallback? onContactSupport;
 
-  /// The four things Registration3 asks for, and the shape of the answers. Shown
-  /// as READ-ONLY placeholders — the driver types into none of them.
-  static const _fields = <({String label, String example})>[
-    (label: 'Vehicle reg', example: 'WH12 ABC'),
-    (label: 'Vehicle model', example: 'Toyota Prius'),
-    (label: 'Vehicle insurance', example: 'Provider & policy number'),
-    (label: 'Insurance expiry', example: 'dd / mm / yyyy'),
-  ];
+  @override
+  ConsumerState<VehicleStep> createState() => _VehicleStepState();
+}
+
+class _VehicleStepState extends ConsumerState<VehicleStep> {
+  final _formKey = GlobalKey<FormState>();
+  final _reg = TextEditingController();
+  final _make = TextEditingController();
+  final _model = TextEditingController();
+  final _colour = TextEditingController();
+  final _insurer = TextEditingController();
+  final _expiry = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _reg.dispose();
+    _make.dispose();
+    _model.dispose();
+    _colour.dispose();
+    _insurer.dispose();
+    _expiry.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickExpiry() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now.subtract(const Duration(days: 30)),
+      lastDate: DateTime(now.year + 6),
+    );
+    if (picked != null) {
+      _expiry.text = picked.toIso8601String().split('T').first;
+      setState(() {});
+    }
+  }
+
+  Future<void> _submit() async {
+    setState(() => _error = null);
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(driverRepositoryProvider).registerVehicle(
+            make: _make.text.trim(),
+            model: _model.text.trim(),
+            licensePlate: _reg.text.trim(),
+            color: _colour.text.trim(),
+            insuranceProvider: _insurer.text.trim(),
+            insuranceExpiry: _expiry.text.trim(),
+          );
+      if (mounted) widget.onContinue();
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _error = e.code == 'PLATE_TAKEN'
+            ? 'That registration is already on another driver account.'
+            : 'Could not save your vehicle. Check the details and try again.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Could not save your vehicle. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final hoppin = context.hoppin;
     final colors = hoppin.colors;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 🔴 CONSTRUCTED UNCONDITIONALLY. Not behind an `if (vehicle == null)`:
-        // there is no endpoint, so there is no state of the world in which this
-        // step has real data. The seam is always-null.
-        VehicleRegistrationUnavailable(onContactSupport: onContactSupport),
-        SizedBox(height: hoppin.spacing.gutter),
-        Text(
-          "What we'll ask for when this is switched on",
-          style: hoppin.type.metaSmall.copyWith(color: colors.textMid),
-        ),
-        SizedBox(height: hoppin.spacing.md),
-        // The Registration3 rhythm, in two-up pairs — preserved as structure so
-        // the wizard reads as designed and the real inputs land cleanly later.
-        for (var i = 0; i < _fields.length; i += 2) ...[
-          if (i > 0) SizedBox(height: hoppin.spacing.lg),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _FieldPreview(field: _fields[i])),
-              SizedBox(width: hoppin.spacing.lg),
-              Expanded(
-                child: i + 1 < _fields.length
-                    ? _FieldPreview(field: _fields[i + 1])
-                    : const SizedBox.shrink(),
-              ),
-            ],
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Your vehicle', style: hoppin.type.title),
+          SizedBox(height: hoppin.spacing.xs),
+          Text(
+            'The car you drive for Hoppin. Riders see the make, model and plate.',
+            style: hoppin.type.metaSmall.copyWith(color: colors.textMid),
           ),
-        ],
-        SizedBox(height: hoppin.spacing.xl),
-        Row(
-          children: [
+          SizedBox(height: hoppin.spacing.lg),
+          if (_error != null) ...[
+            HopBanner.error(message: _error!),
+            SizedBox(height: hoppin.spacing.md),
+          ],
+          _field(_reg, 'Registration', 'WH12 ABC', required: true, caps: true),
+          SizedBox(height: hoppin.spacing.md),
+          Row(children: [
+            Expanded(child: _field(_make, 'Make', 'Toyota', required: true)),
+            SizedBox(width: hoppin.spacing.lg),
+            Expanded(child: _field(_model, 'Model', 'Prius', required: true)),
+          ]),
+          SizedBox(height: hoppin.spacing.md),
+          _field(_colour, 'Colour', 'Silver'),
+          SizedBox(height: hoppin.spacing.md),
+          _field(_insurer, 'Insurance provider', 'Provider & policy no.'),
+          SizedBox(height: hoppin.spacing.md),
+          TextFormField(
+            controller: _expiry,
+            readOnly: true,
+            enabled: !_busy,
+            onTap: _busy ? null : _pickExpiry,
+            decoration: const InputDecoration(
+              labelText: 'Insurance expiry',
+              hintText: 'Tap to pick a date',
+              prefixIcon: Icon(Icons.event_outlined),
+            ),
+          ),
+          SizedBox(height: hoppin.spacing.xl),
+          Row(children: [
             Expanded(
-              child: HopButton.secondary(label: 'Back', onPressed: onBack),
+              child: HopButton.secondary(
+                label: 'Back',
+                onPressed: _busy ? null : widget.onBack,
+              ),
             ),
             SizedBox(width: hoppin.spacing.lg),
             Expanded(
               child: HopButton.primary(
-                label: 'Continue',
-                onPressed: onContinue,
+                label: 'Save & continue',
+                onPressed: _busy ? null : _submit,
+                busy: _busy,
               ),
             ),
-          ],
-        ),
-      ],
+          ]),
+        ],
+      ),
     );
   }
-}
 
-/// A labelled, NON-INTERACTIVE placeholder in the shape of the field that will
-/// one day live here.
-///
-/// 🔴 Deliberately NOT a disabled `TextField`. A disabled input is still an
-/// input: it has a cursor position, it has a "type here" affordance, and it
-/// promises that enabling it would save something. This is a dashed outline with
-/// a label and an example — it describes a future question, and it cannot be
-/// mistaken for a box that is taking an answer.
-class _FieldPreview extends StatelessWidget {
-  const _FieldPreview({required this.field});
-
-  final ({String label, String example}) field;
-
-  @override
-  Widget build(BuildContext context) {
-    final hoppin = context.hoppin;
-    final colors = hoppin.colors;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          field.label,
-          style: hoppin.type.metaSmall.copyWith(color: colors.textMid),
-        ),
-        SizedBox(height: hoppin.spacing.xs),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.symmetric(
-            horizontal: hoppin.spacing.md,
-            vertical: hoppin.spacing.md,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(hoppin.radii.control),
-            border: Border.all(color: colors.hairline),
-          ),
-          child: Text(
-            field.example,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: hoppin.type.meta.copyWith(color: colors.textMid),
-          ),
-        ),
-      ],
+  Widget _field(
+    TextEditingController c,
+    String label,
+    String hint, {
+    bool required = false,
+    bool caps = false,
+  }) {
+    return TextFormField(
+      controller: c,
+      enabled: !_busy,
+      textCapitalization:
+          caps ? TextCapitalization.characters : TextCapitalization.words,
+      validator: required
+          ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
+          : null,
+      decoration: InputDecoration(labelText: label, hintText: hint),
     );
   }
 }

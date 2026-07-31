@@ -137,6 +137,32 @@ class DriverRepository {
         body: {'lat': lat, 'lng': lng},
       );
 
+  /// Registers (or updates) the driver's single vehicle — the onboarding vehicle
+  /// step. `POST /drivers/me/vehicle`. make/model/licensePlate are required; the
+  /// rest optional. Throws ApiException(code: 'PLATE_TAKEN') when the plate
+  /// belongs to another driver.
+  Future<void> registerVehicle({
+    required String make,
+    required String model,
+    required String licensePlate,
+    String? color,
+    String? insuranceProvider,
+    String? insuranceExpiry,
+  }) =>
+      _api.post<Map<String, dynamic>>(
+        '/drivers/me/vehicle',
+        body: {
+          'make': make,
+          'model': model,
+          'license_plate': licensePlate,
+          if (color != null && color.isNotEmpty) 'color': color,
+          if (insuranceProvider != null && insuranceProvider.isNotEmpty)
+            'insurance_provider': insuranceProvider,
+          if (insuranceExpiry != null && insuranceExpiry.isNotEmpty)
+            'insurance_expiry': insuranceExpiry,
+        },
+      );
+
   // ── Ride lifecycle transitions (assigned driver only) ────────────────────
 
   /// `PATCH /rides/:id/accept` — driver accepts a matching ride.
