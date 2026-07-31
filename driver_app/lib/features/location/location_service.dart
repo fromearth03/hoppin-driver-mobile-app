@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 
 /// The outcome of a location-permission request, normalised away from the
@@ -223,7 +224,7 @@ class GeolocatorDriverLocationService implements DriverLocationService {
 
   @override
   Future<DriverLocationPermission> requestPermission() async {
-    if (!await _serviceEnabled()) {
+    if (!kIsWeb && !await _serviceEnabled()) {
       return DriverLocationPermission.serviceDisabled;
     }
     return _map(await _requestForeground());
@@ -231,7 +232,7 @@ class GeolocatorDriverLocationService implements DriverLocationService {
 
   @override
   Future<DriverLocationPermission> requestBackgroundPermission() async {
-    if (!await _serviceEnabled()) {
+    if (!kIsWeb && !await _serviceEnabled()) {
       return DriverLocationPermission.serviceDisabled;
     }
 
@@ -261,7 +262,7 @@ class GeolocatorDriverLocationService implements DriverLocationService {
   @override
   Future<DriverLocationCoverage> coverage() async {
     try {
-      if (!await _serviceEnabled()) return DriverLocationCoverage.none;
+      if (!kIsWeb && !await _serviceEnabled()) return DriverLocationCoverage.none;
       return switch (await _permissionLevel()) {
         LocationPermission.always => DriverLocationCoverage.full,
         LocationPermission.whileInUse =>
