@@ -195,6 +195,19 @@ class DashboardInteractor extends Notifier<DashboardState> {
         state = state.copyWith(phase: DashboardPhase.offline, error: null);
         return;
       }
+      if (e.code == 'PAYOUT_NOT_READY') {
+        // 403 — Stripe payout setup incomplete. Not a compliance issue, so
+        // don't route to the eligibility rung; surface the server's message so
+        // the driver knows to finish payout setup in Earnings before they can
+        // go online and earn.
+        state = state.copyWith(
+          phase: DashboardPhase.offline,
+          error: e.message.isNotEmpty
+              ? e.message
+              : 'Finish payout setup in Earnings to start earning.',
+        );
+        return;
+      }
       state = state.copyWith(
         phase: DashboardPhase.offline,
         error: friendlyErrorMessage(e),
