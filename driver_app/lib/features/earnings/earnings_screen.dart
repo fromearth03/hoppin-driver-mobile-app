@@ -132,12 +132,12 @@ class _BalancesCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Available to pay out',
+            'Pending payout',
             style: hoppin.type.labelSmall.copyWith(color: colors.textMid),
           ),
           SizedBox(height: hoppin.spacing.xs),
           Text(
-            formatPence(data.availableBalancePence),
+            formatPence(data.pendingBalancePence),
             style: hoppin.type.moneyHero.copyWith(color: colors.textHi),
           ),
           SizedBox(height: hoppin.spacing.md),
@@ -145,8 +145,8 @@ class _BalancesCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _Stat(
-                  label: 'Pending',
-                  value: formatPence(data.pendingBalancePence),
+                  label: 'Available',
+                  value: formatPence(data.availableBalancePence),
                 ),
               ),
               Expanded(
@@ -248,7 +248,7 @@ class _PayoutsCard extends ConsumerWidget {
           compact: true,
           headline: 'No payouts yet',
           supporting:
-              'Completed trips build your available balance. Payout runs will '
+              'Completed trips build your pending balance. Payout runs will '
               'be listed here once the first one settles.',
         ),
       );
