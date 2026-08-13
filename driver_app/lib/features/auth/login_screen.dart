@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hoppin_shared/hoppin_shared.dart';
 import 'package:hoppin_ui/hoppin_ui.dart';
 
@@ -58,6 +57,31 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _forgotPassword() async {
+    setState(() {
+      _error = null;
+      _notice = null;
+    });
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error =
+          'Enter your email above first, then tap "Forgot password".');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await ref.read(authServiceProvider).sendPasswordReset(email);
+      if (mounted) {
+        setState(() => _notice =
+            'Check your email — open the Hoppin link to set a new password.');
+      }
+    } on Exception catch (e) {
+      if (mounted) setState(() => _error = friendlyErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -239,13 +263,7 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
                       SizedBox(height: hoppin.spacing.md),
                       HopButton.ghost(
                         label: 'Forgot password?',
-                        // 🔴 Routes to the #49 GATED landing rather than
-                        // sending an email straight away. The reset redirect
-                        // lands on a URL with no page behind it, so an email
-                        // sent from here delivers a link that dead-ends. The
-                        // landing says so honestly and offers the route that
-                        // actually works — support, where a human can reset it.
-                        onPressed: _busy ? null : () => context.go('/reset'),
+                        onPressed: _busy ? null : _forgotPassword,
                       ),
                       SizedBox(height: hoppin.spacing.gutter),
                       // Drivers can't self-register — set expectations here.

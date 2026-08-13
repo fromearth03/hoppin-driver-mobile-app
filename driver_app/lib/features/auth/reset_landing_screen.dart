@@ -1,47 +1,66 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoppin_shared/hoppin_shared.dart';
 import 'package:hoppin_ui/hoppin_ui.dart';
 
 /// Stable widget keys the reset landing exposes for tests.
 abstract final class DriverResetKeys {
-  /// The BOUND exit — a human can reset the password today.
-  static const contactSupport = ValueKey('driver-reset-contact-support');
-
-  /// For the driver who still knows their current password.
   static const backToSignIn = ValueKey('driver-reset-back-to-sign-in');
 }
 
-/// The #49 GATED state. 🔴 NEVER A FAKE PASSWORD FORM.
-///
-/// The Supabase reset redirect lands on a URL with **no page behind it**. So a
-/// "New Password" form on this path would take a driver's new password and
-/// post it **nowhere**. They would see a tick, close the app, and be locked out
-/// of their livelihood tomorrow morning — and they would not know why.
-///
-/// So there is no form. There is an honest, designed state that says the reset
-/// link is not yet working, and it offers **two real exits**: contact support
-/// (BOUND — a human can reset it), and back to sign-in.
-///
-/// The Figma's `New Password.jpg` frame is exactly the form we are refusing to
-/// draw.
-///
-/// 🔴 This route must be reachable while **SIGNED OUT** — a driver clicking a
-/// reset link is by definition not signed in. `router.dart` allowlists it in
-/// the redirect for exactly that reason. Without the allowance the honest
-/// gated state is never seen, and the driver is bounced to the very login they
-/// cannot get past.
-///
-/// Body-swaps to the real reset entry point with zero view changes when #49
-/// lands (the Supabase redirect config).
-class DriverResetLandingScreen extends StatelessWidget {
-  /// Creates the #49 gated password-reset landing.
+/// Password-reset / invite landing. The emailed Supabase link opens `/reset`
+/// with a temporary recovery session; this form writes the new password onto
+/// it. No contact-support dead end — if the link is stale, request a new one
+/// from sign-in.
+class DriverResetLandingScreen extends ConsumerStatefulWidget {
   const DriverResetLandingScreen({super.key});
+
+  @override
+  ConsumerState<DriverResetLandingScreen> createState() =>
+      _DriverResetLandingScreenState();
+}
+
+class _DriverResetLandingScreenState
+    extends ConsumerState<DriverResetLandingScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _passwordCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  bool _obscure = true;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _passwordCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() => _error = null);
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(authServiceProvider).updatePassword(_passwordCtrl.text);
+      if (!mounted) return;
+      context.go('/');
+    } on Exception catch (_) {
+      if (mounted) {
+        setState(() => _error =
+            'This reset link has expired or is invalid. Request a new one '
+            'from the sign-in screen.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final hoppin = context.hoppin;
     final colors = hoppin.colors;
-
+    final type = hoppin.type;
     return Scaffold(
       backgroundColor: colors.canvas,
       body: SafeArea(
@@ -53,38 +72,77 @@ class DriverResetLandingScreen extends StatelessWidget {
             ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Names the situation honestly. No form, no field, nothing
-                  // that could take a password.
-                  const HopEmptyState(
-                    headline: "This reset link isn't active yet",
-                    supporting:
-                        "Setting a new password from an email link isn't "
-                        'switched on yet. Nothing you type here could reach '
-                        'us, so we are not going to ask you to type it. If '
-                        "you're locked out, support can reset your password "
-                        'today — usually the same working day.',
-                  ),
-                  SizedBox(height: hoppin.spacing.lg),
-
-                  // 🔴 The exits. A disclosure that STRANDS the driver is only
-                  // half-honest, and this driver may be unable to work until
-                  // they are back in.
-                  HopButton.primary(
-                    key: DriverResetKeys.contactSupport,
-                    label: 'Contact support',
-                    onPressed: () => context.go('/support'),
-                  ),
-                  SizedBox(height: hoppin.spacing.sm),
-                  HopButton.ghost(
-                    key: DriverResetKeys.backToSignIn,
-                    label: 'Back to sign in',
-                    onPressed: () => context.go('/login'),
-                  ),
-                ],
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Set a new password',
+                        textAlign: TextAlign.center, style: type.headline),
+                    SizedBox(height: hoppin.spacing.sm),
+                    Text(
+                      'Choose a new password for your Hoppin driver account.',
+                      textAlign: TextAlign.center,
+                      style: type.body.copyWith(color: colors.textMid),
+                    ),
+                    SizedBox(height: hoppin.spacing.xl),
+                    if (_error != null) ...[
+                      HopBanner.error(message: _error!),
+                      SizedBox(height: hoppin.spacing.md),
+                    ],
+                    TextFormField(
+                      controller: _passwordCtrl,
+                      enabled: !_busy,
+                      obscureText: _obscure,
+                      autofillHints: const [AutofillHints.newPassword],
+                      textInputAction: TextInputAction.next,
+                      validator: (v) => (v == null || v.length < 8)
+                          ? 'At least 8 characters'
+                          : null,
+                      decoration: InputDecoration(
+                        labelText: 'New password',
+                        helperText: 'At least 8 characters',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          onPressed: () =>
+                              setState(() => _obscure = !_obscure),
+                          icon: Icon(_obscure
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined),
+                          tooltip: _obscure ? 'Show password' : 'Hide password',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _confirmCtrl,
+                      enabled: !_busy,
+                      obscureText: _obscure,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _submit(),
+                      validator: (v) => (v != _passwordCtrl.text)
+                          ? 'Passwords do not match'
+                          : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Confirm new password',
+                        prefixIcon: Icon(Icons.lock_outline),
+                      ),
+                    ),
+                    SizedBox(height: hoppin.spacing.gutter),
+                    HopButton.primary(
+                      label: 'Set new password',
+                      onPressed: _busy ? null : _submit,
+                      busy: _busy,
+                    ),
+                    SizedBox(height: hoppin.spacing.sm),
+                    HopButton.ghost(
+                      key: DriverResetKeys.backToSignIn,
+                      label: 'Back to sign in',
+                      onPressed: _busy ? null : () => context.go('/login'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

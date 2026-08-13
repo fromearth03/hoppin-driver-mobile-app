@@ -392,14 +392,13 @@ const kSeamRegistry = <SeamEntry>[
     ],
   ),
 
-  // Password-reset deep-link landing is GATED until the Supabase redirect
-  // config lands (#49). ResetLandingScreen renders the honest unavailable
-  // state — never a fake password form.
+  // Password-reset deep-link landing (#49). ResetLandingScreen is the live
+  // set-password form; forgot-password emails redirect here.
   SeamEntry(
     gap: 49,
     feature: 'reset',
     ledgerRef: 'row:21',
-    state: SeamState.GATED,
+    state: SeamState.WIRED,
     kind: SeamKind.view,
     disclosures: [
       SeamDisclosure(

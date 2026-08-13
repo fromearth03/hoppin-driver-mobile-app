@@ -42,20 +42,17 @@ final driverRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final signedIn = auth.isSignedIn;
       final loc = state.matchedLocation;
+      // Recovery / invite email callbacks must hit `/reset`, even if the
+      // session already looks signed-in (Supabase recovery session).
+      if (hoppinIsAuthCallback(state.uri) && loc != '/reset') {
+        final q = state.uri.hasQuery ? '?${state.uri.query}' : '';
+        return '/reset$q';
+      }
       final onLogin = loc == '/login';
-      // 🔴 `/reset` MUST survive the signed-out redirect (#49). A driver
-      // clicking a password-reset link is by definition not signed in, and
-      // bouncing them to the very login they cannot get past means the honest
-      // GATED state is never seen. Same one-line allowance the rider makes.
-      // `/splash` is allowlisted so it stays reachable pre-auth, but it is NOT
-      // where signed-out traffic is sent: the destination is `/login`. Routing
-      // signed-out users to a splash screen puts a wall in front of the one
-      // thing they came to do, and the splash screen's own doc comment says
-      // the redirect targets /login.
       final onSignedOutAuthRoute =
           onLogin || loc == '/reset' || loc == '/splash';
       if (!signedIn) return onSignedOutAuthRoute ? null : '/login';
-      // A signed-in driver who somehow lands on login or splash goes home.
+      if (loc == '/reset') return null;
       if (onLogin || loc == '/splash') return '/';
       return null;
     },

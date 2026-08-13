@@ -2,10 +2,8 @@ import 'package:go_router/go_router.dart';
 
 import 'reset_landing_screen.dart';
 
-/// The password-reset deep-link landing (#49).
-///
-/// 🔴 Reachable while **SIGNED OUT** — `router.dart` allowlists it in the
-/// redirect. A driver clicking a reset link is by definition not signed in.
+/// Password-reset / invite landing. Allowlisted while signed-out so the
+/// emailed link can open the set-password form.
 const String kDriverResetRoute = '/reset';
 
 /// The auth riblet's routes, spread into the driver route table.
