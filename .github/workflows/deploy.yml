@@ -16,8 +16,11 @@ jobs:
           APP=/home/c2o_ubuntu/hoppin-apps/hoppin-driver-mobile-app
           git -C "$APP" fetch origin main
           git -C "$APP" reset --hard origin/main
+          # Build into web-next, then copy into the live nginx bind-mount.
+          # Never `rm -rf build/web` — that directory IS the running site;
+          # deleting it 403s driver.hoppin.tech until the next docker restart.
           flock /tmp/hoppin-deploy.lock docker run --rm \
             -v "$APP:/src" -w /src/driver_app ghcr.io/cirruslabs/flutter:stable \
-            bash -lc 'git config --global --add safe.directory /src && rm -rf build/web && flutter pub get && flutter build web --release -t lib/main.dart --dart-define-from-file=defines.json'
+            bash -lc 'git config --global --add safe.directory /src && flutter pub get && rm -rf build/web-next && flutter build web --release -t lib/main.dart --dart-define-from-file=defines.json --output=build/web-next && mkdir -p build/web && cp -a build/web-next/. build/web/'
           docker restart hoppin-driver-web
           echo "deployed driver-web @ $(git -C "$APP" rev-parse --short HEAD)"
