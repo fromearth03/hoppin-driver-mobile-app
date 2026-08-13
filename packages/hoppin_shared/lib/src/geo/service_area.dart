@@ -1,31 +1,18 @@
 /// BOOK-07 — the client geofence pre-flight.
 ///
-/// A pure, dependency-free point-in-polygon test over the committed
-/// Wolverhampton licensing boundary. It answers a single question honestly
-/// and fast, before any network call: is this pickup even inside the area we
-/// serve? The server `422 OUTSIDE_SERVICE_AREA` remains the enforcement
-/// authority — this is a UX nicety and an audit-log hook, not the gate.
+/// Fast point-in-polygon before any booking network call. The server
+/// `422 OUTSIDE_SERVICE_AREA` / `GET /service-areas/check` remains the gate.
 ///
-/// This file is PURE Dart: no Flutter imports, no I/O. Mirrors how the OSRM
-/// demo track was committed as a const (06-01).
+/// Rings come from live pricing zones (`GET /service-areas`) when the app has
+/// hydrated them. Until then we fall back to the committed Wolverhampton
+/// octagon so offline/first-launch still works.
 library;
 
 /// One vertex of the service-area boundary ring: `(lat, lng)`.
 typedef ServiceAreaVertex = ({double lat, double lng});
 
-/// The Wolverhampton licensing-boundary ring, as committed const geometry.
-///
-/// DISCLOSED-APPROXIMATE — this is a coarse but plausible ring around the
-/// Wolverhampton service area (lat ~52.55–52.63, lng ~-2.05 to -2.20), not the
-/// authoritative licensing polygon. The real boundary coordinates are a small
-/// backend/ops ask (09-RESEARCH Open Question 2); the convergence plan (09-05)
-/// records the ask in SCOPE-TRACE + DOCS/06. Because the server `422` stays the
-/// authority, an approximate client boundary is safe: worst case the pre-flight
-/// lets an edge request through and the server declines it honestly.
-///
-/// Vertices are ordered around the ring (a simple, non-self-intersecting
-/// octagon comfortably enclosing every seeded Wolverhampton landmark while
-/// excluding Birmingham to the south-east).
+/// Fallback Wolverhampton ring (disclosed-approximate). Used only when live
+/// zone polygons have not been loaded yet.
 const List<ServiceAreaVertex> kWolverhamptonBoundary = [
   (lat: 52.630, lng: -2.140), // N
   (lat: 52.625, lng: -2.075), // NE
@@ -37,14 +24,31 @@ const List<ServiceAreaVertex> kWolverhamptonBoundary = [
   (lat: 52.622, lng: -2.185), // NW
 ];
 
-/// True when `(lat, lng)` falls inside [kWolverhamptonBoundary].
-///
-/// Standard ray-casting (even-odd) point-in-polygon: cast a ray east from the
-/// point and count boundary crossings — odd means inside. ~15 lines, no
-/// dependencies, appropriate here (09-RESEARCH Pattern 4 / Don't-Hand-Roll
-/// explicitly permits this one).
+List<List<ServiceAreaVertex>> _liveRings = [];
+
+/// True once [applyServiceAreaGeoJSON] installed at least one live ring.
+bool get serviceAreasHydrated => _liveRings.isNotEmpty;
+
+/// Replace the live coverage rings from `GET /service-areas` (`geom` GeoJSON).
+void applyServiceAreaGeoJSON(Iterable<dynamic> areas) {
+  final rings = <List<ServiceAreaVertex>>[];
+  for (final raw in areas) {
+    if (raw is! Map) continue;
+    rings.addAll(_ringsFromGeom(raw['geom']));
+  }
+  if (rings.isNotEmpty) _liveRings = rings;
+}
+
+/// True when `(lat, lng)` falls inside any live zone, or the fallback octagon.
 bool isInsideServiceArea(double lat, double lng) {
-  final ring = kWolverhamptonBoundary;
+  final rings = _liveRings.isNotEmpty ? _liveRings : [kWolverhamptonBoundary];
+  for (final ring in rings) {
+    if (_pip(lat, lng, ring)) return true;
+  }
+  return false;
+}
+
+bool _pip(double lat, double lng, List<ServiceAreaVertex> ring) {
   var inside = false;
   for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     final yi = ring[i].lat, xi = ring[i].lng;
@@ -54,4 +58,45 @@ bool isInsideServiceArea(double lat, double lng) {
     if (crosses) inside = !inside;
   }
   return inside;
+}
+
+List<List<ServiceAreaVertex>> _ringsFromGeom(dynamic geom) {
+  if (geom == null) return const [];
+  Map<String, dynamic>? g;
+  if (geom is Map<String, dynamic>) {
+    g = geom;
+  } else if (geom is Map) {
+    g = Map<String, dynamic>.from(geom);
+  } else {
+    return const [];
+  }
+  final type = g['type'] as String? ?? '';
+  final coords = g['coordinates'];
+  if (type == 'Polygon' && coords is List && coords.isNotEmpty) {
+    return [_ring(coords.first)];
+  }
+  if (type == 'MultiPolygon' && coords is List) {
+    return [
+      for (final poly in coords)
+        if (poly is List && poly.isNotEmpty) _ring(poly.first),
+    ];
+  }
+  return const [];
+}
+
+List<ServiceAreaVertex> _ring(dynamic ring) {
+  if (ring is! List) return const [];
+  final out = <ServiceAreaVertex>[];
+  for (final p in ring) {
+    if (p is! List || p.length < 2) continue;
+    final lng = (p[0] as num).toDouble();
+    final lat = (p[1] as num).toDouble();
+    out.add((lat: lat, lng: lng));
+  }
+  if (out.length >= 2 &&
+      out.first.lat == out.last.lat &&
+      out.first.lng == out.last.lng) {
+    out.removeLast();
+  }
+  return out.length >= 3 ? out : const [];
 }
