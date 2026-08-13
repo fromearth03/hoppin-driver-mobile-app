@@ -281,7 +281,7 @@ Future<void> hoppinEstablishResetSession({required bool alreadySignedIn}) async 
     'recovery' => OtpType.recovery,
     'invite' => OtpType.invite,
     'email' => OtpType.email,
-    _ => OtpType.magicLink,
+    _ => OtpType.magiclink,
   };
   await Supabase.instance.client.auth.verifyOTP(
     tokenHash: link.tokenHash,
