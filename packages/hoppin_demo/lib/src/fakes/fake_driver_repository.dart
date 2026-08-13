@@ -14,6 +14,16 @@ class FakeDriverRepository implements DriverRepository {
 
   final DemoWorld _world;
 
+  DriverVehicle _vehicle = DriverVehicle(
+    id: 'demo-vehicle-1',
+    make: DemoPersonas.driverVehicle.make,
+    model: DemoPersonas.driverVehicle.model,
+    licensePlate: DemoPersonas.driverVehicle.plate,
+    color: DemoPersonas.driverVehicle.colour,
+    passengerCapacity: 4,
+    insuranceProvider: '',
+  );
+
   /// Gurpreet's seeded compliance wallet, newest-first like the live read:
   /// insurance renewed three weeks ago, DVLA licence verified with no
   /// tracked expiry (the nullable path), and an MOT certificate expiring
@@ -68,6 +78,33 @@ class FakeDriverRepository implements DriverRepository {
   /// Location heartbeat — presence is a live-backend concept; no-op here.
   @override
   Future<void> heartbeat({required double lat, required double lng}) async {}
+
+  @override
+  Future<void> registerVehicle({
+    required String make,
+    required String model,
+    required String licensePlate,
+    String? color,
+    String? insuranceProvider,
+    String? insuranceExpiry,
+  }) async {
+    _vehicle = DriverVehicle(
+      id: _vehicle.id,
+      make: make,
+      model: model,
+      year: _vehicle.year,
+      licensePlate: licensePlate,
+      color: color ?? '',
+      passengerCapacity: _vehicle.passengerCapacity,
+      insuranceProvider: insuranceProvider ?? '',
+      insuranceExpiry: insuranceExpiry == null
+          ? null
+          : DateTime.tryParse(insuranceExpiry),
+    );
+  }
+
+  @override
+  Future<DriverVehicle?> vehicle() async => _vehicle;
 
   /// Accepts via the pending offer for [rideId]. Tolerant by design: when no
   /// matching offer is pending (already accepted, or gone), it is a quiet

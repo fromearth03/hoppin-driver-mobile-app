@@ -114,13 +114,13 @@ void main() {
     }
   });
 
-  test('the driver app\'s three real surfaces are in the REAL route table', () {
+  test('the driver app\'s core surfaces are in the REAL route table', () {
     // Named explicitly, not merely covered by the sweep. The sweep only proves
     // that *what lib/ asks for* resolves — delete the only `context.go('/offer')`
     // and the route with it, and the sweep goes green on an app with no offer
     // surface at all. These three are owed regardless of who links to them.
     final router = buildRouter();
-    for (final path in const ['/', '/offer', '/login']) {
+    for (final path in const ['/', '/offer', '/login', '/profile/vehicle']) {
       expect(resolves(router, path), isTrue,
           reason: 'the driver app has a screen for $path. A screen with no route '
               'is not shipped — it is dead code.');

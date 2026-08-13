@@ -153,16 +153,23 @@ void main() {
       await pumpProfile(tester, const DriverProfileScreen());
 
       expect(find.byKey(DriverProfileKeys.personalRow), findsOneWidget);
+      expect(find.byKey(DriverProfileKeys.vehicleRow), findsOneWidget);
       expect(find.byKey(DriverProfileKeys.documentsRow), findsOneWidget);
       expect(find.byKey(DriverProfileKeys.settingsRow), findsOneWidget);
       expect(find.byKey(DriverProfileKeys.supportRow), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.byKey(DriverProfileKeys.signOutRow),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.byKey(DriverProfileKeys.signOutRow), findsOneWidget);
     });
   });
 
   // ── The fabrication sweep ─────────────────────────────────────────────────
   test(
-    '🔴 no rating, trip count, vehicle, city or photo picker anywhere in '
+    '🔴 no rating, trip count, city or photo picker anywhere in '
     'features/profile/',
     () {
       // 🔴 COMMENT-STRIPPED. These very files DOCUMENT the refusal at length —
@@ -170,11 +177,10 @@ void main() {
       final offenders = <String>[];
 
       // Executable fabrications only. `Icons.star` painting a rating,
-      // `image_picker`, a `rating`/`tripCount`/`vehicle` symbol in code.
+      // `image_picker`, or a `rating`/`tripCount` symbol in code.
       final banned = <RegExp>[
         RegExp(r'\brating\b', caseSensitive: false),
         RegExp(r'\btripCount\b|\btrips_count\b|\btotalTrips\b'),
-        RegExp(r'\bvehicle\b', caseSensitive: false),
         RegExp(r'\bImagePicker\b|\bimage_picker\b'),
         RegExp(r"Wolverhampton"),
       ];
