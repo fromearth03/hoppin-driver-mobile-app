@@ -398,7 +398,7 @@ const kSeamRegistry = <SeamEntry>[
     gap: 49,
     feature: 'reset',
     ledgerRef: 'row:21',
-    state: SeamState.WIRED,
+    state: SeamState.BOUND,
     kind: SeamKind.view,
     disclosures: [
       SeamDisclosure(
