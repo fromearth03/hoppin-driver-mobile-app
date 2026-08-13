@@ -45,14 +45,19 @@ final driverRouterProvider = Provider<GoRouter>((ref) {
       // Recovery / invite email callbacks must hit `/reset`, even if the
       // session already looks signed-in (Supabase recovery session).
       if (hoppinIsAuthCallback(state.uri) && loc != '/reset') {
-        final q = state.uri.hasQuery ? '?${state.uri.query}' : '';
-        return '/reset$q';
+        return '/reset${hoppinResetRedirectQuery(state.uri, signedIn: signedIn)}';
       }
       final onLogin = loc == '/login';
       final onSignedOutAuthRoute =
           onLogin || loc == '/reset' || loc == '/splash';
       if (!signedIn) return onSignedOutAuthRoute ? null : '/login';
-      if (loc == '/reset') return null;
+      if (loc == '/reset') {
+        // Drop a spent PKCE `code` so the SDK cannot exchange it twice.
+        if (signedIn && state.uri.queryParameters.containsKey('code')) {
+          return '/reset${hoppinResetRedirectQuery(state.uri, signedIn: true)}';
+        }
+        return null;
+      }
       if (onLogin || loc == '/splash') return '/';
       return null;
     },

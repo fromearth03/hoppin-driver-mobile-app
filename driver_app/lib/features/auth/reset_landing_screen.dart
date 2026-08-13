@@ -26,7 +26,8 @@ class _DriverResetLandingScreenState
   final _formKey = GlobalKey<FormState>();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
-  bool _obscure = true;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
   bool _busy = false;
   String? _error;
 
@@ -42,7 +43,9 @@ class _DriverResetLandingScreenState
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
-      await ref.read(authServiceProvider).updatePassword(_passwordCtrl.text);
+      final auth = ref.read(authServiceProvider);
+      await hoppinEstablishResetSession(alreadySignedIn: auth.isSignedIn);
+      await auth.updatePassword(_passwordCtrl.text);
       if (!mounted) return;
       context.go('/');
     } on Exception catch (_) {
@@ -94,7 +97,7 @@ class _DriverResetLandingScreenState
                     TextFormField(
                       controller: _passwordCtrl,
                       enabled: !_busy,
-                      obscureText: _obscure,
+                      obscureText: _obscurePassword,
                       autofillHints: const [AutofillHints.newPassword],
                       textInputAction: TextInputAction.next,
                       validator: (v) => (v == null || v.length < 8)
@@ -105,12 +108,14 @@ class _DriverResetLandingScreenState
                         helperText: 'At least 8 characters',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
-                          icon: Icon(_obscure
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
+                          icon: Icon(_obscurePassword
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined),
-                          tooltip: _obscure ? 'Show password' : 'Hide password',
+                          tooltip: _obscurePassword
+                              ? 'Show password'
+                              : 'Hide password',
                         ),
                       ),
                     ),
@@ -118,15 +123,25 @@ class _DriverResetLandingScreenState
                     TextFormField(
                       controller: _confirmCtrl,
                       enabled: !_busy,
-                      obscureText: _obscure,
+                      obscureText: _obscureConfirm,
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _submit(),
                       validator: (v) => (v != _passwordCtrl.text)
                           ? 'Passwords do not match'
                           : null,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Confirm new password',
-                        prefixIcon: Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(
+                              () => _obscureConfirm = !_obscureConfirm),
+                          icon: Icon(_obscureConfirm
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined),
+                          tooltip: _obscureConfirm
+                              ? 'Show password'
+                              : 'Hide password',
+                        ),
                       ),
                     ),
                     SizedBox(height: hoppin.spacing.gutter),

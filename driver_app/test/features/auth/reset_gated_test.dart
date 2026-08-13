@@ -26,6 +26,7 @@ void main() {
     expect(find.byType(TextFormField), findsNWidgets(2));
     expect(find.widgetWithText(HopButton, 'Set new password'), findsOneWidget);
     expect(find.byKey(DriverResetKeys.backToSignIn), findsOneWidget);
+    expect(find.byType(IconButton), findsNWidgets(2));
     expect(find.text('Contact support'), findsNothing);
   });
 }

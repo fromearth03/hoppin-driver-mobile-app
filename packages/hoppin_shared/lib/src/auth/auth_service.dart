@@ -210,21 +210,81 @@ bool _isPublicHoppinOrigin(String origin) {
   return origin.startsWith('http://') || origin.startsWith('https://');
 }
 
-/// True when this navigation (or the current web URL) is a Supabase recovery /
-/// invite / magic-link callback and should open `/reset` instead of home/login.
-bool hoppinIsAuthCallback(Uri routeUri) {
-  String? typeOf(Uri u) {
-    final t = u.queryParameters['type'];
-    if (t != null && t.isNotEmpty) return t;
-    if (u.fragment.isEmpty) return null;
-    return Uri.splitQueryString(u.fragment)['type'];
+/// Invite / reset params from the route, the browser URL, or the hash fragment.
+class HoppinAuthLink {
+  const HoppinAuthLink({
+    required this.tokenHash,
+    required this.type,
+    required this.code,
+  });
+  final String tokenHash;
+  final String type;
+  final String code;
+  bool get isCallback =>
+      tokenHash.isNotEmpty ||
+      code.isNotEmpty ||
+      type == 'recovery' ||
+      type == 'invite' ||
+      type == 'magiclink';
+}
+
+HoppinAuthLink hoppinAuthLinkParams([Uri? routeUri]) {
+  String pick(String key) {
+    for (final u in [
+      if (routeUri != null) routeUri,
+      Uri.base,
+    ]) {
+      final q = u.queryParameters[key];
+      if (q != null && q.isNotEmpty) return q;
+      if (u.fragment.isNotEmpty) {
+        final f = Uri.splitQueryString(u.fragment)[key];
+        if (f != null && f.isNotEmpty) return f;
+      }
+    }
+    return '';
   }
 
-  final type = typeOf(routeUri) ?? typeOf(Uri.base);
-  if (type == 'recovery' || type == 'invite' || type == 'magiclink') {
-    return true;
+  return HoppinAuthLink(
+    tokenHash: pick('token_hash'),
+    type: pick('type'),
+    code: pick('code'),
+  );
+}
+
+/// Query string to keep on `/reset` so a go_router bounce does not drop the
+/// one-time token before submit. PKCE `code` is omitted once we already have
+/// a session — exchanging it twice is what made the link "expire on landing".
+String hoppinResetRedirectQuery(Uri routeUri, {required bool signedIn}) {
+  final link = hoppinAuthLinkParams(routeUri);
+  final q = <String, String>{};
+  if (link.tokenHash.isNotEmpty) q['token_hash'] = link.tokenHash;
+  if (link.type.isNotEmpty) q['type'] = link.type;
+  if (!signedIn && link.code.isNotEmpty) q['code'] = link.code;
+  if (q.isEmpty) return '';
+  return '?${Uri(queryParameters: q).query}';
+}
+
+/// True when this navigation (or the current web URL) is a Supabase recovery /
+/// invite / magic-link callback and should open `/reset` instead of home/login.
+bool hoppinIsAuthCallback(Uri routeUri) => hoppinAuthLinkParams(routeUri).isCallback;
+
+/// Completes an invite/reset link on SUBMIT, not on first paint.
+/// Prefetch / a second PKCE exchange on redirect was burning the one-time
+/// token before the driver could type a password.
+Future<void> hoppinEstablishResetSession({required bool alreadySignedIn}) async {
+  if (alreadySignedIn) return;
+  final link = hoppinAuthLinkParams();
+  if (link.tokenHash.isEmpty) {
+    throw StateError('no reset session');
   }
-  // PKCE callback (`?code=`) — include `/reset`, not only `/` `/login`.
-  return routeUri.queryParameters.containsKey('code') ||
-      Uri.base.queryParameters.containsKey('code');
+  final type = switch (link.type) {
+    'recovery' => OtpType.recovery,
+    'invite' => OtpType.invite,
+    'email' => OtpType.email,
+    _ => OtpType.magicLink,
+  };
+  await Supabase.instance.client.auth.verifyOTP(
+    tokenHash: link.tokenHash,
+    type: type,
+  );
 }
