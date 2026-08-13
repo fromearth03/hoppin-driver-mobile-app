@@ -1,4 +1,5 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:hoppin_shared/hoppin_shared.dart';
 
 import 'driver_fcm_gateway.dart';
 
@@ -48,15 +49,9 @@ class FirebaseDriverFcmGateway implements DriverFcmGateway {
   @override
   Future<String?> token() async {
     try {
-      // No `vapidKey` here, unlike the rider: that is a WEB Push certificate.
-      // On Android the credentials come from `google-services.json`, which the
-      // gradle plugin has already baked into the APK's resources.
-      return await _messaging.getToken();
+      final vapid = Env.fcmVapidKey;
+      return await _messaging.getToken(vapidKey: vapid.isEmpty ? null : vapid);
     } catch (_) {
-      // No project, no play services, no network. `null` is the honest answer
-      // and the caller registers NOTHING — a fabricated token recorded against
-      // a driver's account is a device that can never be reached, filed as one
-      // that can.
       return null;
     }
   }

@@ -1,8 +1,14 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoppin_shared/hoppin_shared.dart';
 import 'package:hoppin_ui/hoppin_ui.dart';
 
+import '../notifications/driver_fcm_gateway.dart';
+import '../notifications/driver_push_registration.dart';
 import '../notifications/notification_feed.dart';
 import '../notifications/notifications_router.dart';
 import '../profile/profile_router.dart';
@@ -36,6 +42,7 @@ class DriverShell extends ConsumerWidget {
       body: BackdropGroup(
         child: Stack(
           children: [
+            const _FcmTokenBinder(),
             Positioned.fill(child: _ChromeInsets(child: navigationShell)),
             Align(
               alignment: Alignment.topCenter,
@@ -53,6 +60,33 @@ class DriverShell extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _FcmTokenBinder extends ConsumerStatefulWidget {
+  const _FcmTokenBinder();
+
+  @override
+  ConsumerState<_FcmTokenBinder> createState() => _FcmTokenBinderState();
+}
+
+class _FcmTokenBinderState extends ConsumerState<_FcmTokenBinder> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final gateway = ref.read(driverFcmGatewayProvider);
+      if (gateway is NoopDriverFcmGateway) return;
+      unawaited(registerDriverDeviceToken(
+        gateway: gateway,
+        profiles: ref.read(profileRepositoryProvider),
+        isWeb: kIsWeb,
+        platform: defaultTargetPlatform,
+      ));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 /// Injects MediaQuery top padding so scroll content clears the floating pill.

@@ -64,12 +64,21 @@ Future<void> main() async {
   // (reports `false`, and MEANS it).
   var fcmReady = false;
   try {
-    await Firebase.initializeApp();
+    if (Env.fcmConfigured) {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: Env.fcmApiKey,
+          appId: Env.fcmAppId,
+          messagingSenderId: Env.fcmSenderId,
+          projectId: Env.fcmProjectId,
+        ),
+      );
+    } else {
+      await Firebase.initializeApp();
+    }
     fcmReady = true;
   } catch (_) {
-    // No `google-services.json` in this build. Registration is GATED; the app
-    // runs, the driver drives, and nothing anywhere claims otherwise. (Delivery
-    // is separately GATED on the backend's FCM_CREDENTIALS_FILE — #15/#16.)
+    // No Firebase config in this build. Push is additive; the app still runs.
   }
 
   final isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;

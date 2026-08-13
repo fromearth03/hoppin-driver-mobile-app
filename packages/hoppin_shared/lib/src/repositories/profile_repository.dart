@@ -110,8 +110,7 @@ class ProfileRepository {
   // ── Device tokens (push) `[either]` ──────────────────────────────────────
 
   /// `POST /me/device-tokens` — register this device's FCM token.
-  /// [deviceOs] must be `"ios"` or `"android"`. Note: pushes are only sent
-  /// once the backend has `FCM_CREDENTIALS_FILE` configured (docs/04).
+  /// [deviceOs] must be `"ios"`, `"android"` or `"web"`.
   Future<void> registerDeviceToken({
     required String fcmToken,
     required String deviceOs,

@@ -6,22 +6,14 @@ import 'driver_fcm_gateway.dart';
 /// The outcome of a device-token registration attempt. Every value is a state
 /// the app can HONESTLY report; none of them is a lie dressed as a success.
 enum DriverTokenRegistration {
-  /// A real FCM token was posted to `POST /me/device-tokens` with
-  /// `device_os: "android"`. **This is BOUND and it really works.**
+  /// A real FCM token was posted to `POST /me/device-tokens`.
   registered,
 
   /// The driver refused notification permission, or the OS gave us no token.
   /// Nothing was sent. **We do not invent one.**
   gatedNoToken,
 
-  /// This is not a platform the contract has a `device_os` value for.
-  ///
-  /// 🔴 THE ONE THAT MUST NOT BE CHEATED. `device_os` validates against
-  /// `{ios, android}` (#69). A web build of this app — or a desktop dev run —
-  /// has NO honest value to send, and the correct behaviour is to send NOTHING.
-  /// Passing `"android"` from a browser to get past the validator would file a
-  /// device that can never receive a push as one that can, and dispatch would
-  /// believe it. The rider app refuses exactly this, on exactly these grounds.
+  /// Desktop native (macOS/Windows/Linux) — no contract `device_os`.
   gatedNoPlatformValue,
 }
 
@@ -79,22 +71,15 @@ Future<DriverTokenRegistration> registerDriverDeviceToken({
 }
 
 /// The `device_os` value the contract accepts for this platform, or `null` when
-/// there is none.
-///
-/// `null` on web — deliberately, and **even when the browser's host OS reports
-/// Android**. The platform there is the BROWSER, and the contract has no value
-/// for it. Returning `'android'` would be a lie that the validator would happily
-/// accept.
+/// there is none. Browser builds send `"web"` — never a fake `"android"`.
 String? driverContractDeviceOs({
   required bool isWeb,
   required TargetPlatform platform,
 }) {
-  if (isWeb) return null;
+  if (isWeb) return 'web';
   return switch (platform) {
     TargetPlatform.android => 'android',
     TargetPlatform.iOS => 'ios',
-    // macOS / Windows / Linux / Fuchsia have no contract value either. A dev
-    // running the driver app on a desktop registers nothing, and that is right.
     _ => null,
   };
 }

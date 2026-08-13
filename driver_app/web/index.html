@@ -48,6 +48,17 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker
+          .register('firebase-messaging-sw.js', { scope: '/firebase-cloud-messaging-push-scope' })
+          .catch(function (e) {
+            console.info('[hoppin] FCM service worker not registered:', e);
+          });
+      });
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

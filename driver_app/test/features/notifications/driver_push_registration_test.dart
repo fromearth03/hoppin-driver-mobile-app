@@ -37,18 +37,12 @@ void main() {
       );
     });
 
-    test('🔴 web → null. NOT "android". Never "android"', () {
+    test('web → "web". NOT "android"', () {
       expect(
         driverContractDeviceOs(isWeb: true, platform: TargetPlatform.android),
-        isNull,
-        reason: '🔴 THE VALIDATOR WOULD ACCEPT THE LIE, WHICH IS EXACTLY WHY IT '
-            'MUST NOT BE TOLD. On web the platform is the BROWSER — '
-            '`defaultTargetPlatform` still reports `android` on an Android '
-            'phone, and sending it would sail past the server\'s check and file '
-            'a browser tab as a push-capable Android device. Dispatch would '
-            'then believe it can reach a driver it cannot. The rider app refuses '
-            'this on exactly these grounds, and the driver must not be the one '
-            'that caves.',
+        'web',
+        reason: 'Chrome-on-Android still reports TargetPlatform.android. The '
+            'platform is the BROWSER, so we send "web", never a fake "android".',
       );
     });
 
@@ -127,7 +121,7 @@ void main() {
               'nothing.');
     });
 
-    test('🔴 web → the request is never even attempted', () async {
+    test('web posts device_os: "web"', () async {
       final profiles = _RecordingProfiles();
       final result = await registerDriverDeviceToken(
         gateway: _Gateway(
@@ -139,12 +133,10 @@ void main() {
         platform: TargetPlatform.android,
       );
 
-      expect(result, DriverTokenRegistration.gatedNoPlatformValue,
-          reason: 'there is no honest device_os for a browser (#69)');
-      expect(profiles.registrations, isEmpty,
-          reason: 'we do not send "android" from a browser to get past a '
-              'validator. The validator would ACCEPT it — that is the danger, '
-              'not the reassurance.');
+      expect(result, DriverTokenRegistration.registered);
+      expect(profiles.registrations, hasLength(1));
+      expect(profiles.registrations.single.os, 'web');
+      expect(profiles.registrations.single.token, 'a-real-fcm-token');
     });
 
     test('a FAILED registration must never block the shift', () async {
