@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
@@ -12,6 +13,8 @@ import 'api_exception.dart';
 ///  * Base URL = [Env.rideServiceUrl] (already includes `/api/v1`).
 ///  * Attach `Authorization: Bearer <supabase access token>` on every request
 ///    (docs/04: every endpoint requires it; there are no public routes).
+///  * Claim this GoTrue session (`POST /me/session`) before other calls so
+///    rider/driver accounts stay on one device.
 ///  * Normalise the `{ error, code }` failure envelope into [ApiException].
 ///
 /// Feature repositories (rides, drivers, payments, ...) are built on top of
@@ -24,9 +27,22 @@ class ApiClient {
       ..receiveTimeout = const Duration(seconds: 20)
       ..headers['Content-Type'] = 'application/json';
 
+    // Own Dio (same adapter, no interceptors) so claiming cannot re-enter
+    // the 401 interceptor and deadlock Dio 5.
+    _claimDio = Dio()
+      ..options.baseUrl = _dio.options.baseUrl
+      ..options.connectTimeout = _dio.options.connectTimeout
+      ..options.receiveTimeout = _dio.options.receiveTimeout
+      ..httpClientAdapter = _dio.httpClientAdapter;
+
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) {
+        onRequest: (options, handler) async {
+          if (!options.path.endsWith('/me/session')) {
+            try {
+              await _ensureSessionClaimed();
+            } catch (_) {}
+          }
           final token = _auth.accessToken;
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
@@ -39,12 +55,16 @@ class ApiClient {
   }
 
   final Dio _dio;
+  late final Dio _claimDio;
   final AuthService _auth;
 
   /// The single in-flight refresh. All 401s that arrive while a refresh is
   /// running await THIS future, so N concurrent 401s trigger exactly ONE
   /// `refreshSession()` — no refresh-token-reuse storm (docs/04 token handling).
   Completer<void>? _refreshing;
+
+  Completer<void>? _claiming;
+  String? _claimedSessionId;
 
   static const _retryFlag = '__retry';
 
@@ -55,12 +75,20 @@ class ApiClient {
   /// request with the fresh bearer and resolve with its response. If the
   /// refresh fails, sign out (the router redirect handles re-login) and surface
   /// the original error. Every other error keeps the untouched reject path.
+  ///
+  /// `SESSION_REPLACED` means another device stole this login — sign out
+  /// immediately, do NOT refresh (refresh keeps the dead session_id).
   Future<void> _onError(
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
     final isRetry = err.requestOptions.extra[_retryFlag] == true;
     if (err.response?.statusCode != 401 || isRetry) {
+      return handler.reject(_translate(err));
+    }
+
+    if (_responseCode(err) == 'SESSION_REPLACED') {
+      await _auth.signOut();
       return handler.reject(_translate(err));
     }
 
@@ -102,6 +130,71 @@ class ApiClient {
       },
     );
     return completer.future;
+  }
+
+  /// Marks this GoTrue session as the only live rider/driver login. No-op when
+  /// the token has no `session_id` (tests / old GoTrue). Same session_id after
+  /// refresh does not re-POST.
+  Future<void> _ensureSessionClaimed() {
+    final sid = _jwtSessionId();
+    if (sid == null || sid.isEmpty) return Future<void>.value();
+    if (_claimedSessionId == sid) return Future<void>.value();
+
+    final existing = _claiming;
+    if (existing != null) return existing.future;
+
+    final completer = Completer<void>();
+    _claiming = completer;
+    final token = _auth.accessToken;
+    _claimDio
+        .post<Map<String, dynamic>>(
+      '/me/session',
+      options: Options(
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    )
+        .then(
+      (_) {
+        _claimedSessionId = sid;
+        _claiming = null;
+        completer.complete();
+      },
+      onError: (Object e, StackTrace s) {
+        _claiming = null;
+        if (e is DioException && _responseCode(e) == 'SESSION_REPLACED') {
+          completer.completeError(e, s);
+          return;
+        }
+        // Network / 5xx: fail-open so a blip does not block the app.
+        completer.complete();
+      },
+    );
+    return completer.future;
+  }
+
+  String? _jwtSessionId() {
+    final token = _auth.accessToken;
+    if (token == null) return null;
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    try {
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      ) as Map<String, dynamic>;
+      final sid = payload['session_id'] ?? payload['sessionId'] ?? payload['sid'];
+      return sid is String && sid.isNotEmpty ? sid : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String? _responseCode(DioException err) {
+    final data = err.response?.data;
+    if (data is Map) return data['code'] as String?;
+    return null;
   }
 
   Future<Response<T>> get<T>(String path, {Map<String, dynamic>? query}) =>

@@ -1,9 +1,17 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoppin_shared/hoppin_shared.dart';
 
 import 'support/fake_auth_service.dart';
 import 'support/scripted_http_adapter.dart';
+
+String fakeJwt({String sessionId = 'sess-1'}) {
+  String b64(String s) =>
+      base64Url.encode(utf8.encode(s)).replaceAll('=', '');
+  return '${b64('{"alg":"none"}')}.${b64('{"session_id":"$sessionId"}')}.sig';
+}
 
 /// AUTH-03 — the self-healing bearer.
 ///
@@ -79,6 +87,47 @@ void main() {
     expect(auth.refreshCount, 1);
     expect(auth.signOutCount, 1, reason: 'refresh failure → signOut');
     // No successful retry happened — only the initial 401 hit the wire.
+    expect(built.adapter.callCounts['/guarded'], 1);
+  });
+
+  test('claims session_id once before the first API call', () async {
+    final auth = FakeAuthService(initialToken: fakeJwt());
+    final built = build(auth, {
+      '/me/session': [ScriptedReply.ok({'message': 'ok'})],
+      '/guarded': [ScriptedReply.ok()],
+    });
+
+    final res = await built.api.get<dynamic>('/guarded');
+
+    expect(res.statusCode, 200);
+    expect(built.adapter.callCounts['/me/session'], 1);
+    expect(built.adapter.callCounts['/guarded'], 1);
+    expect(auth.refreshCount, 0);
+
+    await built.api.get<dynamic>('/guarded');
+    expect(built.adapter.callCounts['/me/session'], 1,
+        reason: 'same session_id must not re-claim');
+    expect(built.adapter.callCounts['/guarded'], 2);
+  });
+
+  test('SESSION_REPLACED signs out and does NOT refresh', () async {
+    final auth = FakeAuthService();
+    final built = build(auth, {
+      '/guarded': [ScriptedReply.sessionReplaced()],
+    });
+
+    ApiException? caught;
+    try {
+      await built.api.get<dynamic>('/guarded');
+    } on ApiException catch (e) {
+      caught = e;
+    }
+
+    expect(caught, isNotNull);
+    expect(caught!.statusCode, 401);
+    expect(caught.code, 'SESSION_REPLACED');
+    expect(auth.refreshCount, 0, reason: 'dead session must not be refreshed');
+    expect(auth.signOutCount, 1);
     expect(built.adapter.callCounts['/guarded'], 1);
   });
 

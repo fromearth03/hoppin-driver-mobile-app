@@ -74,6 +74,15 @@ class ScriptedReply {
         {'error': 'Token expired', 'code': 'AUTH_REQUIRED'},
       );
 
+  /// A 401 `{error, code: SESSION_REPLACED}` — another device stole the login.
+  factory ScriptedReply.sessionReplaced() => const ScriptedReply(
+        401,
+        {
+          'error': 'signed in on another device',
+          'code': 'SESSION_REPLACED',
+        },
+      );
+
   /// A 200 `{ok: true}` — the healed retry.
   factory ScriptedReply.ok([Map<String, dynamic>? body]) =>
       ScriptedReply(200, body ?? {'ok': true});
