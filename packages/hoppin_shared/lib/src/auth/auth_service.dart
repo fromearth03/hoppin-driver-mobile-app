@@ -232,6 +232,8 @@ class HoppinAuthLink {
 }
 
 HoppinAuthLink? _capturedAuthLink;
+bool _resetFlowConsumed = false;
+bool _passwordJustUpdated = false;
 
 HoppinAuthLink _parseAuthLink(Uri u) {
   String pick(String key) {
@@ -262,7 +264,26 @@ void hoppinCaptureAuthLink([Uri? uri]) {
 }
 
 @visibleForTesting
-void hoppinClearCapturedAuthLink() => _capturedAuthLink = null;
+void hoppinClearCapturedAuthLink() {
+  _capturedAuthLink = null;
+  _resetFlowConsumed = false;
+  _passwordJustUpdated = false;
+}
+
+/// Call after a successful (or already-set) password write so go_router stops
+/// treating the spent invite URL as a live auth callback.
+void hoppinMarkResetConsumed({bool passwordUpdated = false}) {
+  _capturedAuthLink = null;
+  _resetFlowConsumed = true;
+  if (passwordUpdated) _passwordJustUpdated = true;
+}
+
+/// One-shot banner for the login screen after reset dumps them there signed-out.
+bool hoppinTakePasswordUpdatedNotice() {
+  final v = _passwordJustUpdated;
+  _passwordJustUpdated = false;
+  return v;
+}
 
 HoppinAuthLink hoppinAuthLinkParams([Uri? routeUri]) {
   final fromRoute = routeUri == null ? null : _parseAuthLink(routeUri);
@@ -291,7 +312,19 @@ String hoppinResetRedirectQuery(Uri routeUri, {required bool signedIn}) {
 
 /// True when this navigation (or the current web URL) is a Supabase recovery /
 /// invite / magic-link callback and should open `/reset` instead of home/login.
-bool hoppinIsAuthCallback(Uri routeUri) => hoppinAuthLinkParams(routeUri).isCallback;
+bool hoppinIsAuthCallback(Uri routeUri) {
+  if (_resetFlowConsumed) return false;
+  if (_parseAuthLink(routeUri).isCallback) return true;
+  return hoppinAuthLinkParams(routeUri).isCallback;
+}
+
+bool hoppinPasswordAlreadySet(Object error) {
+  final code = error is AuthException ? (error.code ?? '') : '';
+  if (code == 'same_password') return true;
+  final raw = error is AuthException ? error.message : error.toString();
+  final m = raw.toLowerCase();
+  return m.contains('different from') || m.contains('same password');
+}
 
 /// Completes an invite/reset link on SUBMIT, not on first paint.
 /// Prefetch / a second PKCE exchange on redirect was burning the one-time

@@ -50,6 +50,9 @@ class _DriverLoginScreenState extends ConsumerState<DriverLoginScreen> {
       _passwordCtrl.text = prefill.password;
       _prefilled = true;
     }
+    if (hoppinTakePasswordUpdatedNotice()) {
+      _notice = 'Password updated — sign in with your new password.';
+    }
   }
 
   @override

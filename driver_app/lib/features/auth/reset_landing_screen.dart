@@ -46,9 +46,17 @@ class _DriverResetLandingScreenState
       final auth = ref.read(authServiceProvider);
       await hoppinEstablishResetSession(alreadySignedIn: auth.isSignedIn);
       await auth.updatePassword(_passwordCtrl.text);
+      hoppinMarkResetConsumed(passwordUpdated: true);
       if (!mounted) return;
-      context.go('/');
+      context.go(auth.isSignedIn ? '/' : '/login');
     } on Exception catch (e) {
+      if (hoppinPasswordAlreadySet(e)) {
+        hoppinMarkResetConsumed(passwordUpdated: true);
+        if (!mounted) return;
+        final auth = ref.read(authServiceProvider);
+        context.go(auth.isSignedIn ? '/' : '/login');
+        return;
+      }
       if (mounted) setState(() => _error = hoppinResetErrorMessage(e));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -150,7 +158,12 @@ class _DriverResetLandingScreenState
                     HopButton.ghost(
                       key: DriverResetKeys.backToSignIn,
                       label: 'Back to sign in',
-                      onPressed: _busy ? null : () => context.go('/login'),
+                      onPressed: _busy
+                          ? null
+                          : () {
+                              hoppinMarkResetConsumed();
+                              context.go('/login');
+                            },
                     ),
                   ],
                 ),

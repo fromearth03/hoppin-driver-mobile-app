@@ -50,4 +50,35 @@ void main() {
       );
     });
   });
+
+  group('hoppinMarkResetConsumed', () {
+    test('stops treating a captured invite as a live callback', () {
+      hoppinCaptureAuthLink(Uri.parse(
+        'https://driver.hoppin.tech/reset?token_hash=abc&type=invite',
+      ));
+      expect(
+        hoppinIsAuthCallback(Uri.parse('https://driver.hoppin.tech/')),
+        isTrue,
+      );
+      hoppinMarkResetConsumed(passwordUpdated: true);
+      expect(
+        hoppinIsAuthCallback(Uri.parse('https://driver.hoppin.tech/')),
+        isFalse,
+      );
+      expect(hoppinTakePasswordUpdatedNotice(), isTrue);
+      expect(hoppinTakePasswordUpdatedNotice(), isFalse);
+    });
+  });
+
+  group('hoppinPasswordAlreadySet', () {
+    test('detects GoTrue same-password errors', () {
+      expect(
+        hoppinPasswordAlreadySet(
+          AuthException('New password should be different from the old password.'),
+        ),
+        isTrue,
+      );
+      expect(hoppinPasswordAlreadySet(StateError('no reset session')), isFalse);
+    });
+  });
 }
