@@ -216,7 +216,10 @@ const String _rideId = 'ride-1';
 
 const TripRiderContext _sophie = (
   name: 'Sophie Bell',
+  photoUrl: null,
   rating: 4.8,
+  ratingCount: 12,
+  recentComments: ['Always on time'],
   pickupLabel: 'Wolverhampton Rail Station',
   pickupEtaSeconds: 120,
 );

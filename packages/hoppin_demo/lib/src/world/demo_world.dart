@@ -544,6 +544,7 @@ class DemoWorld {
       RideDriverInfo(
         fullName: persona.fullName,
         rating: persona.rating,
+        ratingCount: persona.tripsCount > 0 ? 12 : 0,
         tripsCount: persona.tripsCount,
         vehicleMake: vehicle.make,
         vehicleModel: vehicle.model,

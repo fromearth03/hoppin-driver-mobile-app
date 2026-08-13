@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RideDriverInfo {
 
-@JsonKey(name: 'full_name') String get fullName;@JsonKey(name: 'photo_url') String? get photoUrl; double get rating;@JsonKey(name: 'trips_count') int get tripsCount;@JsonKey(name: 'vehicle_make') String get vehicleMake;@JsonKey(name: 'vehicle_model') String get vehicleModel;@JsonKey(name: 'vehicle_colour') String get vehicleColour; String get plate;/// Seconds until the driver reaches the pickup — non-null only while a
+@JsonKey(name: 'full_name') String get fullName;@JsonKey(name: 'photo_url') String? get photoUrl; double? get rating;@JsonKey(name: 'rating_count') int get ratingCount;@JsonKey(name: 'recent_comments') List<String> get recentComments;@JsonKey(name: 'trips_count') int get tripsCount;@JsonKey(name: 'vehicle_make') String get vehicleMake;@JsonKey(name: 'vehicle_model') String get vehicleModel;@JsonKey(name: 'vehicle_colour') String get vehicleColour; String get plate;/// Seconds until the driver reaches the pickup — non-null only while a
 /// live ride is en route (the demo serves the world's clock-delta value).
 @JsonKey(name: 'eta_seconds') int? get etaSeconds;/// Journey origin label (e.g. 'Wolverhampton Rail Station'); null when
 /// the route cannot be resolved to a named place.
@@ -33,16 +33,16 @@ $RideDriverInfoCopyWith<RideDriverInfo> get copyWith => _$RideDriverInfoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RideDriverInfo&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.tripsCount, tripsCount) || other.tripsCount == tripsCount)&&(identical(other.vehicleMake, vehicleMake) || other.vehicleMake == vehicleMake)&&(identical(other.vehicleModel, vehicleModel) || other.vehicleModel == vehicleModel)&&(identical(other.vehicleColour, vehicleColour) || other.vehicleColour == vehicleColour)&&(identical(other.plate, plate) || other.plate == plate)&&(identical(other.etaSeconds, etaSeconds) || other.etaSeconds == etaSeconds)&&(identical(other.originLabel, originLabel) || other.originLabel == originLabel)&&(identical(other.destinationLabel, destinationLabel) || other.destinationLabel == destinationLabel));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RideDriverInfo&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount)&&const DeepCollectionEquality().equals(other.recentComments, recentComments)&&(identical(other.tripsCount, tripsCount) || other.tripsCount == tripsCount)&&(identical(other.vehicleMake, vehicleMake) || other.vehicleMake == vehicleMake)&&(identical(other.vehicleModel, vehicleModel) || other.vehicleModel == vehicleModel)&&(identical(other.vehicleColour, vehicleColour) || other.vehicleColour == vehicleColour)&&(identical(other.plate, plate) || other.plate == plate)&&(identical(other.etaSeconds, etaSeconds) || other.etaSeconds == etaSeconds)&&(identical(other.originLabel, originLabel) || other.originLabel == originLabel)&&(identical(other.destinationLabel, destinationLabel) || other.destinationLabel == destinationLabel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,fullName,photoUrl,rating,tripsCount,vehicleMake,vehicleModel,vehicleColour,plate,etaSeconds,originLabel,destinationLabel);
+int get hashCode => Object.hash(runtimeType,fullName,photoUrl,rating,ratingCount,const DeepCollectionEquality().hash(recentComments),tripsCount,vehicleMake,vehicleModel,vehicleColour,plate,etaSeconds,originLabel,destinationLabel);
 
 @override
 String toString() {
-  return 'RideDriverInfo(fullName: $fullName, photoUrl: $photoUrl, rating: $rating, tripsCount: $tripsCount, vehicleMake: $vehicleMake, vehicleModel: $vehicleModel, vehicleColour: $vehicleColour, plate: $plate, etaSeconds: $etaSeconds, originLabel: $originLabel, destinationLabel: $destinationLabel)';
+  return 'RideDriverInfo(fullName: $fullName, photoUrl: $photoUrl, rating: $rating, ratingCount: $ratingCount, recentComments: $recentComments, tripsCount: $tripsCount, vehicleMake: $vehicleMake, vehicleModel: $vehicleModel, vehicleColour: $vehicleColour, plate: $plate, etaSeconds: $etaSeconds, originLabel: $originLabel, destinationLabel: $destinationLabel)';
 }
 
 
@@ -53,7 +53,7 @@ abstract mixin class $RideDriverInfoCopyWith<$Res>  {
   factory $RideDriverInfoCopyWith(RideDriverInfo value, $Res Function(RideDriverInfo) _then) = _$RideDriverInfoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'full_name') String fullName,@JsonKey(name: 'photo_url') String? photoUrl, double rating,@JsonKey(name: 'trips_count') int tripsCount,@JsonKey(name: 'vehicle_make') String vehicleMake,@JsonKey(name: 'vehicle_model') String vehicleModel,@JsonKey(name: 'vehicle_colour') String vehicleColour, String plate,@JsonKey(name: 'eta_seconds') int? etaSeconds,@JsonKey(name: 'origin_label') String? originLabel,@JsonKey(name: 'destination_label') String? destinationLabel
+@JsonKey(name: 'full_name') String fullName,@JsonKey(name: 'photo_url') String? photoUrl, double? rating,@JsonKey(name: 'rating_count') int ratingCount,@JsonKey(name: 'recent_comments') List<String> recentComments,@JsonKey(name: 'trips_count') int tripsCount,@JsonKey(name: 'vehicle_make') String vehicleMake,@JsonKey(name: 'vehicle_model') String vehicleModel,@JsonKey(name: 'vehicle_colour') String vehicleColour, String plate,@JsonKey(name: 'eta_seconds') int? etaSeconds,@JsonKey(name: 'origin_label') String? originLabel,@JsonKey(name: 'destination_label') String? destinationLabel
 });
 
 
@@ -70,12 +70,14 @@ class _$RideDriverInfoCopyWithImpl<$Res>
 
 /// Create a copy of RideDriverInfo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? fullName = null,Object? photoUrl = freezed,Object? rating = null,Object? tripsCount = null,Object? vehicleMake = null,Object? vehicleModel = null,Object? vehicleColour = null,Object? plate = null,Object? etaSeconds = freezed,Object? originLabel = freezed,Object? destinationLabel = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? fullName = null,Object? photoUrl = freezed,Object? rating = freezed,Object? ratingCount = null,Object? recentComments = null,Object? tripsCount = null,Object? vehicleMake = null,Object? vehicleModel = null,Object? vehicleColour = null,Object? plate = null,Object? etaSeconds = freezed,Object? originLabel = freezed,Object? destinationLabel = freezed,}) {
   return _then(_self.copyWith(
 fullName: null == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: cast_nullable_to_non_nullable
-as String?,rating: null == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
-as double,tripsCount: null == tripsCount ? _self.tripsCount : tripsCount // ignore: cast_nullable_to_non_nullable
+as String?,rating: freezed == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
+as double?,ratingCount: null == ratingCount ? _self.ratingCount : ratingCount // ignore: cast_nullable_to_non_nullable
+as int,recentComments: null == recentComments ? _self.recentComments : recentComments // ignore: cast_nullable_to_non_nullable
+as List<String>,tripsCount: null == tripsCount ? _self.tripsCount : tripsCount // ignore: cast_nullable_to_non_nullable
 as int,vehicleMake: null == vehicleMake ? _self.vehicleMake : vehicleMake // ignore: cast_nullable_to_non_nullable
 as String,vehicleModel: null == vehicleModel ? _self.vehicleModel : vehicleModel // ignore: cast_nullable_to_non_nullable
 as String,vehicleColour: null == vehicleColour ? _self.vehicleColour : vehicleColour // ignore: cast_nullable_to_non_nullable
@@ -168,10 +170,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'full_name')  String fullName, @JsonKey(name: 'photo_url')  String? photoUrl,  double rating, @JsonKey(name: 'trips_count')  int tripsCount, @JsonKey(name: 'vehicle_make')  String vehicleMake, @JsonKey(name: 'vehicle_model')  String vehicleModel, @JsonKey(name: 'vehicle_colour')  String vehicleColour,  String plate, @JsonKey(name: 'eta_seconds')  int? etaSeconds, @JsonKey(name: 'origin_label')  String? originLabel, @JsonKey(name: 'destination_label')  String? destinationLabel)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'full_name')  String fullName, @JsonKey(name: 'photo_url')  String? photoUrl,  double? rating, @JsonKey(name: 'rating_count')  int ratingCount, @JsonKey(name: 'recent_comments')  List<String> recentComments, @JsonKey(name: 'trips_count')  int tripsCount, @JsonKey(name: 'vehicle_make')  String vehicleMake, @JsonKey(name: 'vehicle_model')  String vehicleModel, @JsonKey(name: 'vehicle_colour')  String vehicleColour,  String plate, @JsonKey(name: 'eta_seconds')  int? etaSeconds, @JsonKey(name: 'origin_label')  String? originLabel, @JsonKey(name: 'destination_label')  String? destinationLabel)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _RideDriverInfo() when $default != null:
-return $default(_that.fullName,_that.photoUrl,_that.rating,_that.tripsCount,_that.vehicleMake,_that.vehicleModel,_that.vehicleColour,_that.plate,_that.etaSeconds,_that.originLabel,_that.destinationLabel);case _:
+return $default(_that.fullName,_that.photoUrl,_that.rating,_that.ratingCount,_that.recentComments,_that.tripsCount,_that.vehicleMake,_that.vehicleModel,_that.vehicleColour,_that.plate,_that.etaSeconds,_that.originLabel,_that.destinationLabel);case _:
   return orElse();
 
 }
@@ -189,10 +191,10 @@ return $default(_that.fullName,_that.photoUrl,_that.rating,_that.tripsCount,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'full_name')  String fullName, @JsonKey(name: 'photo_url')  String? photoUrl,  double rating, @JsonKey(name: 'trips_count')  int tripsCount, @JsonKey(name: 'vehicle_make')  String vehicleMake, @JsonKey(name: 'vehicle_model')  String vehicleModel, @JsonKey(name: 'vehicle_colour')  String vehicleColour,  String plate, @JsonKey(name: 'eta_seconds')  int? etaSeconds, @JsonKey(name: 'origin_label')  String? originLabel, @JsonKey(name: 'destination_label')  String? destinationLabel)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'full_name')  String fullName, @JsonKey(name: 'photo_url')  String? photoUrl,  double? rating, @JsonKey(name: 'rating_count')  int ratingCount, @JsonKey(name: 'recent_comments')  List<String> recentComments, @JsonKey(name: 'trips_count')  int tripsCount, @JsonKey(name: 'vehicle_make')  String vehicleMake, @JsonKey(name: 'vehicle_model')  String vehicleModel, @JsonKey(name: 'vehicle_colour')  String vehicleColour,  String plate, @JsonKey(name: 'eta_seconds')  int? etaSeconds, @JsonKey(name: 'origin_label')  String? originLabel, @JsonKey(name: 'destination_label')  String? destinationLabel)  $default,) {final _that = this;
 switch (_that) {
 case _RideDriverInfo():
-return $default(_that.fullName,_that.photoUrl,_that.rating,_that.tripsCount,_that.vehicleMake,_that.vehicleModel,_that.vehicleColour,_that.plate,_that.etaSeconds,_that.originLabel,_that.destinationLabel);case _:
+return $default(_that.fullName,_that.photoUrl,_that.rating,_that.ratingCount,_that.recentComments,_that.tripsCount,_that.vehicleMake,_that.vehicleModel,_that.vehicleColour,_that.plate,_that.etaSeconds,_that.originLabel,_that.destinationLabel);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -209,10 +211,10 @@ return $default(_that.fullName,_that.photoUrl,_that.rating,_that.tripsCount,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'full_name')  String fullName, @JsonKey(name: 'photo_url')  String? photoUrl,  double rating, @JsonKey(name: 'trips_count')  int tripsCount, @JsonKey(name: 'vehicle_make')  String vehicleMake, @JsonKey(name: 'vehicle_model')  String vehicleModel, @JsonKey(name: 'vehicle_colour')  String vehicleColour,  String plate, @JsonKey(name: 'eta_seconds')  int? etaSeconds, @JsonKey(name: 'origin_label')  String? originLabel, @JsonKey(name: 'destination_label')  String? destinationLabel)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'full_name')  String fullName, @JsonKey(name: 'photo_url')  String? photoUrl,  double? rating, @JsonKey(name: 'rating_count')  int ratingCount, @JsonKey(name: 'recent_comments')  List<String> recentComments, @JsonKey(name: 'trips_count')  int tripsCount, @JsonKey(name: 'vehicle_make')  String vehicleMake, @JsonKey(name: 'vehicle_model')  String vehicleModel, @JsonKey(name: 'vehicle_colour')  String vehicleColour,  String plate, @JsonKey(name: 'eta_seconds')  int? etaSeconds, @JsonKey(name: 'origin_label')  String? originLabel, @JsonKey(name: 'destination_label')  String? destinationLabel)?  $default,) {final _that = this;
 switch (_that) {
 case _RideDriverInfo() when $default != null:
-return $default(_that.fullName,_that.photoUrl,_that.rating,_that.tripsCount,_that.vehicleMake,_that.vehicleModel,_that.vehicleColour,_that.plate,_that.etaSeconds,_that.originLabel,_that.destinationLabel);case _:
+return $default(_that.fullName,_that.photoUrl,_that.rating,_that.ratingCount,_that.recentComments,_that.tripsCount,_that.vehicleMake,_that.vehicleModel,_that.vehicleColour,_that.plate,_that.etaSeconds,_that.originLabel,_that.destinationLabel);case _:
   return null;
 
 }
@@ -224,12 +226,20 @@ return $default(_that.fullName,_that.photoUrl,_that.rating,_that.tripsCount,_tha
 @JsonSerializable()
 
 class _RideDriverInfo extends RideDriverInfo {
-  const _RideDriverInfo({@JsonKey(name: 'full_name') required this.fullName, @JsonKey(name: 'photo_url') this.photoUrl, required this.rating, @JsonKey(name: 'trips_count') required this.tripsCount, @JsonKey(name: 'vehicle_make') required this.vehicleMake, @JsonKey(name: 'vehicle_model') required this.vehicleModel, @JsonKey(name: 'vehicle_colour') required this.vehicleColour, required this.plate, @JsonKey(name: 'eta_seconds') this.etaSeconds, @JsonKey(name: 'origin_label') this.originLabel, @JsonKey(name: 'destination_label') this.destinationLabel}): super._();
+  const _RideDriverInfo({@JsonKey(name: 'full_name') required this.fullName, @JsonKey(name: 'photo_url') this.photoUrl, this.rating, @JsonKey(name: 'rating_count') this.ratingCount = 0, @JsonKey(name: 'recent_comments') final  List<String> recentComments = const <String>[], @JsonKey(name: 'trips_count') required this.tripsCount, @JsonKey(name: 'vehicle_make') required this.vehicleMake, @JsonKey(name: 'vehicle_model') required this.vehicleModel, @JsonKey(name: 'vehicle_colour') required this.vehicleColour, required this.plate, @JsonKey(name: 'eta_seconds') this.etaSeconds, @JsonKey(name: 'origin_label') this.originLabel, @JsonKey(name: 'destination_label') this.destinationLabel}): _recentComments = recentComments,super._();
   factory _RideDriverInfo.fromJson(Map<String, dynamic> json) => _$RideDriverInfoFromJson(json);
 
 @override@JsonKey(name: 'full_name') final  String fullName;
 @override@JsonKey(name: 'photo_url') final  String? photoUrl;
-@override final  double rating;
+@override final  double? rating;
+@override@JsonKey(name: 'rating_count') final  int ratingCount;
+ final  List<String> _recentComments;
+@override@JsonKey(name: 'recent_comments') List<String> get recentComments {
+  if (_recentComments is EqualUnmodifiableListView) return _recentComments;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_recentComments);
+}
+
 @override@JsonKey(name: 'trips_count') final  int tripsCount;
 @override@JsonKey(name: 'vehicle_make') final  String vehicleMake;
 @override@JsonKey(name: 'vehicle_model') final  String vehicleModel;
@@ -257,16 +267,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RideDriverInfo&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.tripsCount, tripsCount) || other.tripsCount == tripsCount)&&(identical(other.vehicleMake, vehicleMake) || other.vehicleMake == vehicleMake)&&(identical(other.vehicleModel, vehicleModel) || other.vehicleModel == vehicleModel)&&(identical(other.vehicleColour, vehicleColour) || other.vehicleColour == vehicleColour)&&(identical(other.plate, plate) || other.plate == plate)&&(identical(other.etaSeconds, etaSeconds) || other.etaSeconds == etaSeconds)&&(identical(other.originLabel, originLabel) || other.originLabel == originLabel)&&(identical(other.destinationLabel, destinationLabel) || other.destinationLabel == destinationLabel));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RideDriverInfo&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount)&&const DeepCollectionEquality().equals(other._recentComments, _recentComments)&&(identical(other.tripsCount, tripsCount) || other.tripsCount == tripsCount)&&(identical(other.vehicleMake, vehicleMake) || other.vehicleMake == vehicleMake)&&(identical(other.vehicleModel, vehicleModel) || other.vehicleModel == vehicleModel)&&(identical(other.vehicleColour, vehicleColour) || other.vehicleColour == vehicleColour)&&(identical(other.plate, plate) || other.plate == plate)&&(identical(other.etaSeconds, etaSeconds) || other.etaSeconds == etaSeconds)&&(identical(other.originLabel, originLabel) || other.originLabel == originLabel)&&(identical(other.destinationLabel, destinationLabel) || other.destinationLabel == destinationLabel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,fullName,photoUrl,rating,tripsCount,vehicleMake,vehicleModel,vehicleColour,plate,etaSeconds,originLabel,destinationLabel);
+int get hashCode => Object.hash(runtimeType,fullName,photoUrl,rating,ratingCount,const DeepCollectionEquality().hash(_recentComments),tripsCount,vehicleMake,vehicleModel,vehicleColour,plate,etaSeconds,originLabel,destinationLabel);
 
 @override
 String toString() {
-  return 'RideDriverInfo(fullName: $fullName, photoUrl: $photoUrl, rating: $rating, tripsCount: $tripsCount, vehicleMake: $vehicleMake, vehicleModel: $vehicleModel, vehicleColour: $vehicleColour, plate: $plate, etaSeconds: $etaSeconds, originLabel: $originLabel, destinationLabel: $destinationLabel)';
+  return 'RideDriverInfo(fullName: $fullName, photoUrl: $photoUrl, rating: $rating, ratingCount: $ratingCount, recentComments: $recentComments, tripsCount: $tripsCount, vehicleMake: $vehicleMake, vehicleModel: $vehicleModel, vehicleColour: $vehicleColour, plate: $plate, etaSeconds: $etaSeconds, originLabel: $originLabel, destinationLabel: $destinationLabel)';
 }
 
 
@@ -277,7 +287,7 @@ abstract mixin class _$RideDriverInfoCopyWith<$Res> implements $RideDriverInfoCo
   factory _$RideDriverInfoCopyWith(_RideDriverInfo value, $Res Function(_RideDriverInfo) _then) = __$RideDriverInfoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'full_name') String fullName,@JsonKey(name: 'photo_url') String? photoUrl, double rating,@JsonKey(name: 'trips_count') int tripsCount,@JsonKey(name: 'vehicle_make') String vehicleMake,@JsonKey(name: 'vehicle_model') String vehicleModel,@JsonKey(name: 'vehicle_colour') String vehicleColour, String plate,@JsonKey(name: 'eta_seconds') int? etaSeconds,@JsonKey(name: 'origin_label') String? originLabel,@JsonKey(name: 'destination_label') String? destinationLabel
+@JsonKey(name: 'full_name') String fullName,@JsonKey(name: 'photo_url') String? photoUrl, double? rating,@JsonKey(name: 'rating_count') int ratingCount,@JsonKey(name: 'recent_comments') List<String> recentComments,@JsonKey(name: 'trips_count') int tripsCount,@JsonKey(name: 'vehicle_make') String vehicleMake,@JsonKey(name: 'vehicle_model') String vehicleModel,@JsonKey(name: 'vehicle_colour') String vehicleColour, String plate,@JsonKey(name: 'eta_seconds') int? etaSeconds,@JsonKey(name: 'origin_label') String? originLabel,@JsonKey(name: 'destination_label') String? destinationLabel
 });
 
 
@@ -294,12 +304,14 @@ class __$RideDriverInfoCopyWithImpl<$Res>
 
 /// Create a copy of RideDriverInfo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? fullName = null,Object? photoUrl = freezed,Object? rating = null,Object? tripsCount = null,Object? vehicleMake = null,Object? vehicleModel = null,Object? vehicleColour = null,Object? plate = null,Object? etaSeconds = freezed,Object? originLabel = freezed,Object? destinationLabel = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? fullName = null,Object? photoUrl = freezed,Object? rating = freezed,Object? ratingCount = null,Object? recentComments = null,Object? tripsCount = null,Object? vehicleMake = null,Object? vehicleModel = null,Object? vehicleColour = null,Object? plate = null,Object? etaSeconds = freezed,Object? originLabel = freezed,Object? destinationLabel = freezed,}) {
   return _then(_RideDriverInfo(
 fullName: null == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: cast_nullable_to_non_nullable
-as String?,rating: null == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
-as double,tripsCount: null == tripsCount ? _self.tripsCount : tripsCount // ignore: cast_nullable_to_non_nullable
+as String?,rating: freezed == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
+as double?,ratingCount: null == ratingCount ? _self.ratingCount : ratingCount // ignore: cast_nullable_to_non_nullable
+as int,recentComments: null == recentComments ? _self._recentComments : recentComments // ignore: cast_nullable_to_non_nullable
+as List<String>,tripsCount: null == tripsCount ? _self.tripsCount : tripsCount // ignore: cast_nullable_to_non_nullable
 as int,vehicleMake: null == vehicleMake ? _self.vehicleMake : vehicleMake // ignore: cast_nullable_to_non_nullable
 as String,vehicleModel: null == vehicleModel ? _self.vehicleModel : vehicleModel // ignore: cast_nullable_to_non_nullable
 as String,vehicleColour: null == vehicleColour ? _self.vehicleColour : vehicleColour // ignore: cast_nullable_to_non_nullable

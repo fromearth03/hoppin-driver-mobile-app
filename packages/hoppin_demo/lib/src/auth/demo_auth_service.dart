@@ -162,6 +162,10 @@ class DemoAuthService implements AuthService {
       throw UnsupportedError('Not part of the demo');
 
   @override
+  Future<void> updatePassword(String newPassword) =>
+      throw UnsupportedError('Not part of the demo');
+
+  @override
   Future<void> signInWithOtp({required String phone}) =>
       throw UnsupportedError('Not part of the demo');
 

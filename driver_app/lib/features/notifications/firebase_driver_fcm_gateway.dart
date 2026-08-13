@@ -3,6 +3,16 @@ import 'package:hoppin_shared/hoppin_shared.dart';
 
 import 'driver_fcm_gateway.dart';
 
+/// Background isolate: required so Android/iOS deliver a killed-app offer
+/// wake-up. No navigation here — DriverShell tap handling does that.
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
+
+/// Must be called after a successful `Firebase.initializeApp()`.
+void registerDriverBackgroundHandler() {
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+}
+
 /// The CONCRETE [DriverFcmGateway], over `firebase_messaging`.
 ///
 /// This is the ONLY file in `apps/driver` — besides `main.dart`'s single
@@ -57,23 +67,42 @@ class FirebaseDriverFcmGateway implements DriverFcmGateway {
   }
 
   /// Foreground pushes, normalised off `RemoteMessage`.
-  ///
-  /// 🔴 This is wired and correct, and it will simply never emit until the
-  /// backend's `FCM_CREDENTIALS_FILE` lands (#15/#16). The parse is defensive
-  /// because the push-event schema has never been published (#15): every field
-  /// is optional and an unexpected payload degrades to a titleless message
-  /// rather than throwing on the driver's device.
   @override
-  Stream<DriverPushMessage> onMessage() {
-    return FirebaseMessaging.onMessage.map((m) {
-      final data = m.data;
-      return DriverPushMessage(
-        title: m.notification?.title ?? data['title'] as String?,
-        body: m.notification?.body ?? data['body'] as String?,
-        rideId: data['ride_id'] as String?,
-        deepLink: data['deep_link'] as String?,
-        sentAt: m.sentTime,
-      );
-    });
+  Stream<DriverPushMessage> onMessage() =>
+      FirebaseMessaging.onMessage.map(driverPushFromRemote);
+
+  @override
+  Stream<DriverPushMessage> onMessageOpened() =>
+      FirebaseMessaging.onMessageOpenedApp.map(driverPushFromRemote);
+
+  @override
+  Future<DriverPushMessage?> initialMessage() async {
+    final m = await _messaging.getInitialMessage();
+    return m == null ? null : driverPushFromRemote(m);
   }
+
+  @override
+  Stream<String> onTokenRefresh() => _messaging.onTokenRefresh;
+}
+
+/// Parses FCM data. Backend sends both camelCase and snake_case (`rideId` /
+/// `ride_id`, `deep_link`) so a missed schema never silently drops the wake-up.
+DriverPushMessage driverPushFromRemote(RemoteMessage m) {
+  final data = m.data;
+  String? str(String key) {
+    final v = data[key];
+    if (v is! String || v.isEmpty) return null;
+    return v;
+  }
+
+  final rideId = str('ride_id') ?? str('rideId');
+  final deepLink = str('deep_link') ?? str('deepLink') ??
+      (str('type') == 'ride_offer' ? '/offer' : null);
+  return DriverPushMessage(
+    title: m.notification?.title ?? str('title'),
+    body: m.notification?.body ?? str('body'),
+    rideId: rideId,
+    deepLink: deepLink,
+    sentAt: m.sentTime,
+  );
 }

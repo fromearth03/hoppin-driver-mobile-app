@@ -10,7 +10,12 @@ _RideDriverInfo _$RideDriverInfoFromJson(Map<String, dynamic> json) =>
     _RideDriverInfo(
       fullName: json['full_name'] as String,
       photoUrl: json['photo_url'] as String?,
-      rating: (json['rating'] as num).toDouble(),
+      rating: (json['rating'] as num?)?.toDouble(),
+      ratingCount: (json['rating_count'] as num?)?.toInt() ?? 0,
+      recentComments: (json['recent_comments'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
       tripsCount: (json['trips_count'] as num).toInt(),
       vehicleMake: json['vehicle_make'] as String,
       vehicleModel: json['vehicle_model'] as String,
@@ -26,6 +31,8 @@ Map<String, dynamic> _$RideDriverInfoToJson(_RideDriverInfo instance) =>
       'full_name': instance.fullName,
       'photo_url': instance.photoUrl,
       'rating': instance.rating,
+      'rating_count': instance.ratingCount,
+      'recent_comments': instance.recentComments,
       'trips_count': instance.tripsCount,
       'vehicle_make': instance.vehicleMake,
       'vehicle_model': instance.vehicleModel,

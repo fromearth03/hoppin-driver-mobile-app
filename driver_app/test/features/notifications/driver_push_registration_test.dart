@@ -177,6 +177,15 @@ class _Gateway implements DriverFcmGateway {
   // nothing arrives. An empty stream is the honest stand-in.
   @override
   Stream<DriverPushMessage> onMessage() => const Stream.empty();
+
+  @override
+  Stream<DriverPushMessage> onMessageOpened() => const Stream.empty();
+
+  @override
+  Future<DriverPushMessage?> initialMessage() async => null;
+
+  @override
+  Stream<String> onTokenRefresh() => const Stream.empty();
 }
 
 class _RecordingProfiles implements ProfileRepository {

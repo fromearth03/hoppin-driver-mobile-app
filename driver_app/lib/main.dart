@@ -76,6 +76,7 @@ Future<void> main() async {
     } else {
       await Firebase.initializeApp();
     }
+    registerDriverBackgroundHandler();
     fcmReady = true;
   } catch (_) {
     // No Firebase config in this build. Push is additive; the app still runs.

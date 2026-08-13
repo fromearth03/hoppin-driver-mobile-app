@@ -268,7 +268,7 @@ class _TakeoverCardState extends ConsumerState<_TakeoverCard>
               // the loose Flexible on the context inset below is what yields
               // for it, exactly as it does for the error banner.
               if (rider != null)
-                SizedBox(height: 48, child: _RiderRow(rider: rider))
+                _RiderRow(rider: rider)
               else if (riderSeamed)
                 const RiderContextUnavailable()
               else
@@ -424,7 +424,8 @@ class _PayoutBlock extends StatelessWidget {
   }
 }
 
-/// Who is asking: initials avatar, name, rating pill.
+/// Who is asking: initials, name, the rider's rating (never the driver's own)
+/// and the latest comment about them.
 class _RiderRow extends StatelessWidget {
   const _RiderRow({required this.rider});
 
@@ -437,12 +438,25 @@ class _RiderRow extends StatelessWidget {
       .map((part) => part[0].toUpperCase())
       .join();
 
+  String? get _ratingPill {
+    if (rider.rating == null || rider.ratingCount <= 0) return null;
+    if (rider.ratingCount > 1) {
+      return '★ ${rider.rating!.toStringAsFixed(1)} (${rider.ratingCount})';
+    }
+    return '★ ${rider.rating!.toStringAsFixed(1)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final hoppin = context.hoppin;
     final colors = hoppin.colors;
+    final comment = rider.recentComments.isNotEmpty
+        ? rider.recentComments.first
+        : null;
+    final pill = _ratingPill;
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
           width: 44,
@@ -462,16 +476,32 @@ class _RiderRow extends StatelessWidget {
         ),
         SizedBox(width: hoppin.spacing.md),
         Expanded(
-          child: Text(
-            rider.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: hoppin.type.titleSmall.copyWith(color: colors.textHi),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                rider.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: hoppin.type.titleSmall.copyWith(color: colors.textHi),
+              ),
+              if (comment != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  '"$comment"',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: hoppin.type.labelSmall.copyWith(color: colors.textMid),
+                ),
+              ],
+            ],
           ),
         ),
-        SizedBox(width: hoppin.spacing.sm),
-        if (rider.rating != null)
-          StatusPill(label: '★ ${rider.rating!.toStringAsFixed(1)}'),
+        if (pill != null) ...[
+          SizedBox(width: hoppin.spacing.sm),
+          StatusPill(label: pill),
+        ],
       ],
     );
   }

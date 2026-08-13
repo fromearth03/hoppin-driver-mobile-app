@@ -224,13 +224,9 @@ class _RunnerCard extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // The rider slot. On LIVE the rider seam answers null (#6), so this
-            // is the #6 mount site "where the Figma draws the face" — the honest
-            // rung, never a fabricated name/rating/photo/trip-count. On the demo
-            // path the seam resolves a persona and the real row renders.
-            //
+            // The rider slot: live rider-context (other-party rating + comments).
             if (state.riderContext != null)
-              SizedBox(height: 48, child: _RiderRow(rider: state.riderContext))
+              _RiderRow(rider: state.riderContext)
             else
               const RiderContextUnavailable(),
             SizedBox(height: hoppin.spacing.lg),
@@ -442,14 +438,8 @@ class _ProgressLine extends ConsumerWidget {
   }
 }
 
-/// Who is being picked up — ONLY on the demo/populated path, where the rider
-/// seam (#6) genuinely resolves a persona: initials avatar, name, pickup label
-/// caption, rating pill.
-///
-/// 🔴 THIS IS NEVER REACHED ON LIVE. `tripRiderContext()` answers null on every
-/// live request, and the null branch in the card renders `RiderContextUnavailable`
-/// instead — no fabricated name, rating, photo or trip count. The caller passes
-/// a NON-NULL context here; the assert makes that contract loud.
+/// Who is being picked up: initials, name, pickup label, the rider's rating
+/// (never the driver's own) and the latest comment about them.
 class _RiderRow extends StatelessWidget {
   const _RiderRow({required this.rider}) : assert(rider != null);
 
@@ -460,13 +450,25 @@ class _RiderRow extends StatelessWidget {
     return parts.map((p) => p[0].toUpperCase()).join();
   }
 
+  String? _ratingPill(TripRiderContext r) {
+    if (r.rating == null || r.ratingCount <= 0) return null;
+    if (r.ratingCount > 1) {
+      return '★ ${r.rating!.toStringAsFixed(1)} (${r.ratingCount})';
+    }
+    return '★ ${r.rating!.toStringAsFixed(1)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final hoppin = context.hoppin;
     final colors = hoppin.colors;
     final r = rider!;
+    final comment =
+        r.recentComments.isNotEmpty ? r.recentComments.first : null;
+    final pill = _ratingPill(r);
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
           width: 44,
@@ -496,20 +498,31 @@ class _RiderRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: hoppin.type.titleSmall.copyWith(color: colors.textHi),
               ),
-              const SizedBox(height: 2),
-              if (r.pickupLabel != null)
+              if (r.pickupLabel != null) ...[
+                const SizedBox(height: 2),
                 Text(
                   r.pickupLabel!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: hoppin.type.labelSmall.copyWith(color: colors.textMid),
                 ),
+              ],
+              if (comment != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  '"$comment"',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: hoppin.type.labelSmall.copyWith(color: colors.textMid),
+                ),
+              ],
             ],
           ),
         ),
-        SizedBox(width: hoppin.spacing.sm),
-        if (r.rating != null)
-          StatusPill(label: '★ ${r.rating!.toStringAsFixed(1)}'),
+        if (pill != null) ...[
+          SizedBox(width: hoppin.spacing.sm),
+          StatusPill(label: pill),
+        ],
       ],
     );
   }

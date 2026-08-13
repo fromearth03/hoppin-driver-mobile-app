@@ -12,6 +12,8 @@ void main() {
     'full_name': 'Gurpreet Singh',
     'photo_url': 'https://cdn.hoppin.uk/drivers/gurpreet.jpg',
     'rating': 4.9,
+    'rating_count': 12,
+    'recent_comments': <String>['Smooth ride'],
     'trips_count': 1480,
     'vehicle_make': 'Toyota',
     'vehicle_model': 'Prius',
@@ -27,6 +29,8 @@ void main() {
     expect(info.fullName, 'Gurpreet Singh');
     expect(info.photoUrl, 'https://cdn.hoppin.uk/drivers/gurpreet.jpg');
     expect(info.rating, 4.9);
+    expect(info.ratingCount, 12);
+    expect(info.recentComments, ['Smooth ride']);
     expect(info.tripsCount, 1480);
     expect(info.vehicleMake, 'Toyota');
     expect(info.vehicleModel, 'Prius');
@@ -72,6 +76,17 @@ void main() {
     expect(info.etaSeconds, isNull);
     expect(info.originLabel, isNull);
     expect(info.destinationLabel, isNull);
+  });
+
+  test('null rating + missing comments is an honest new driver', () {
+    final json = Map<String, dynamic>.of(fullJson)
+      ..['rating'] = null
+      ..remove('rating_count')
+      ..remove('recent_comments');
+    final info = RideDriverInfo.fromJson(json);
+    expect(info.rating, isNull);
+    expect(info.ratingCount, 0);
+    expect(info.recentComments, isEmpty);
   });
 
   test('live RidesRepository.driverInfo returns null', () async {

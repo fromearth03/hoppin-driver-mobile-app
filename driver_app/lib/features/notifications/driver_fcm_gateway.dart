@@ -56,6 +56,15 @@ abstract interface class DriverFcmGateway {
   /// cold start renders its #68 disclosure rather than a list — and the unread
   /// count over it is a REAL 0, never a drawn badge.
   Stream<DriverPushMessage> onMessage();
+
+  /// A push the driver TAPPED (background → foreground). Empty on the no-op.
+  Stream<DriverPushMessage> onMessageOpened();
+
+  /// The push that cold-started the app, if any. `null` on the no-op.
+  Future<DriverPushMessage?> initialMessage();
+
+  /// Token rotations — re-POST to `/me/device-tokens`. Empty on the no-op.
+  Stream<String> onTokenRefresh();
 }
 
 /// A push, normalised away from `RemoteMessage` so nothing above this boundary
@@ -139,6 +148,15 @@ class NoopDriverFcmGateway implements DriverFcmGateway {
   // look alive.
   @override
   Stream<DriverPushMessage> onMessage() => const Stream.empty();
+
+  @override
+  Stream<DriverPushMessage> onMessageOpened() => const Stream.empty();
+
+  @override
+  Future<DriverPushMessage?> initialMessage() async => null;
+
+  @override
+  Stream<String> onTokenRefresh() => const Stream.empty();
 }
 
 /// Exposes the active [DriverFcmGateway]. Defaults to [NoopDriverFcmGateway] —

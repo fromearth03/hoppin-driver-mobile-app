@@ -70,6 +70,9 @@ class _FcmTokenBinder extends ConsumerStatefulWidget {
 }
 
 class _FcmTokenBinderState extends ConsumerState<_FcmTokenBinder> {
+  StreamSubscription<DriverPushMessage>? _openedSub;
+  StreamSubscription<String>? _tokenSub;
+
   @override
   void initState() {
     super.initState();
@@ -82,7 +85,43 @@ class _FcmTokenBinderState extends ConsumerState<_FcmTokenBinder> {
         isWeb: kIsWeb,
         platform: defaultTargetPlatform,
       ));
+      unawaited(gateway.initialMessage().then(_wakeFromPush));
+      _openedSub = gateway.onMessageOpened().listen(_wakeFromPush);
+      _tokenSub = gateway.onTokenRefresh().listen((token) {
+        unawaited(ref.read(profileRepositoryProvider).registerDeviceToken(
+              fcmToken: token,
+              deviceOs: driverContractDeviceOs(
+                    isWeb: kIsWeb,
+                    platform: defaultTargetPlatform,
+                  ) ??
+                  (kIsWeb ? 'web' : 'android'),
+            ));
+      });
     });
+  }
+
+  void _wakeFromPush(DriverPushMessage? msg) {
+    if (msg == null || !mounted) return;
+    ref.read(driverNotificationFeedProvider.notifier).add(msg);
+    // Offer takeover is attached from the 1s poll on `/`. Deep-link `/offer`
+    // without RideOffer extra redirects home anyway — go home and let poll win.
+    final link = msg.deepLink;
+    if (link == '/offer' || link == null || link.isEmpty) {
+      context.go('/');
+      return;
+    }
+    if (link.startsWith('/') && !link.contains('://')) {
+      context.go(link.startsWith('/trip') || link == '/' || link.startsWith('/chat')
+          ? link
+          : '/');
+    }
+  }
+
+  @override
+  void dispose() {
+    _openedSub?.cancel();
+    _tokenSub?.cancel();
+    super.dispose();
   }
 
   @override

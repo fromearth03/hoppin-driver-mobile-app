@@ -23,14 +23,15 @@ typedef DriverDayStats = ({
 /// Capability-seam payload: who the rider is and where pickup is, for the
 /// offer takeover + trip runner context row.
 ///
-/// [rating] is null by design — `rider_profiles.average_rating` defaults to
-/// 5.00 but nothing maintains it, so serving it would render a fabricated 5.0
-/// for every rider. Render the absence.
-/// [pickupLabel] and [pickupEtaSeconds] are null on first ship (no address
-/// column in the schema; live-map decision pending).
+/// [rating] is the OTHER party's (the rider's) average, null until they have
+/// at least one review — never the driver's own. [recentComments] are what
+/// previous drivers wrote about this rider. [photoUrl] is optional.
 typedef TripRiderContext = ({
   String name,
+  String? photoUrl,
   double? rating,
+  int ratingCount,
+  List<String> recentComments,
   String? pickupLabel,
   int? pickupEtaSeconds,
 });
@@ -324,9 +325,6 @@ class DriverRepository {
   /// caller is not the assigned driver (403), so callers never learn a rider's
   /// identity by guessing ride ids.
   ///
-  /// [rating], [pickupLabel], and [pickupEtaSeconds] are deliberately null on
-  /// first ship — see [TripRiderContext] field docs.
-  ///
   /// SEAM(#6, state: WIRED, ledgerRef: row:29, feature: Trip rider context, unavailable: driver=RiderContextUnavailable)
   Future<TripRiderContext?> tripRiderContext(String rideId) async {
     try {
@@ -334,11 +332,18 @@ class DriverRepository {
         '/rides/$rideId/rider-context',
       );
       final body = res.data!;
+      final photo = body['photo_url'] as String?;
       return (
         name: body['name'] as String,
+        photoUrl: (photo == null || photo.isEmpty) ? null : photo,
         rating: (body['rating'] as num?)?.toDouble(),
+        ratingCount: (body['rating_count'] as num?)?.toInt() ?? 0,
+        recentComments: (body['recent_comments'] as List<dynamic>? ?? const [])
+            .map((e) => e.toString())
+            .where((s) => s.trim().isNotEmpty)
+            .toList(growable: false),
         pickupLabel: body['pickup_label'] as String?,
-        pickupEtaSeconds: body['pickup_eta_seconds'] as int?,
+        pickupEtaSeconds: (body['pickup_eta_seconds'] as num?)?.toInt(),
       );
     } on ApiException catch (e) {
       // 403 FORBIDDEN — caller is not the assigned driver; return null so the

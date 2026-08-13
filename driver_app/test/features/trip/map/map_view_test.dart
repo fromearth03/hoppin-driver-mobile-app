@@ -201,7 +201,10 @@ void main() {
   group('offer takeover context inset', () {
     const TripRiderContext sophie = (
       name: 'Sophie Bell',
+      photoUrl: null,
       rating: 4.8,
+      ratingCount: 12,
+      recentComments: ['Always on time'],
       pickupLabel: 'Wolverhampton Rail Station',
       pickupEtaSeconds: 120,
     );

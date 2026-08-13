@@ -4,12 +4,11 @@ part 'ride_driver_info.freezed.dart';
 part 'ride_driver_info.g.dart';
 
 /// The matched driver's identity, vehicle, and live-trip telemetry for one
-/// ride — the DEMO-07 capability-seam payload.
+/// ride — `GET /rides/:id/driver-info`.
 ///
-/// The live ride-service (`:8080`) exposes no driver-identity or telemetry
-/// endpoint yet, so [RidesRepository.driverInfo] answers null in production
-/// and the demo world assembles this from its seeded cast. JSON keys are
-/// snake_case so a future backend endpoint slots in without model churn.
+/// [rating] is null until the driver has at least one review; the backend
+/// used to COALESCE a fabricated 5.0. [recentComments] are about THIS driver
+/// (left by riders), never the viewer's own. JSON keys are snake_case.
 @freezed
 abstract class RideDriverInfo with _$RideDriverInfo {
   const RideDriverInfo._();
@@ -17,7 +16,10 @@ abstract class RideDriverInfo with _$RideDriverInfo {
   const factory RideDriverInfo({
     @JsonKey(name: 'full_name') required String fullName,
     @JsonKey(name: 'photo_url') String? photoUrl,
-    required double rating,
+    double? rating,
+    @JsonKey(name: 'rating_count') @Default(0) int ratingCount,
+    @JsonKey(name: 'recent_comments') @Default(<String>[])
+    List<String> recentComments,
     @JsonKey(name: 'trips_count') required int tripsCount,
     @JsonKey(name: 'vehicle_make') required String vehicleMake,
     @JsonKey(name: 'vehicle_model') required String vehicleModel,
