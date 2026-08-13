@@ -1,0 +1,1 @@
+Uri hoppinCurrentUri() => Uri.base;

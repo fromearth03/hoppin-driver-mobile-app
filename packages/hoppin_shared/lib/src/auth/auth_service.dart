@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'current_uri_stub.dart'
+    if (dart.library.html) 'current_uri_web.dart';
+
 /// The app role stamped into every Supabase JWT as the top-level `user_role`
 /// claim by the custom access-token hook (docs/04 · Authentication §3).
 enum AppRole { rider, driver, admin, unknown }
@@ -228,19 +231,19 @@ class HoppinAuthLink {
       type == 'magiclink';
 }
 
-HoppinAuthLink hoppinAuthLinkParams([Uri? routeUri]) {
+HoppinAuthLink? _capturedAuthLink;
+
+HoppinAuthLink _parseAuthLink(Uri u) {
   String pick(String key) {
-    for (final u in [
-      if (routeUri != null) routeUri,
-      Uri.base,
-    ]) {
-      final q = u.queryParameters[key];
-      if (q != null && q.isNotEmpty) return q;
-      if (u.fragment.isNotEmpty) {
-        final f = Uri.splitQueryString(u.fragment)[key];
-        if (f != null && f.isNotEmpty) return f;
-      }
-    }
+    final fromQuery = u.queryParameters[key];
+    if (fromQuery != null && fromQuery.isNotEmpty) return fromQuery;
+    if (u.fragment.isEmpty) return '';
+    // Hash router: `#/reset?token_hash=...` — query lives inside the fragment.
+    final frag = u.fragment;
+    final qIndex = frag.indexOf('?');
+    final query = qIndex >= 0 ? frag.substring(qIndex + 1) : frag;
+    final fromFrag = Uri.splitQueryString(query)[key];
+    if (fromFrag != null && fromFrag.isNotEmpty) return fromFrag;
     return '';
   }
 
@@ -249,6 +252,28 @@ HoppinAuthLink hoppinAuthLinkParams([Uri? routeUri]) {
     type: pick('type'),
     code: pick('code'),
   );
+}
+
+/// Snapshot the invite/reset query BEFORE go_router rewrites `/reset?token_hash=`
+/// into `/#/reset` and drops it. Call from `main()` before [Supabase.initialize].
+void hoppinCaptureAuthLink([Uri? uri]) {
+  final link = _parseAuthLink(uri ?? hoppinCurrentUri());
+  if (link.isCallback) _capturedAuthLink = link;
+}
+
+@visibleForTesting
+void hoppinClearCapturedAuthLink() => _capturedAuthLink = null;
+
+HoppinAuthLink hoppinAuthLinkParams([Uri? routeUri]) {
+  final fromRoute = routeUri == null ? null : _parseAuthLink(routeUri);
+  final fromBase = _parseAuthLink(hoppinCurrentUri());
+  final fresh = (fromRoute != null && fromRoute.isCallback)
+      ? fromRoute
+      : fromBase.isCallback
+          ? fromBase
+          : fromRoute ?? fromBase;
+  if (fresh.isCallback) _capturedAuthLink = fresh;
+  return _capturedAuthLink ?? fresh;
 }
 
 /// Query string to keep on `/reset` so a go_router bounce does not drop the
@@ -272,19 +297,45 @@ bool hoppinIsAuthCallback(Uri routeUri) => hoppinAuthLinkParams(routeUri).isCall
 /// Prefetch / a second PKCE exchange on redirect was burning the one-time
 /// token before the driver could type a password.
 Future<void> hoppinEstablishResetSession({required bool alreadySignedIn}) async {
-  if (alreadySignedIn) return;
   final link = hoppinAuthLinkParams();
-  if (link.tokenHash.isEmpty) {
-    throw StateError('no reset session');
+  if (link.tokenHash.isNotEmpty) {
+    // A leftover browser session must not skip THIS invite token.
+    if (alreadySignedIn) {
+      await Supabase.instance.client.auth.signOut();
+    }
+    final type = switch (link.type) {
+      'recovery' => OtpType.recovery,
+      'invite' => OtpType.invite,
+      'email' => OtpType.email,
+      _ => OtpType.magiclink,
+    };
+    await Supabase.instance.client.auth.verifyOTP(
+      tokenHash: link.tokenHash,
+      type: type,
+    );
+    return;
   }
-  final type = switch (link.type) {
-    'recovery' => OtpType.recovery,
-    'invite' => OtpType.invite,
-    'email' => OtpType.email,
-    _ => OtpType.magiclink,
-  };
-  await Supabase.instance.client.auth.verifyOTP(
-    tokenHash: link.tokenHash,
-    type: type,
-  );
+  if (alreadySignedIn) return;
+  throw StateError('no reset session');
+}
+
+/// Honest copy: leaked/weak passwords were being labelled "expired link".
+String hoppinResetErrorMessage(Object error) {
+  final raw = error is AuthException ? error.message : error.toString();
+  final m = raw.toLowerCase();
+  if (m.contains('leak') ||
+      m.contains('pwned') ||
+      m.contains('weak') ||
+      m.contains('too short') ||
+      m.contains('characters')) {
+    return 'That password is too weak or too common. Use letters, numbers and symbols — not 12345678.';
+  }
+  if (m.contains('no reset session') ||
+      m.contains('expired') ||
+      m.contains('invalid') ||
+      m.contains('otp') ||
+      m.contains('token')) {
+    return 'This reset link has expired or is invalid. Request a new one from the sign-in screen.';
+  }
+  return raw.replaceFirst(RegExp(r'^(Exception|AuthException|StateError):\s*'), '');
 }

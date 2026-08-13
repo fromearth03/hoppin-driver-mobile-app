@@ -48,12 +48,8 @@ class _DriverResetLandingScreenState
       await auth.updatePassword(_passwordCtrl.text);
       if (!mounted) return;
       context.go('/');
-    } on Exception catch (_) {
-      if (mounted) {
-        setState(() => _error =
-            'This reset link has expired or is invalid. Request a new one '
-            'from the sign-in screen.');
-      }
+    } on Exception catch (e) {
+      if (mounted) setState(() => _error = hoppinResetErrorMessage(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

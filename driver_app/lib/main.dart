@@ -14,6 +14,8 @@ import 'features/presence/presence_builder.dart';
 import 'features/comms/real_url_launcher.dart';
 import 'features/comms/url_launcher_gateway.dart' as comms;
 import 'features/trip/trip_nav_handoff.dart' as nav;
+import 'url_strategy_stub.dart'
+    if (dart.library.html) 'url_strategy_web.dart';
 
 /// Entry point for the Hoppin DRIVER app — **ANDROID** (D1).
 ///
@@ -37,6 +39,8 @@ import 'features/trip/trip_nav_handoff.dart' as nav;
 ///
 /// The signed release command is documented in `apps/driver/README.md`.
 Future<void> main() async {
+  hoppinCaptureAuthLink();
+  hoppinUsePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   Env.assertConfigured();
 
