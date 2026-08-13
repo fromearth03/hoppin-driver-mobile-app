@@ -23,6 +23,7 @@ export 'src/models/ad.dart';
 export 'src/models/cancellation_reason_option.dart';
 export 'src/models/destination_filter.dart';
 export 'src/models/driver_document.dart';
+export 'src/models/driver_vehicle.dart';
 export 'src/models/ride.dart';
 export 'src/models/ride_driver_info.dart';
 export 'src/models/driver_position.dart';

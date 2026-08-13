@@ -3,6 +3,7 @@ import '../api/api_exception.dart';
 import '../models/cancellation_reason_option.dart';
 import '../models/destination_filter.dart';
 import '../models/driver_document.dart';
+import '../models/driver_vehicle.dart';
 import '../models/payout_account.dart';
 import '../models/ride_offer.dart';
 
@@ -162,6 +163,23 @@ class DriverRepository {
             'insurance_expiry': insuranceExpiry,
         },
       );
+
+  /// `GET /drivers/me/vehicle` — the vehicle registered to this driver.
+  ///
+  /// A 404 `VEHICLE_NOT_FOUND` is the normal not-yet-registered state. Every
+  /// other failure remains an error so the UI can offer a retry rather than
+  /// incorrectly claiming that no vehicle exists.
+  Future<DriverVehicle?> vehicle() async {
+    try {
+      final res = await _api.get<Map<String, dynamic>>('/drivers/me/vehicle');
+      return DriverVehicle.fromJson(res.data!);
+    } on ApiException catch (error) {
+      if (error.statusCode == 404 && error.code == 'VEHICLE_NOT_FOUND') {
+        return null;
+      }
+      rethrow;
+    }
+  }
 
   // ── Ride lifecycle transitions (assigned driver only) ────────────────────
 

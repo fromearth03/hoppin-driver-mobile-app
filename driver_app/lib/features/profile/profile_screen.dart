@@ -18,6 +18,9 @@ abstract final class DriverProfileKeys {
   /// Route to the read-only personal-information surface.
   static const personalRow = ValueKey('driver-profile-personal-row');
 
+  /// Route to the registered vehicle details.
+  static const vehicleRow = ValueKey('driver-profile-vehicle-row');
+
   /// Route to the earnings + payouts surface.
   static const earningsRow = ValueKey('driver-profile-earnings-row');
 
@@ -49,7 +52,6 @@ abstract final class DriverProfileKeys {
 ///    on a rating, and there is no read for one. A number invented here would
 ///    be a number a driver plans their week around.
 ///  * **A lifetime trip count.**
-///  * **A vehicle card.**
 ///  * **A city caption.** (The rider refused the identical caption for the
 ///    identical reason.)
 ///
@@ -99,7 +101,7 @@ class DriverProfileScreen extends ConsumerWidget {
                 children: [
                   // The header: the two facts the session genuinely holds, plus
                   // the profile photo (a real upload — see the class doc). Still
-                  // no rating, no trip count, no vehicle, no city.
+                  // no rating, no trip count, no city.
                   HopCard(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -152,6 +154,13 @@ class DriverProfileScreen extends ConsumerWidget {
                           label: 'Personal information',
                           divider: true,
                           onTap: () => context.go(kDriverPersonalRoute),
+                        ),
+                        HopListRow(
+                          key: DriverProfileKeys.vehicleRow,
+                          icon: Icons.directions_car_outlined,
+                          label: 'Vehicle details',
+                          divider: true,
+                          onTap: () => context.go(kDriverVehicleRoute),
                         ),
                         HopListRow(
                           key: DriverProfileKeys.earningsRow,
