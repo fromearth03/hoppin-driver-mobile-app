@@ -13,7 +13,7 @@ import '../presence_builder.dart';
 /// in the pool. Offers arrive. Everything the app shows them is working.
 ///
 /// And the moment they lock their phone — which every driver does, constantly —
-/// Android stops delivering fixes, the 20-second heartbeat starves, and the
+/// Android stops delivering fixes, the 5-second heartbeat starves, and the
 /// admin drops them from the dispatch pool five minutes later. They sit in a
 /// layby for an hour watching a green ONLINE badge, earning nothing, and blaming
 /// us. That is the whole failure, and the app is the only thing that can see it

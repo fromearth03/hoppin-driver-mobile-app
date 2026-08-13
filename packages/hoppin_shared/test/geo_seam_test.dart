@@ -1,14 +1,15 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoppin_shared/hoppin_shared.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'support/fake_auth_service.dart';
+import 'support/scripted_http_adapter.dart';
 
 /// MAP-03 seam acceptance: [DriverPosition] and [RideGeo] round-trip the
-/// snake_case shapes the missing backend endpoints (DOCS/06 gaps #41/#17)
-/// would serve, and the LIVE [RidesRepository] answers null on both geo
-/// seams WITHOUT ever touching the network — graceful degradation IS the
-/// contract until the endpoints ship.
+/// snake_case shapes the backend endpoints serve, and [RidesRepository]
+/// distinguishes expected position absence from transient failures.
 void main() {
   group('DriverPosition', () {
     const fullJson = <String, dynamic>{
@@ -55,20 +56,22 @@ void main() {
       ],
     };
 
-    test('round-trips pickup/dropoff pins plus route and approach polylines',
-        () {
-      final geo = RideGeo.fromJson(fullJson);
-      expect(geo.pickupLat, 52.5877);
-      expect(geo.pickupLng, -2.1200);
-      expect(geo.dropoffLat, 52.6046);
-      expect(geo.dropoffLng, -2.0930);
-      expect(geo.route, hasLength(3));
-      expect(geo.route.first, const GeoPoint(lat: 52.5877, lng: -2.1200));
-      expect(geo.route.last, const GeoPoint(lat: 52.6046, lng: -2.0930));
-      expect(geo.approach, isNotNull);
-      expect(geo.approach!.first, const GeoPoint(lat: 52.5903, lng: -2.1306));
-      expect(jsonDecode(jsonEncode(geo.toJson())), fullJson);
-    });
+    test(
+      'round-trips pickup/dropoff pins plus route and approach polylines',
+      () {
+        final geo = RideGeo.fromJson(fullJson);
+        expect(geo.pickupLat, 52.5877);
+        expect(geo.pickupLng, -2.1200);
+        expect(geo.dropoffLat, 52.6046);
+        expect(geo.dropoffLng, -2.0930);
+        expect(geo.route, hasLength(3));
+        expect(geo.route.first, const GeoPoint(lat: 52.5877, lng: -2.1200));
+        expect(geo.route.last, const GeoPoint(lat: 52.6046, lng: -2.0930));
+        expect(geo.approach, isNotNull);
+        expect(geo.approach!.first, const GeoPoint(lat: 52.5903, lng: -2.1306));
+        expect(jsonDecode(jsonEncode(geo.toJson())), fullJson);
+      },
+    );
 
     test('approach is null-tolerant — a live endpoint may omit it', () {
       final json = Map<String, dynamic>.of(fullJson)..remove('approach');
@@ -82,20 +85,52 @@ void main() {
     });
   });
 
-  group('live RidesRepository geo seams', () {
-    test('driverPosition and rideGeo answer null without any network',
-        () async {
-      // A real client wired to nowhere: both seams must resolve WITHOUT
-      // ever touching the API — the graceful live fallback is the contract
-      // (no driver-location read #41; no coords on the ride detail #17).
-      final api = ApiClient(
-        auth: AuthService(
-          SupabaseClient('http://localhost:54321', 'publishable-key'),
-        ),
+  group('live RidesRepository geo reads', () {
+    RidesRepository repository(Map<String, List<ScriptedReply>> script) {
+      final dio = Dio()..httpClientAdapter = ScriptedHttpAdapter(script);
+      return RidesRepository(ApiClient(auth: FakeAuthService(), dio: dio));
+    }
+
+    test('expected position absence degrades to null', () async {
+      final repo = repository({
+        '/rides/ride-1/driver-location': [
+          const ScriptedReply(409, {
+            'error': 'no live driver position available',
+            'code': 'POSITION_UNAVAILABLE',
+          }),
+        ],
+      });
+
+      expect(await repo.driverPosition('ride-1'), isNull);
+    });
+
+    test('transient position failures remain retryable errors', () async {
+      final repo = repository({
+        '/rides/ride-1/driver-location': [
+          const ScriptedReply(500, {
+            'error': 'redis unavailable',
+            'code': 'INTERNAL',
+          }),
+        ],
+      });
+
+      await expectLater(
+        repo.driverPosition('ride-1'),
+        throwsA(isA<ApiException>()),
       );
-      final repo = RidesRepository(api);
-      expect(await repo.driverPosition('x'), isNull);
-      expect(await repo.rideGeo('x'), isNull);
+    });
+
+    test('transient geometry failures remain retryable errors', () async {
+      final repo = repository({
+        '/rides/ride-1/geo': [
+          const ScriptedReply(500, {
+            'error': 'osrm unavailable',
+            'code': 'INTERNAL',
+          }),
+        ],
+      });
+
+      await expectLater(repo.rideGeo('ride-1'), throwsA(isA<ApiException>()));
     });
   });
 }

@@ -18,7 +18,7 @@ import 'shift_service.dart';
 /// It starts a **persistent notification** and holds a **wake lock**, which
 /// together tell Android: this process is doing work the user asked for, do not
 /// freeze its isolate and keep delivering it location. That is all. It does NOT
-/// run the heartbeat — `PresenceInteractor`'s 20-second timer still does that,
+/// run the heartbeat — `PresenceInteractor`'s 5-second timer still does that,
 /// in the app's own isolate, reading its fix through `DriverLocationService`.
 ///
 /// That split is deliberate. `flutter_foreground_task` CAN run a separate
@@ -72,12 +72,12 @@ class AndroidDriverShiftService implements DriverShiftService {
         // `nothing()` keeps the service alive without scheduling any callback.
         eventAction: ForegroundTaskEventAction.nothing(),
 
-        // 🔴 THE WAKE LOCK. Without it Doze can stretch a 20-second heartbeat
+        // 🔴 THE WAKE LOCK. Without it Doze can stretch a 5-second heartbeat
         // into a several-minute one across an 8-hour shift, and 5 minutes
         // without a ping is a driver dropped from dispatch.
         allowWakeLock: true,
 
-        // The heartbeat is a small HTTPS POST every 20s. Holding the Wi-Fi
+        // The heartbeat is a small HTTPS POST every 5s. Holding the Wi-Fi
         // radio awake for it would burn battery for nothing — the driver is on
         // mobile data in a car, not on Wi-Fi.
         allowWifiLock: false,

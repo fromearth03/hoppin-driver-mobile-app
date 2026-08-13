@@ -45,6 +45,7 @@ class MapInteractor extends Notifier<MapState> {
   RidesRepository? _rides;
   RideGeo? _geo;
   bool _geoFetched = false;
+  bool _polling = false;
   DriverPosition? _position;
   TripPhase _phase = TripPhase.headingToPickup;
 
@@ -82,12 +83,12 @@ class MapInteractor extends Notifier<MapState> {
 
   /// Stable ticks (a parked car) never re-emit — MapState is value-equal.
   @override
-  bool updateShouldNotify(MapState previous, MapState next) =>
-      previous != next;
+  bool updateShouldNotify(MapState previous, MapState next) => previous != next;
 
   Future<void> _pollOnce(int gen) async {
     final rides = _rides;
-    if (rides == null) return;
+    if (rides == null || _polling) return;
+    _polling = true;
     try {
       final position = await rides.driverPosition(rideId);
       var geo = _geo;
@@ -106,6 +107,8 @@ class MapInteractor extends Notifier<MapState> {
     } on Exception {
       // Transient seam failure — keep the last shown state; the next 1 Hz
       // tick retries (including rideGeo if the one-shot never landed).
+    } finally {
+      _polling = false;
     }
   }
 
@@ -118,7 +121,8 @@ class MapInteractor extends Notifier<MapState> {
       return;
     }
 
-    final preStart = _phase == TripPhase.headingToPickup ||
+    final preStart =
+        _phase == TripPhase.headingToPickup ||
         _phase == TripPhase.arrivedAtPickup;
     final objectiveLabel = preStart ? 'Pickup' : 'Drop-off';
 
@@ -137,15 +141,22 @@ class MapInteractor extends Notifier<MapState> {
       final approach = geo.approach;
       if (preStart && approach != null && approach.length >= 2) {
         legPoints = [for (final p in approach) HopGeoPoint(p.lat, p.lng)];
+        // OSRM snaps to roads. Meet the original pickup pin exactly.
+        legPoints[legPoints.length - 1] = pickupPoint;
         legEndsAtObjective = true;
-      } else {
+      } else if (!preStart && geo.route.length >= 2) {
         legPoints = [for (final p in geo.route) HopGeoPoint(p.lat, p.lng)];
-        legEndsAtObjective = !preStart;
+        // Route geometry may start/end at OSRM-snapped road points. Normalize
+        // both ends so the line visibly meets the pickup and drop-off pins.
+        legPoints[0] = pickupPoint;
+        legPoints[legPoints.length - 1] = dropoffPoint;
+        legEndsAtObjective = true;
       }
     }
 
-    final carPosition =
-        position == null ? null : HopGeoPoint(position.lat, position.lng);
+    final carPosition = position == null
+        ? null
+        : HopGeoPoint(position.lat, position.lng);
 
     int? remainingMeters;
     if (carPosition != null &&
@@ -159,18 +170,27 @@ class MapInteractor extends Notifier<MapState> {
     final HopMapCameraIntent cameraIntent;
     if (carPosition != null) {
       cameraIntent = FollowPoint(carPosition);
-    } else if (pickupPoint != null && dropoffPoint != null) {
-      cameraIntent = FitPoints([pickupPoint, dropoffPoint]);
+    } else if (legPoints != null && legPoints.isNotEmpty) {
+      cameraIntent = FitPoints(legPoints);
+    } else if (objectivePoint != null) {
+      cameraIntent = FitPoints([objectivePoint]);
     } else {
       cameraIntent = const FitPoints([]);
     }
 
     state = MapState(
-      phase:
-          carPosition != null ? MapPhase.liveTracking : MapPhase.routeOnly,
+      phase: carPosition != null ? MapPhase.liveTracking : MapPhase.routeOnly,
       pins: [
-        if (objectivePoint != null)
-          HopMapPin(objectivePoint, HopMapPinRole.objective),
+        if (pickupPoint != null)
+          HopMapPin(
+            pickupPoint,
+            preStart ? HopMapPinRole.objective : HopMapPinRole.pickup,
+          ),
+        if (dropoffPoint != null)
+          HopMapPin(
+            dropoffPoint,
+            preStart ? HopMapPinRole.destination : HopMapPinRole.objective,
+          ),
       ],
       track: legPoints != null && legPoints.length >= 2
           ? HopMapTrack(legPoints)
@@ -214,7 +234,8 @@ class MapInteractor extends Notifier<MapState> {
     final dLng = _rad(b.lng - a.lng);
     final sinLat = math.sin(dLat / 2);
     final sinLng = math.sin(dLng / 2);
-    final h = sinLat * sinLat +
+    final h =
+        sinLat * sinLat +
         math.cos(_rad(a.lat)) * math.cos(_rad(b.lat)) * sinLng * sinLng;
     return 2 * earthRadiusMeters * math.asin(math.sqrt(h));
   }

@@ -47,13 +47,13 @@ void main() {
   const routeLeg = [pickup, routeMid, dropoff];
 
   RideGeo stubGeo() => RideGeo(
-        pickupLat: pickup.lat,
-        pickupLng: pickup.lng,
-        dropoffLat: dropoff.lat,
-        dropoffLng: dropoff.lng,
-        route: routeLeg,
-        approach: approachLeg,
-      );
+    pickupLat: pickup.lat,
+    pickupLng: pickup.lng,
+    dropoffLat: dropoff.lat,
+    dropoffLng: dropoff.lng,
+    route: routeLeg,
+    approach: approachLeg,
+  );
 
   DriverPosition positionAt(GeoPoint point, {double? heading}) =>
       DriverPosition(
@@ -81,17 +81,19 @@ void main() {
     ThemeData? theme,
   }) async {
     final runner = _StubRunner();
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        ridesRepositoryProvider.overrideWithValue(repo),
-        tripRunnerInteractorProvider.overrideWith2((rideId) => runner),
-        mapTileProvider.overrideWithValue(NoNetworkTileProvider()),
-      ],
-      child: MaterialApp(
-        theme: theme ?? HoppinTheme.driverDark(),
-        home: const TripRunnerView(rideId: 'ride-1'),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ridesRepositoryProvider.overrideWithValue(repo),
+          tripRunnerInteractorProvider.overrideWith2((rideId) => runner),
+          mapTileProvider.overrideWithValue(NoNetworkTileProvider()),
+        ],
+        child: MaterialApp(
+          theme: theme ?? HoppinTheme.driverDark(),
+          home: const TripRunnerView(rideId: 'ride-1'),
+        ),
       ),
-    ));
+    );
     // First poll lands in microtasks; the canvas mounts on the next frame.
     await tester.pump();
     await tester.pump();
@@ -106,10 +108,10 @@ void main() {
   }
 
   group('trip runner nav canvas', () {
-    testWidgets(
-        'headingToPickup with stub geo: map behind the card, heading '
-        'marker, pickup objective chip with along-leg distance',
-        (tester) async {
+    testWidgets('headingToPickup with stub geo: map behind the card, heading '
+        'marker, pickup objective chip with along-leg distance', (
+      tester,
+    ) async {
       await pumpRunner(
         tester,
         _GeoRepo(geo: stubGeo(), position: positionAt(spawn, heading: 90)),
@@ -120,17 +122,32 @@ void main() {
       expect(find.byKey(HopMap.carMarkerKey), findsOneWidget);
       expect(map.carPosition, hop(spawn));
       expect(map.carHeading, 90);
-      expect(map.cameraIntent, FollowPoint(hop(spawn)),
-          reason: 'the chase camera follows the driver');
-      expect(map.pins.single.point, hop(pickup));
-      expect(map.pins.single.role, HopMapPinRole.objective);
-      expect(map.track!.points.first, hop(spawn),
-          reason: 'pre-start the track is the approach leg');
+      expect(
+        map.cameraIntent,
+        FollowPoint(hop(spawn)),
+        reason: 'the chase camera follows the driver',
+      );
+      expect(
+        map.pins,
+        contains(HopMapPin(hop(pickup), HopMapPinRole.objective)),
+      );
+      expect(
+        map.pins,
+        contains(HopMapPin(hop(dropoff), HopMapPinRole.destination)),
+      );
+      expect(
+        map.track!.points.first,
+        hop(spawn),
+        reason: 'pre-start the track is the approach leg',
+      );
 
       // The objective chip: pickup-flavored label + the remaining distance.
       // 'Pickup' appears twice — the stage spine dot AND the chip.
-      expect(find.text('Pickup'), findsNWidgets(2),
-          reason: 'stage spine + objective chip both read Pickup');
+      expect(
+        find.text('Pickup'),
+        findsNWidgets(2),
+        reason: 'stage spine + objective chip both read Pickup',
+      );
       expect(find.text('Drop-off'), findsNothing);
       expect(find.text(chipDistance(approachLeg)), findsOneWidget);
 
@@ -139,8 +156,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('driving the runner to started flips chip and pin together',
-        (tester) async {
+    testWidgets('driving the runner to started flips chip and pin together', (
+      tester,
+    ) async {
       final runner = await pumpRunner(
         tester,
         _GeoRepo(geo: stubGeo(), position: positionAt(pickup)),
@@ -151,7 +169,10 @@ void main() {
       // Still the pickup objective while waiting at the kerb.
       expect(find.text('Drop-off'), findsNothing);
       var map = tester.widget<HopMap>(find.byType(HopMap));
-      expect(map.pins.single.point, hop(pickup));
+      expect(
+        map.pins,
+        contains(HopMapPin(hop(pickup), HopMapPinRole.objective)),
+      );
 
       // Slide-Start happened: the runner reports started.
       runner.drive(TripPhase.inTrip);
@@ -159,33 +180,72 @@ void main() {
 
       // Chip label, objective pin, and track all flipped to the trip leg.
       expect(find.text('Drop-off'), findsOneWidget);
-      expect(find.text('Pickup'), findsOneWidget,
-          reason: 'only the stage spine says Pickup once the chip flips');
-      expect(find.text(chipDistance(routeLeg)), findsOneWidget,
-          reason: 'the distance re-measures along the pickup→destination leg');
+      expect(
+        find.text('Pickup'),
+        findsOneWidget,
+        reason: 'only the stage spine says Pickup once the chip flips',
+      );
+      expect(
+        find.text(chipDistance(routeLeg)),
+        findsOneWidget,
+        reason: 'the distance re-measures along the pickup→destination leg',
+      );
       map = tester.widget<HopMap>(find.byType(HopMap));
-      expect(map.pins.single.point, hop(dropoff));
+      expect(map.pins, contains(HopMapPin(hop(pickup), HopMapPinRole.pickup)));
+      expect(
+        map.pins,
+        contains(HopMapPin(hop(dropoff), HopMapPinRole.objective)),
+      );
       expect(map.track!.points.last, hop(dropoff));
-      expect(map.cameraIntent, FollowPoint(hop(pickup)),
-          reason: 'the chase camera keeps following the car through the flip');
+      expect(
+        map.cameraIntent,
+        FollowPoint(hop(pickup)),
+        reason: 'the chase camera keeps following the car through the flip',
+      );
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('both seams null: no HopMap in the runner tree (live mode)',
-        (tester) async {
+    testWidgets('completion slider drag does not pan the map below it', (
+      tester,
+    ) async {
+      final runner = await pumpRunner(
+        tester,
+        _GeoRepo(geo: stubGeo(), position: positionAt(pickup)),
+      );
+      runner.drive(TripPhase.inTrip);
+      await settleMorph(tester);
+
+      await tester.drag(
+        find.byKey(const ValueKey('slide-complete')),
+        const Offset(48, 0),
+      );
+      await tester.pump();
+
+      expect(find.text('Recenter'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('both seams null: no HopMap in the runner tree (live mode)', (
+      tester,
+    ) async {
       await pumpRunner(tester, _GeoRepo());
 
-      expect(find.byType(HopMap), findsNothing,
-          reason: 'MapPhase.hidden must render NOTHING — the canvas-less '
-              'Phase 3 runner layout is the live-mode contract');
+      expect(
+        find.byType(HopMap),
+        findsNothing,
+        reason:
+            'MapPhase.hidden must render NOTHING — the canvas-less '
+            'Phase 3 runner layout is the live-mode contract',
+      );
       // The runner itself reads exactly as before the map landed.
       expect(find.text('Head to pickup'), findsOneWidget);
       expect(find.byKey(const ValueKey('trip-runner-card')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('light theme pumps clean (dark is the suite default)',
-        (tester) async {
+    testWidgets('light theme pumps clean (dark is the suite default)', (
+      tester,
+    ) async {
       await pumpRunner(
         tester,
         _GeoRepo(geo: stubGeo(), position: positionAt(spawn)),
@@ -226,11 +286,11 @@ void main() {
     final pickupPoint = HopGeoPoint(offer.pickupLat, offer.pickupLng);
 
     OfferTakeoverState fixture({HopGeoPoint? driver}) => OfferTakeoverState(
-          offer: offer,
-          presentedAt: clock.now(),
-          deadline: clock.now().add(const Duration(seconds: 45)),
-          driverContextPosition: driver,
-        );
+      offer: offer,
+      presentedAt: clock.now(),
+      deadline: clock.now().add(const Duration(seconds: 45)),
+      driverContextPosition: driver,
+    );
 
     Future<_StubTakeover> pumpTakeover(
       WidgetTester tester,
@@ -238,17 +298,19 @@ void main() {
       ThemeData? theme,
     }) async {
       final stub = _StubTakeover(offer, state);
-      await tester.pumpWidget(ProviderScope(
-        overrides: [
-          offerTakeoverInteractorProvider.overrideWith2((offer) => stub),
-          tripRiderContextProvider.overrideWith((ref, _) async => sophie),
-          mapTileProvider.overrideWithValue(NoNetworkTileProvider()),
-        ],
-        child: MaterialApp(
-          theme: theme ?? HoppinTheme.driverDark(),
-          home: OfferTakeoverView(offer: offer),
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            offerTakeoverInteractorProvider.overrideWith2((offer) => stub),
+            tripRiderContextProvider.overrideWith((ref, _) async => sophie),
+            mapTileProvider.overrideWithValue(NoNetworkTileProvider()),
+          ],
+          child: MaterialApp(
+            theme: theme ?? HoppinTheme.driverDark(),
+            home: OfferTakeoverView(offer: offer),
+          ),
         ),
-      ));
+      );
       // Resolve the rider context + play the entrance stagger out.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
@@ -263,12 +325,14 @@ void main() {
       // absorbs every hit before any gesture handler can exist.
       final map = tester.widget<HopMap>(find.byType(HopMap));
       expect(map.interactive, isFalse);
-      final ignore = tester.widget<IgnorePointer>(find
-          .descendant(
-            of: find.byType(HopMap),
-            matching: find.byType(IgnorePointer),
-          )
-          .first);
+      final ignore = tester.widget<IgnorePointer>(
+        find
+            .descendant(
+              of: find.byType(HopMap),
+              matching: find.byType(IgnorePointer),
+            )
+            .first,
+      );
       expect(ignore.ignoring, isTrue);
 
       // Static context framing: one fit of driver + pickup, car marker up.
@@ -289,8 +353,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('payout hero stays THE largest text with the inset present',
-        (tester) async {
+    testWidgets('payout hero stays THE largest text with the inset present', (
+      tester,
+    ) async {
       await pumpTakeover(tester, fixture(driver: driverSpawn));
 
       final heroFinder = find.text('£6.39');
@@ -304,8 +369,11 @@ void main() {
       for (final text in tester.widgetList<Text>(find.byType(Text))) {
         if (identical(text, hero)) continue;
         final size = text.style?.fontSize ?? 14;
-        expect(size, lessThan(heroSize!),
-            reason: '"${text.data}" must render smaller than the hero payout');
+        expect(
+          size,
+          lessThan(heroSize!),
+          reason: '"${text.data}" must render smaller than the hero payout',
+        );
       }
 
       // The inset sits BELOW the money — supporting context, never rival.
@@ -317,14 +385,18 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('null driver position degrades to a pickup-pin-only frame',
-        (tester) async {
+    testWidgets('null driver position degrades to a pickup-pin-only frame', (
+      tester,
+    ) async {
       await pumpTakeover(tester, fixture());
 
       final map = tester.widget<HopMap>(find.byType(HopMap));
       expect(map.carPosition, isNull);
-      expect(find.byKey(HopMap.carMarkerKey), findsNothing,
-          reason: 'no seam answer → no car marker, never a crash');
+      expect(
+        find.byKey(HopMap.carMarkerKey),
+        findsNothing,
+        reason: 'no seam answer → no car marker, never a crash',
+      );
       expect(map.pins.single.point, pickupPoint);
       expect(map.pins.single.role, HopMapPinRole.pickup);
       expect(map.cameraIntent, FitPoints([pickupPoint]));
@@ -332,8 +404,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('light theme pumps clean (dark is the suite default)',
-        (tester) async {
+    testWidgets('light theme pumps clean (dark is the suite default)', (
+      tester,
+    ) async {
       await pumpTakeover(
         tester,
         fixture(driver: driverSpawn),
@@ -356,7 +429,8 @@ double _haversineMeters(HopGeoPoint a, HopGeoPoint b) {
   final dLng = rad(b.lng - a.lng);
   final sinLat = math.sin(dLat / 2);
   final sinLng = math.sin(dLng / 2);
-  final h = sinLat * sinLat +
+  final h =
+      sinLat * sinLat +
       math.cos(rad(a.lat)) * math.cos(rad(b.lat)) * sinLng * sinLng;
   return 2 * earthRadiusMeters * math.asin(math.sqrt(h));
 }

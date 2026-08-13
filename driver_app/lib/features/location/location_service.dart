@@ -82,7 +82,7 @@ typedef DriverFix = ({double lat, double lng, double? speedMps});
 /// `hoppin_shared` / `hoppin_demo` / `hoppin_ui` (there is an isolation grep
 /// enforcing it), so the IMPLEMENTATION must live inside an app. The two
 /// implementations will diverge anyway — the rider takes a one-shot fix for an
-/// SOS payload; the driver takes a fix every 20 seconds for eight hours and is
+/// SOS payload; the driver takes a fix every 5 seconds for eight hours and is
 /// about to grow an Android foreground service behind it (Phase 2).
 ///
 /// Every method here DEGRADES. None throws, none is unbounded, and

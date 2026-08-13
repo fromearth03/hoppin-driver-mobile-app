@@ -41,8 +41,8 @@ import 'motion_state.dart';
 class MotionInteractor extends Notifier<MotionState> {
   /// The poll cadence.
   ///
-  /// Deliberately far faster than the 20-second heartbeat. A driver pulls away
-  /// from a pickup in a great deal less than 20 seconds, and a composer still on
+  /// Deliberately faster than the 5-second heartbeat. A driver pulls away
+  /// from a pickup in less than 5 seconds, and a composer still on
   /// screen 19 seconds into the drive is precisely the sustained-attention
   /// hazard this gate exists to remove.
   static const Duration cadence = Duration(seconds: 3);

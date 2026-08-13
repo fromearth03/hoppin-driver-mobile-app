@@ -71,7 +71,7 @@ class PresenceState {
   ///
   /// It takes BOTH: the `ACCESS_BACKGROUND_LOCATION` grant AND a running
   /// foreground service. Either one missing and Android stops delivering fixes
-  /// the moment the app leaves the screen, the 20-second heartbeat starves, and
+  /// the moment the app leaves the screen, the 5-second heartbeat starves, and
   /// the admin drops the driver from the dispatch pool five minutes later.
   ///
   /// This getter is what the ONLINE badge is allowed to be confident about.

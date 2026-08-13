@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// 🔴 THE MANIFEST IS THE CONTRACT WITH ANDROID, AND IT FAILS AT RUNTIME.
 ///
-/// Everything in this phase — the 20-second heartbeat surviving a locked screen,
+/// Everything in this phase — the 5-second heartbeat surviving a locked screen,
 /// the driver staying in the dispatch pool through an 8-hour shift — rests on
 /// eight `<uses-permission>` lines and one `<service>` attribute in an XML file
 /// no Dart test would otherwise ever look at.
@@ -101,10 +101,10 @@ void main() {
               'this is not a push nicety, it is part of the shift itself.');
     });
 
-    test('WAKE_LOCK — Doze turns a 20s heartbeat into a several-minute one', () {
+    test('WAKE_LOCK — Doze turns a 5s heartbeat into a several-minute one', () {
       expect(declares('WAKE_LOCK'), isTrue,
           reason: 'across an 8-hour shift with the screen off, Doze will stretch '
-              'the 20-second cadence until it misses the server\'s 5-minute '
+              'the 5-second cadence until it misses the server\'s 5-minute '
               'presence window — and a dropped driver does not know they were '
               'dropped.');
     });

@@ -124,7 +124,7 @@ class _StatusCanvas extends ConsumerWidget {
         phase == DashboardPhase.goingOffline;
 
     // The heartbeat. Watching the presence riblet is what BUILDS it, and
-    // building it is what arms the 20-second `POST /drivers/me/location` timer
+    // building it is what arms the 5-second `POST /drivers/me/location` timer
     // the moment the dashboard phase goes online. Before this line existed,
     // `heartbeat()` had zero callers in the entire app and every driver
     // silently fell out of the dispatch pool five minutes into their shift.

@@ -195,6 +195,24 @@ void main() {
     });
   });
 
+  group('HopMap interaction', () {
+    testWidgets('pointer interaction pauses follow before a pan begins', (
+      tester,
+    ) async {
+      var gestures = 0;
+      await pumpMap(tester, carPosition: a, onUserGesture: () => gestures++);
+      await tester.pump();
+
+      final origin = tester.getTopLeft(find.byType(HopMap));
+      await tester.dragFrom(
+        origin + const Offset(20, 20),
+        const Offset(60, 20),
+      );
+
+      expect(gestures, greaterThan(0));
+    });
+  });
+
   group('HopMap attribution (OSM policy)', () {
     for (final MapEntry(key: name, value: theme) in themes.entries) {
       testWidgets('attribution is visible ($name)', (tester) async {
@@ -207,10 +225,7 @@ void main() {
 
   group('HopMap null ladder', () {
     testWidgets('null carPosition renders no car marker', (tester) async {
-      await pumpMap(
-        tester,
-        pins: const [HopMapPin(a, HopMapPinRole.pickup)],
-      );
+      await pumpMap(tester, pins: const [HopMapPin(a, HopMapPinRole.pickup)]);
       await tester.pump();
       expect(find.byKey(HopMap.carMarkerKey), findsNothing);
     });

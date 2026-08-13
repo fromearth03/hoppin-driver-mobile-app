@@ -78,7 +78,10 @@ class RidesRepository {
 
   /// `GET /rides` — trip history, newest first, scoped to the caller. `[either]`
   Future<List<Ride>> history({int limit = 50}) async {
-    final res = await _api.get<List<dynamic>>('/rides', query: {'limit': limit});
+    final res = await _api.get<List<dynamic>>(
+      '/rides',
+      query: {'limit': limit},
+    );
     return (res.data ?? [])
         .map((e) => Ride.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -155,14 +158,10 @@ class RidesRepository {
     try {
       final res = await _api.get<Map<String, dynamic>>(
         '/geocode/search',
-        query: {
-          'q': q,
-          'limit': limit,
-          'lat': ?lat,
-          'lng': ?lng,
-        },
+        query: {'q': q, 'limit': limit, 'lat': ?lat, 'lng': ?lng},
       );
-      final rows = (res.data?['results'] as List<dynamic>?) ?? const <dynamic>[];
+      final rows =
+          (res.data?['results'] as List<dynamic>?) ?? const <dynamic>[];
       return rows
           .whereType<Map<String, dynamic>>()
           .map(PlaceSuggestion.fromJson)
@@ -218,10 +217,12 @@ class RidesRepository {
     required String version,
   }) async {
     try {
-      final res = await _api.get<Map<String, dynamic>>(
-        '/app-status',
-        query: {'platform': platform, 'version': version},
-      ).timeout(const Duration(seconds: 2));
+      final res = await _api
+          .get<Map<String, dynamic>>(
+            '/app-status',
+            query: {'platform': platform, 'version': version},
+          )
+          .timeout(const Duration(seconds: 2));
       final data = res.data;
       if (data == null) return AppStatus.unknown;
       return AppStatus.fromJson(data);
@@ -317,7 +318,8 @@ class RidesRepository {
   /// fabricated placeholder, which 400s). `[either]`
   Future<List<CancellationReasonOption>> cancellationReasons() async {
     final res = await _api.get<Map<String, dynamic>>('/cancellation-reasons');
-    final rows = (res.data?['cancellation_reasons'] as List<dynamic>?) ??
+    final rows =
+        (res.data?['cancellation_reasons'] as List<dynamic>?) ??
         const <dynamic>[];
     return rows
         .whereType<Map<String, dynamic>>()
@@ -363,9 +365,7 @@ class RidesRepository {
   Future<List<RideMessage>> messages(String rideId, {DateTime? since}) async {
     final res = await _api.get<Map<String, dynamic>>(
       '/rides/$rideId/messages',
-      query: {
-        if (since != null) 'since': since.toUtc().toIso8601String(),
-      },
+      query: {if (since != null) 'since': since.toUtc().toIso8601String()},
     );
     final list = res.data?['messages'] as List<dynamic>? ?? [];
     return list
@@ -406,8 +406,7 @@ class RidesRepository {
         'pickup_lng': pickupLng,
         'dropoff_lat': dropoffLat,
         'dropoff_lng': dropoffLng,
-        'requested_pickup_time':
-            requestedPickupTime.toUtc().toIso8601String(),
+        'requested_pickup_time': requestedPickupTime.toUtc().toIso8601String(),
         'estimated_fare_id': ?estimatedFareId,
       },
     );
@@ -463,15 +462,9 @@ class RidesRepository {
   /// SEAM(#46, state: SEAMED, ledgerRef: row:24, feature: Promotions, unavailable: PromoUnavailableState)
   Future<bool?> isPromoValid(String promoCode) async => null;
 
-  /// Capability seam: the driver's live position for the active [rideId].
-  /// No rider-facing driver-location read exists on `:8080` — heartbeats
-  /// via `POST /drivers/me/location` are write-only (CODE-GRAPH §6 #41 /
-  /// DOCS/06 P1) — so live deliberately returns null and the map degrades
-  /// to route-only. The demo fake overrides this from the world's
-  /// deterministic geo-track. [DriverPosition] is shaped for the asked
-  /// `GET /rides/:id/driver-location`, so a straight deserialization fills
-  /// this seam when the endpoint ships. NOTE: implementers of this class's
-  /// implicit interface must override this member too.
+  /// The assigned driver's live position for the active [rideId], read from
+  /// `GET /rides/:id/driver-location`. The demo fake overrides this from the
+  /// world's deterministic geo-track.
   ///
   /// TWO SURFACES CONSUME THIS SEAM (v3.0 Phase 0). The rider's map degrades to
   /// route-only (`RouteOnlyMapState`). The DRIVER also calls it — at
@@ -495,9 +488,16 @@ class RidesRepository {
       final data = res.data;
       if (data == null) return null;
       return DriverPosition.fromJson(data);
-    } on ApiException {
-      // No fresh position yet — honest degrade, not an error.
-      return null;
+    } on ApiException catch (error) {
+      if (error.statusCode == 409 &&
+          const {
+            'NO_DRIVER_ASSIGNED',
+            'RIDE_NOT_ACTIVE',
+            'POSITION_UNAVAILABLE',
+          }.contains(error.code)) {
+        return null;
+      }
+      rethrow;
     }
   }
 
@@ -516,17 +516,13 @@ class RidesRepository {
   /// returns `{pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, route[],
   /// approach}` (pickup/dropoff from the ride's stored coordinates; route is
   /// currently the straight pickup→dropoff pair until road-polyline geometry is
-  /// persisted). Returns null on any error so the map degrades to the
-  /// handoff-coord fallback rather than throwing.
+  /// persisted). Transient errors are rethrown so polling retains the last
+  /// good route and retries rather than permanently caching an empty map.
   Future<RideGeo?> rideGeo(String rideId) async {
-    try {
-      final res = await _api.get<Map<String, dynamic>>('/rides/$rideId/geo');
-      final data = res.data;
-      if (data == null) return null;
-      return RideGeo.fromJson(data);
-    } on ApiException {
-      return null;
-    }
+    final res = await _api.get<Map<String, dynamic>>('/rides/$rideId/geo');
+    final data = res.data;
+    if (data == null) return null;
+    return RideGeo.fromJson(data);
   }
 
   // Driver-side lifecycle transitions (all `[driver]`, assigned driver only):

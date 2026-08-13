@@ -16,11 +16,12 @@
 /// - The camera obeys declarative intents, debounced, and never fights the
 ///   user: a gesture fires [HopMap.onUserGesture] and no camera move runs
 ///   while the host has paused follow.
-/// - The car marker is a Flutter-side overlay widget driven by the tween;
-///   only tile, route, and pin layers go through MapLibre annotations. The
-///   Flutter widget tree remains introspectable by tests.
+/// - In production the car marker is a MapLibre annotation, so it shares the
+///   same projection as route and pin layers while the map pans and zooms.
+///   Headless tests retain a Flutter marker without mounting a platform view.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -177,14 +178,15 @@ class _LatLngPair {
   const _LatLngPair(this.lat, this.lng);
   final double lat;
   final double lng;
-  _LatLngPair lerp(_LatLngPair other, double t) => _LatLngPair(
-        lat + (other.lat - lat) * t,
-        lng + (other.lng - lng) * t,
-      );
+  _LatLngPair lerp(_LatLngPair other, double t) =>
+      _LatLngPair(lat + (other.lat - lat) * t, lng + (other.lng - lng) * t);
 }
 
 class _LatLngTween extends Tween<_LatLngPair> {
-  _LatLngTween({required _LatLngPair super.begin, required _LatLngPair super.end});
+  _LatLngTween({
+    required _LatLngPair super.begin,
+    required _LatLngPair super.end,
+  });
 
   @override
   _LatLngPair lerp(double t) => begin!.lerp(end!, t);
@@ -200,7 +202,7 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
   static const double _pointZoom = 15.5;
   static const double _carSize = 30;
 
-  late final AnimationController _marker = AnimationController(vsync: this);
+  late final AnimationController _marker;
 
   _LatLngTween? _carTween;
   Tween<double>? _headingTween;
@@ -209,6 +211,8 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
   _LatLngPair? _lastAimed;
   DateTime? _lastAimedAt;
   bool _mapReady = false;
+  bool _cameraSettled = false;
+  bool _cameraMoveOwned = true;
 
   MapLibreMapController? _controller;
   String? _styleString;
@@ -216,10 +220,16 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
   // Live annotation IDs, set after style is loaded
   Line? _routeLine;
   final List<Circle> _pinCircles = [];
+  Circle? _carCircle;
+  bool _carSyncing = false;
+  bool _pendingCarRemoval = false;
+  _LatLngPair? _pendingCarPoint;
 
   @override
   void initState() {
     super.initState();
+    _marker = AnimationController(vsync: this)
+      ..addListener(_scheduleCarAnnotationSync);
     final start = widget.carPosition;
     if (start != null) {
       final at = _pair(start);
@@ -276,6 +286,7 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
       _carTween = null;
       _headingTween = null;
       _marker.stop();
+      _scheduleCarAnnotationSync();
       if (mounted) setState(() {});
       return;
     }
@@ -289,7 +300,12 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
     final gap = widget.sampleGap;
     final stale =
         gap != null && gap > widget.sampleInterval * _staleGapMultiple;
-    final jumpMeters = _haversineMeters(shown.lat, shown.lng, target.lat, target.lng);
+    final jumpMeters = _haversineMeters(
+      shown.lat,
+      shown.lng,
+      target.lat,
+      target.lng,
+    );
     if (stale || jumpMeters > _snapDistanceMeters) {
       _snapTo(target);
       return;
@@ -311,20 +327,25 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
   }
 
   void _snapTo(_LatLngPair target) {
-    final heading =
-        widget.carHeading ?? _headingTween?.evaluate(_marker) ?? 0;
+    final heading = widget.carHeading ?? _headingTween?.evaluate(_marker) ?? 0;
     _carTween = _LatLngTween(begin: target, end: target);
     _headingTween = Tween<double>(begin: heading, end: heading);
     _marker
       ..stop()
       ..value = 1;
+    _scheduleCarAnnotationSync();
     if (mounted) setState(() {});
   }
 
   static double _shortestArcDelta(double from, double to) =>
       ((to - from + 540) % 360) - 180;
 
-  static double _bearingDeg(double fromLat, double fromLng, double toLat, double toLng) {
+  static double _bearingDeg(
+    double fromLat,
+    double fromLng,
+    double toLat,
+    double toLng,
+  ) {
     final dLng = _rad(toLng - fromLng);
     final latA = _rad(fromLat);
     final latB = _rad(toLat);
@@ -341,12 +362,16 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
 
   /// Haversine distance in meters — replaces latlong2's Distance helper.
   static double _haversineMeters(
-    double lat1, double lng1, double lat2, double lng2,
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
   ) {
     const r = 6371000.0;
     final dLat = _rad(lat2 - lat1);
     final dLng = _rad(lng2 - lng1);
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(_rad(lat1)) *
             math.cos(_rad(lat2)) *
             math.sin(dLng / 2) *
@@ -358,7 +383,8 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
 
   CameraPosition _initialCameraPosition() {
     final intent = widget.cameraIntent;
-    final fallback = widget.carPosition ??
+    final fallback =
+        widget.carPosition ??
         (widget.pins.isNotEmpty ? widget.pins.first.point : null) ??
         (widget.track?.points.isNotEmpty ?? false
             ? widget.track!.points.first
@@ -381,20 +407,27 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
 
   void _onStyleLoaded() {
     _mapReady = true;
+    // A style replacement discards every native annotation manager.
+    _routeLine = null;
+    _pinCircles.clear();
+    _carCircle = null;
     _rebuildRoute();
     _rebuildPins();
+    _scheduleCarAnnotationSync();
     _applyIntent(force: true);
   }
 
-  void _onMapClick(math.Point<double> point, LatLng coordinates) {
-    if (widget.interactive) {
+  void _onCameraMove(CameraPosition position) {
+    if (widget.interactive && _cameraSettled && !_cameraMoveOwned) {
       widget.onUserGesture();
     }
   }
 
-  /// Picker mode: the camera settled after a gesture — report the centre so a
-  /// host can reverse-geocode the point under its fixed centre pin.
+  /// The camera settled after either a gesture or an app-owned animation.
+  /// Picker mode additionally reports the centre under its fixed pin.
   void _onCameraIdle() {
+    _cameraMoveOwned = false;
+    _cameraSettled = true;
     final cb = widget.onCameraIdle;
     final pos = _controller?.cameraPosition;
     if (cb == null || pos == null) return;
@@ -413,6 +446,7 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
           _aim(ctrl, _pair(points.first));
         } else {
           final bounds = _boundsFrom(points);
+          _cameraMoveOwned = true;
           ctrl.animateCamera(
             CameraUpdate.newLatLngBounds(
               bounds,
@@ -448,9 +482,8 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
   }
 
   void _aim(MapLibreMapController ctrl, _LatLngPair dest) {
-    ctrl.animateCamera(
-      CameraUpdate.newLatLng(LatLng(dest.lat, dest.lng)),
-    );
+    _cameraMoveOwned = true;
+    ctrl.animateCamera(CameraUpdate.newLatLng(LatLng(dest.lat, dest.lng)));
     _lastAimed = dest;
     _lastAimedAt = clock.now();
   }
@@ -490,9 +523,7 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
     final colors = context.hoppin.colors;
     _routeLine = await ctrl.addLine(
       LineOptions(
-        geometry: [
-          for (final p in track.points) LatLng(p.lat, p.lng),
-        ],
+        geometry: [for (final p in track.points) LatLng(p.lat, p.lng)],
         lineColor: _colorHex(colors.accent),
         lineWidth: 4.0,
         lineJoin: 'round',
@@ -527,6 +558,72 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
     }
   }
 
+  /// Keeps the production car in MapLibre's geographic projection. Animation
+  /// frames are coalesced while a platform update is in flight, avoiding a
+  /// queue of stale method-channel writes when rendering at 60 fps.
+  void _scheduleCarAnnotationSync() {
+    final tween = _carTween;
+    _pendingCarRemoval = tween == null;
+    _pendingCarPoint = tween?.evaluate(_marker);
+    if (_carSyncing || !_mapReady || _controller == null) return;
+    _carSyncing = true;
+    unawaited(_drainCarAnnotationUpdates());
+  }
+
+  Future<void> _drainCarAnnotationUpdates() async {
+    try {
+      while (mounted && _mapReady) {
+        final remove = _pendingCarRemoval;
+        final point = _pendingCarPoint;
+        _pendingCarRemoval = false;
+        _pendingCarPoint = null;
+        if (!remove && point == null) break;
+
+        final ctrl = _controller;
+        if (ctrl == null) break;
+        if (remove) {
+          final circle = _carCircle;
+          if (circle != null) await ctrl.removeCircle(circle);
+          _carCircle = null;
+          continue;
+        }
+
+        final geometry = LatLng(point!.lat, point.lng);
+        final circle = _carCircle;
+        if (circle == null) {
+          if (!mounted) break;
+          final colors = context.hoppin.colors;
+          _carCircle = await ctrl.addCircle(
+            CircleOptions(
+              geometry: geometry,
+              circleRadius: 10,
+              circleColor: _colorHex(colors.accent),
+              circleStrokeWidth: 3,
+              circleStrokeColor: _colorHex(colors.onAccent),
+            ),
+          );
+        } else {
+          await ctrl.updateCircle(circle, CircleOptions(geometry: geometry));
+        }
+      }
+    } on Exception {
+      // Style reloads invalidate annotation handles. The next frame/style
+      // callback recreates the circle from the latest tween position.
+      _carCircle = null;
+      final tween = _carTween;
+      if (mounted && _mapReady && tween != null) {
+        _pendingCarPoint = tween.evaluate(_marker);
+      }
+    } finally {
+      _carSyncing = false;
+      if (mounted &&
+          _mapReady &&
+          (_pendingCarRemoval || _pendingCarPoint != null)) {
+        _scheduleCarAnnotationSync();
+      }
+    }
+  }
+
   static String _colorHex(Color c) =>
       '#${c.r.round().toRadixString(16).padLeft(2, '0')}${c.g.round().toRadixString(16).padLeft(2, '0')}${c.b.round().toRadixString(16).padLeft(2, '0')}';
 
@@ -537,12 +634,11 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
         HopMapPinRole.objective => _colorHex(colors.accent),
       };
 
-  static double _pinStrokeWidth(HopMapPinRole role) =>
-      switch (role) {
-        HopMapPinRole.pickup => 3.0,
-        HopMapPinRole.destination => 2.0,
-        HopMapPinRole.objective => 2.0,
-      };
+  static double _pinStrokeWidth(HopMapPinRole role) => switch (role) {
+    HopMapPinRole.pickup => 3.0,
+    HopMapPinRole.destination => 2.0,
+    HopMapPinRole.objective => 2.0,
+  };
 
   static String _pinStrokeHex(HopMapPinRole role, HoppinColors colors) =>
       switch (role) {
@@ -557,26 +653,21 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final colors = context.hoppin.colors;
     // tileProvider != null is the test-isolation seam: skip the MapLibreMap
-    // (a platform view) so tests run headlessly. A GestureDetector stands in
-    // for MapLibre's onMapClick so gesture-pause tests still work.
+    // (a platform view) so tests run headlessly.
     final mapWidget = widget.tileProvider != null
-        ? GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onPanStart: widget.interactive
-                ? (_) => widget.onUserGesture()
-                : null,
-            child: ColoredBox(color: colors.canvas),
-          )
+        ? ColoredBox(color: colors.canvas)
         : MapLibreMap(
             initialCameraPosition: _initialCameraPosition(),
-            styleString: _styleString ?? _buildStyleString(
-              Theme.of(context).brightness == Brightness.dark,
-            ),
+            styleString:
+                _styleString ??
+                _buildStyleString(
+                  Theme.of(context).brightness == Brightness.dark,
+                ),
             onMapCreated: _onMapCreated,
             onStyleLoadedCallback: _onStyleLoaded,
-            onMapClick: _onMapClick,
-            onCameraIdle: widget.onCameraIdle == null ? null : _onCameraIdle,
-            trackCameraPosition: widget.onCameraIdle != null,
+            onCameraMove: _onCameraMove,
+            onCameraIdle: _onCameraIdle,
+            trackCameraPosition: true,
             scrollGesturesEnabled: widget.interactive,
             zoomGesturesEnabled: widget.interactive,
             rotateGesturesEnabled: false,
@@ -591,26 +682,34 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
         ignoring: !widget.interactive,
         child: Stack(
           children: [
-            Positioned.fill(child: mapWidget),
-            // Car marker overlay — pure Flutter widget, fully introspectable
-            // by tests. The AnimatedBuilder rebuilds only this layer as the
-            // tween runs; tiles and pin/route annotations are unaffected.
-            AnimatedBuilder(
-              animation: _marker,
-              builder: (context, _) {
-                final tween = _carTween;
-                if (tween == null) return const SizedBox.shrink();
-                final pos = tween.evaluate(_marker);
-                return HopMapCarMarker(
-                  key: HopMap.carMarkerKey,
-                  lat: pos.lat,
-                  lng: pos.lng,
-                  headingDeg: _headingTween?.evaluate(_marker) ?? 0,
-                  colors: colors,
-                  size: _carSize,
-                );
-              },
+            Positioned.fill(
+              child: Listener(
+                behavior: HitTestBehavior.translucent,
+                onPointerDown: widget.interactive
+                    ? (_) => widget.onUserGesture()
+                    : null,
+                child: mapWidget,
+              ),
             ),
+            // Test-only marker: production uses the geographic MapLibre circle
+            // above, while headless tests keep tween introspection available.
+            if (widget.tileProvider != null)
+              AnimatedBuilder(
+                animation: _marker,
+                builder: (context, _) {
+                  final tween = _carTween;
+                  if (tween == null) return const SizedBox.shrink();
+                  final pos = tween.evaluate(_marker);
+                  return HopMapCarMarker(
+                    key: HopMap.carMarkerKey,
+                    lat: pos.lat,
+                    lng: pos.lng,
+                    headingDeg: _headingTween?.evaluate(_marker) ?? 0,
+                    colors: colors,
+                    size: _carSize,
+                  );
+                },
+              ),
             // OSM attribution — required by tile policy, visible in both
             // themes, hand-built so it wraps safely on the compact inset.
             Align(
@@ -618,12 +717,15 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: colors.card.withValues(alpha: 0.8),
-                  borderRadius:
-                      const BorderRadius.only(topLeft: Radius.circular(4)),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                  ),
                 ),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   child: Text(
                     '© OpenStreetMap contributors',
                     style: context.hoppin.type.labelSmall.copyWith(
@@ -640,7 +742,7 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
   }
 }
 
-/// The car marker Flutter overlay widget.
+/// The headless-test car marker.
 ///
 /// Stores [lat]/[lng] as public fields so tests can read the currently shown
 /// position without going through MapLibre's async native layer:
@@ -649,8 +751,8 @@ class _HopMapState extends State<HopMap> with TickerProviderStateMixin {
 /// expect(marker.lat, closeTo(expectedLat, 1e-9));
 /// ```
 ///
-/// Rendering: centered in the Stack (the camera follow intent keeps the car
-/// near the screen centre during live tracking).
+/// Production renders the car through MapLibre. This centred widget exists only
+/// when [HopMap.tileProvider] suppresses the platform map in tests.
 class HopMapCarMarker extends StatelessWidget {
   const HopMapCarMarker({
     required this.lat,

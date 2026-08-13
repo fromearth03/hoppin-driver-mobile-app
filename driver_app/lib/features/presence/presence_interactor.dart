@@ -43,11 +43,11 @@ import 'presence_state.dart';
 class PresenceInteractor extends Notifier<PresenceState> {
   /// The heartbeat cadence.
   ///
-  /// The server drops a driver after 5 MINUTES without a ping. 20 seconds gives
-  /// 15 consecutive misses of headroom before presence lapses — enough to ride
-  /// out a tunnel, a dead cell, or a handful of failed requests without the
-  /// driver silently falling out of the pool.
-  static const Duration cadence = Duration(seconds: 20);
+  /// The server drops a driver after 5 MINUTES without a ping. Five seconds
+  /// gives 60 consecutive misses of headroom before presence lapses and keeps
+  /// active-trip maps responsive enough to show meaningful movement. It is
+  /// still slow enough to avoid a continuous location/network stream.
+  static const Duration cadence = Duration(seconds: 5);
 
   /// How long a single fix attempt may take before the tick gives up.
   static const Duration fixTimeout = Duration(seconds: 10);
@@ -145,10 +145,7 @@ class PresenceInteractor extends Notifier<PresenceState> {
     if (gen != _generation) return;
     final coverage = await ref.read(driverLocationServiceProvider).coverage();
     if (gen != _generation) return;
-    state = state.copyWith(
-      shiftServiceRunning: running,
-      coverage: coverage,
-    );
+    state = state.copyWith(shiftServiceRunning: running, coverage: coverage);
 
     // The push token, registered at the SAME explicit driver action — never at
     // boot. On Android 13+ `POST_NOTIFICATIONS` is not a push nicety: it is what
@@ -227,10 +224,7 @@ class PresenceInteractor extends Notifier<PresenceState> {
     if (gen != _generation) return;
     final coverage = await ref.read(driverLocationServiceProvider).coverage();
     if (gen != _generation) return;
-    state = state.copyWith(
-      shiftServiceRunning: running,
-      coverage: coverage,
-    );
+    state = state.copyWith(shiftServiceRunning: running, coverage: coverage);
   }
 
   Future<void> _ping(int gen) async {

@@ -5,7 +5,7 @@ import 'dart:async';
 ///
 /// 🔴 WHY A FOREGROUND SERVICE AT ALL — AND WHY THE WEB TARGET IS GONE (D1).
 ///
-/// `PresenceInteractor` fires `POST /drivers/me/location` every 20 seconds, and
+/// `PresenceInteractor` fires `POST /drivers/me/location` every 5 seconds, and
 /// the admin drops a driver from the dispatch pool after 5 minutes without a
 /// ping. That timer is a plain Dart `Timer.periodic` living in the app's
 /// isolate — and the moment Android decides the app is no longer visible, the

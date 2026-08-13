@@ -65,7 +65,10 @@ class TripRunnerView extends ConsumerWidget {
                     HopBanner.error(message: state.error!),
                     SizedBox(height: hoppin.spacing.md),
                   ],
-                  _RunnerCard(state: state, rideId: rideId),
+                  Listener(
+                    behavior: HitTestBehavior.opaque,
+                    child: _RunnerCard(state: state, rideId: rideId),
+                  ),
                 ],
               ),
             ),
