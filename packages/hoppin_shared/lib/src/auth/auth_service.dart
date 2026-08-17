@@ -232,6 +232,7 @@ class HoppinAuthLink {
 }
 
 HoppinAuthLink? _capturedAuthLink;
+Uri? _capturedAuthUri;
 bool _resetFlowConsumed = false;
 bool _passwordJustUpdated = false;
 
@@ -249,9 +250,13 @@ HoppinAuthLink _parseAuthLink(Uri u) {
     return '';
   }
 
+  final accessToken = pick('access_token');
+  final type = pick('type');
   return HoppinAuthLink(
     tokenHash: pick('token_hash'),
-    type: pick('type'),
+    type: type.isNotEmpty
+        ? type
+        : (accessToken.isNotEmpty ? 'magiclink' : ''),
     code: pick('code'),
   );
 }
@@ -259,22 +264,30 @@ HoppinAuthLink _parseAuthLink(Uri u) {
 /// Snapshot the invite/reset query BEFORE go_router rewrites `/reset?token_hash=`
 /// into `/#/reset` and drops it. Call from `main()` before [Supabase.initialize].
 void hoppinCaptureAuthLink([Uri? uri]) {
-  final link = _parseAuthLink(uri ?? hoppinCurrentUri());
-  if (link.isCallback) _capturedAuthLink = link;
+  final raw = uri ?? hoppinCurrentUri();
+  final link = _parseAuthLink(raw);
+  if (link.isCallback) {
+    _capturedAuthLink = link;
+    _capturedAuthUri = raw;
+  }
 }
 
 @visibleForTesting
 void hoppinClearCapturedAuthLink() {
   _capturedAuthLink = null;
+  _capturedAuthUri = null;
   _resetFlowConsumed = false;
   _passwordJustUpdated = false;
+  hoppinClearSavedAuthUri();
 }
 
 /// Call after a successful (or already-set) password write so go_router stops
 /// treating the spent invite URL as a live auth callback.
 void hoppinMarkResetConsumed({bool passwordUpdated = false}) {
   _capturedAuthLink = null;
+  _capturedAuthUri = null;
   _resetFlowConsumed = true;
+  hoppinClearSavedAuthUri();
   if (passwordUpdated) _passwordJustUpdated = true;
 }
 
@@ -293,7 +306,12 @@ HoppinAuthLink hoppinAuthLinkParams([Uri? routeUri]) {
       : fromBase.isCallback
           ? fromBase
           : fromRoute ?? fromBase;
-  if (fresh.isCallback) _capturedAuthLink = fresh;
+  if (fresh.isCallback) {
+    _capturedAuthLink = fresh;
+    _capturedAuthUri ??= (fromRoute != null && fromRoute.isCallback && routeUri != null)
+        ? routeUri
+        : hoppinCurrentUri();
+  }
   return _capturedAuthLink ?? fresh;
 }
 
@@ -348,8 +366,17 @@ Future<void> hoppinEstablishResetSession({required bool alreadySignedIn}) async 
     );
     return;
   }
+  // Magic-link ConfirmationURL lands as `#access_token=` or `?code=` — not
+  // token_hash. PathUrlStrategy used to strip the hash before submit.
+  final uri = _capturedAuthUri ?? hoppinCurrentUri();
+  final implicit = uri.fragment.contains('access_token=') ||
+      (uri.queryParameters['code'] ?? '').isNotEmpty;
+  if (!alreadySignedIn && implicit) {
+    await Supabase.instance.client.auth.getSessionFromUrl(uri);
+    return;
+  }
   if (alreadySignedIn) return;
-  throw StateError('no reset session');
+  throw AuthException('no reset session');
 }
 
 /// Honest copy: leaked/weak passwords were being labelled "expired link".

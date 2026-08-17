@@ -40,7 +40,6 @@ import 'url_strategy_stub.dart'
 /// The signed release command is documented in `apps/driver/README.md`.
 Future<void> main() async {
   hoppinCaptureAuthLink();
-  hoppinUsePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   Env.assertConfigured();
 
@@ -48,6 +47,8 @@ Future<void> main() async {
     url: Env.supabaseUrl,
     publishableKey: Env.supabaseAnonKey,
   );
+  // After GoTrue has read `#access_token=` / `?code=` from the bar.
+  hoppinUsePathUrlStrategy();
 
   // ── FCM (Phase 2) ──────────────────────────────────────────────────────────
   //

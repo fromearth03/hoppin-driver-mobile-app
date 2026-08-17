@@ -49,7 +49,7 @@ class _DriverResetLandingScreenState
       hoppinMarkResetConsumed(passwordUpdated: true);
       if (!mounted) return;
       context.go(auth.isSignedIn ? '/' : '/login');
-    } on Exception catch (e) {
+    } on Object catch (e) {
       if (hoppinPasswordAlreadySet(e)) {
         hoppinMarkResetConsumed(passwordUpdated: true);
         if (!mounted) return;

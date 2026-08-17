@@ -33,6 +33,16 @@ void main() {
       );
       expect(afterRouter.tokenHash, 'keep');
     });
+
+    test('treats implicit magic-link hash as a callback', () {
+      hoppinCaptureAuthLink(Uri.parse(
+        'https://driver.hoppin.tech/reset#access_token=aaa&type=magiclink',
+      ));
+      final link = hoppinAuthLinkParams();
+      expect(link.isCallback, isTrue);
+      expect(link.tokenHash, isEmpty);
+      expect(link.type, 'magiclink');
+    });
   });
 
   group('hoppinResetErrorMessage', () {
