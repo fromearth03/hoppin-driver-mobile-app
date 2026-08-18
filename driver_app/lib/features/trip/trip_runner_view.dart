@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hoppin_shared/hoppin_shared.dart';
 import 'package:hoppin_ui/hoppin_ui.dart';
 
@@ -45,6 +46,18 @@ class TripRunnerView extends ConsumerWidget {
           // The nav canvas sits behind everything; the empty headline zone
           // passes pan/zoom straight through to the map.
           Positioned.fill(child: DriverTripMap(rideId: rideId)),
+          Positioned(
+            top: 18,
+            right: 18,
+            child: SafeArea(
+              child: IconButton(
+                tooltip: 'Safety and emergency',
+                icon: const Icon(Icons.sos_outlined),
+                color: colors.error,
+                onPressed: () => context.push('/safety?rideId=$rideId'),
+              ),
+            ),
+          ),
           SafeArea(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
@@ -466,8 +479,7 @@ class _RiderRow extends StatelessWidget {
     final hoppin = context.hoppin;
     final colors = hoppin.colors;
     final r = rider!;
-    final comment =
-        r.recentComments.isNotEmpty ? r.recentComments.first : null;
+    final comment = r.recentComments.isNotEmpty ? r.recentComments.first : null;
     final pill = _ratingPill(r);
 
     return Row(

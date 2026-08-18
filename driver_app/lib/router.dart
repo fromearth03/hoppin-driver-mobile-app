@@ -18,6 +18,7 @@ import 'features/settings/settings_router.dart';
 import 'features/shell/driver_shell.dart';
 import 'features/shell/route_not_found_screen.dart';
 import 'features/support/support_router.dart';
+import 'features/safety/driver_safety_screen.dart';
 import 'features/trip/trip_runner_router.dart';
 
 /// The driver app's navigation graph — the AppRiblet (DOCS/05): the
@@ -89,11 +90,7 @@ final driverRouterProvider = Provider<GoRouter>((ref) {
       StatefulShellRoute.indexedStack(
         builder: (_, _, navigationShell) =>
             DriverShell(navigationShell: navigationShell),
-        branches: [
-          StatefulShellBranch(
-            routes: dashboardRoutes,
-          ),
-        ],
+        branches: [StatefulShellBranch(routes: dashboardRoutes)],
       ),
 
       // ── Top-level pushes OVER the shell ───────────────────────────────
@@ -106,6 +103,11 @@ final driverRouterProvider = Provider<GoRouter>((ref) {
       ...driverChatRoutes,
       ...driverCallRoutes,
       ...supportRoutes,
+      GoRoute(
+        path: '/safety',
+        builder: (_, state) =>
+            DriverSafetyScreen(rideId: state.uri.queryParameters['rideId']),
+      ),
       ...notificationsRoutes,
       ...profileRoutes,
       ...settingsRoutes,

@@ -12,6 +12,7 @@ import '../notifications/driver_push_registration.dart';
 import '../notifications/notification_feed.dart';
 import '../notifications/notifications_router.dart';
 import '../profile/profile_router.dart';
+import '../device/device_checkin.dart';
 
 /// The driver app's persistent chrome: a floating [HopTopBar] (title + bell)
 /// over the branch content, with sign-out in the action slot.
@@ -48,8 +49,9 @@ class DriverShell extends ConsumerWidget {
               alignment: Alignment.topCenter,
               child: HopTopBar(
                 title: 'Hoppin Driver',
-                notificationCount:
-                    ref.watch(unreadDriverNotificationCountProvider),
+                notificationCount: ref.watch(
+                  unreadDriverNotificationCountProvider,
+                ),
                 onBell: () => context.push(kDriverNotificationsRoute),
                 onAvatarTap: () => context.push(kDriverProfileRoute),
                 avatarTooltip: 'My profile',
@@ -77,25 +79,33 @@ class _FcmTokenBinderState extends ConsumerState<_FcmTokenBinder> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(checkInDriverDevice(ref.read(profileRepositoryProvider)));
       final gateway = ref.read(driverFcmGatewayProvider);
       if (gateway is NoopDriverFcmGateway) return;
-      unawaited(registerDriverDeviceToken(
-        gateway: gateway,
-        profiles: ref.read(profileRepositoryProvider),
-        isWeb: kIsWeb,
-        platform: defaultTargetPlatform,
-      ));
+      unawaited(
+        registerDriverDeviceToken(
+          gateway: gateway,
+          profiles: ref.read(profileRepositoryProvider),
+          isWeb: kIsWeb,
+          platform: defaultTargetPlatform,
+        ),
+      );
       unawaited(gateway.initialMessage().then(_wakeFromPush));
       _openedSub = gateway.onMessageOpened().listen(_wakeFromPush);
       _tokenSub = gateway.onTokenRefresh().listen((token) {
-        unawaited(ref.read(profileRepositoryProvider).registerDeviceToken(
-              fcmToken: token,
-              deviceOs: driverContractDeviceOs(
-                    isWeb: kIsWeb,
-                    platform: defaultTargetPlatform,
-                  ) ??
-                  (kIsWeb ? 'web' : 'android'),
-            ));
+        unawaited(
+          ref
+              .read(profileRepositoryProvider)
+              .registerDeviceToken(
+                fcmToken: token,
+                deviceOs:
+                    driverContractDeviceOs(
+                      isWeb: kIsWeb,
+                      platform: defaultTargetPlatform,
+                    ) ??
+                    (kIsWeb ? 'web' : 'android'),
+              ),
+        );
       });
     });
   }
@@ -111,9 +121,11 @@ class _FcmTokenBinderState extends ConsumerState<_FcmTokenBinder> {
       return;
     }
     if (link.startsWith('/') && !link.contains('://')) {
-      context.go(link.startsWith('/trip') || link == '/' || link.startsWith('/chat')
-          ? link
-          : '/');
+      context.go(
+        link.startsWith('/trip') || link == '/' || link.startsWith('/chat')
+            ? link
+            : '/',
+      );
     }
   }
 
@@ -149,4 +161,3 @@ class _ChromeInsets extends StatelessWidget {
     );
   }
 }
-

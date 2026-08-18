@@ -8,10 +8,16 @@ import 'driver_support_categories.dart';
 import 'support_router.dart';
 
 /// My tickets — `GET /me/support-tickets`. BOUND.
-final driverTicketsProvider =
-    FutureProvider.autoDispose<List<SupportTicket>>((ref) {
+final driverTicketsProvider = FutureProvider.autoDispose<List<SupportTicket>>((
+  ref,
+) {
   return ref.watch(supportRepositoryProvider).myTickets();
 });
+
+final driverComplaintTypesProvider =
+    FutureProvider.autoDispose<List<ComplaintTypeOption>>((ref) {
+      return ref.watch(ridesRepositoryProvider).complaintTypes();
+    });
 
 /// The driver's support hub (PS-03) — over three BOUND endpoints.
 ///
@@ -84,47 +90,47 @@ class DriverSupportScreen extends ConsumerWidget {
                 // genuinely be down; this is the branch that says so.
                 child: switch (tickets) {
                   AsyncValue(:final error?) => ListView(
-                      padding: gutter,
-                      children: [
-                        HopBanner.error(
-                          message: friendlyErrorMessage(error),
-                          actionLabel: 'Retry',
-                          onAction: () =>
-                              ref.invalidate(driverTicketsProvider),
-                        ),
-                      ],
-                    ),
-                  AsyncValue(:final value?) => value.isEmpty
-                      ? ListView(
-                          padding: gutter,
-                          children: [
-                            SizedBox(height: hoppin.spacing.xl),
-                            // Honest, and provably so: `GET /me/support-tickets`
-                            // is BOUND, so an empty list is a FACT the server
-                            // told us — not the ignorance the notification
-                            // centre has to disclose. 🔴 DO NOT "unify" this
-                            // with the centre's rung. Two empty lists, two
-                            // completely different truths.
-                            const HopEmptyState(
-                              headline: 'No tickets yet',
-                              supporting:
-                                  'Stuck on a trip, short on pay, or something '
-                                  'not working? Open a ticket and a person '
-                                  'will pick it up.',
-                            ),
-                          ],
-                        )
-                      : ListView.separated(
-                          padding: gutter,
-                          itemCount: value.length,
-                          separatorBuilder: (_, _) =>
-                              SizedBox(height: hoppin.spacing.sm),
-                          itemBuilder: (context, i) =>
-                              _DriverTicketCard(ticket: value[i]),
-                        ),
+                    padding: gutter,
+                    children: [
+                      HopBanner.error(
+                        message: friendlyErrorMessage(error),
+                        actionLabel: 'Retry',
+                        onAction: () => ref.invalidate(driverTicketsProvider),
+                      ),
+                    ],
+                  ),
+                  AsyncValue(:final value?) =>
+                    value.isEmpty
+                        ? ListView(
+                            padding: gutter,
+                            children: [
+                              SizedBox(height: hoppin.spacing.xl),
+                              // Honest, and provably so: `GET /me/support-tickets`
+                              // is BOUND, so an empty list is a FACT the server
+                              // told us — not the ignorance the notification
+                              // centre has to disclose. 🔴 DO NOT "unify" this
+                              // with the centre's rung. Two empty lists, two
+                              // completely different truths.
+                              const HopEmptyState(
+                                headline: 'No tickets yet',
+                                supporting:
+                                    'Stuck on a trip, short on pay, or something '
+                                    'not working? Open a ticket and a person '
+                                    'will pick it up.',
+                              ),
+                            ],
+                          )
+                        : ListView.separated(
+                            padding: gutter,
+                            itemCount: value.length,
+                            separatorBuilder: (_, _) =>
+                                SizedBox(height: hoppin.spacing.sm),
+                            itemBuilder: (context, i) =>
+                                _DriverTicketCard(ticket: value[i]),
+                          ),
                   _ => Center(
-                      child: CircularProgressIndicator(color: colors.accent),
-                    ),
+                    child: CircularProgressIndicator(color: colors.accent),
+                  ),
                 },
               ),
             ),
@@ -235,6 +241,7 @@ class _NewTicketSheet extends ConsumerStatefulWidget {
 class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
   final _subjectCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
+  String? _typeCode;
 
   /// The picked category — ALWAYS a value from the single-source taxonomy.
   late String _category = widget.category;
@@ -276,9 +283,12 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
     });
     try {
       final body = _bodyCtrl.text.trim();
-      final id = await ref.read(supportRepositoryProvider).createTicket(
+      final id = await ref
+          .read(supportRepositoryProvider)
+          .createTicket(
             subject: subject,
             category: _category,
+            typeCode: _typeCode,
             body: body.isEmpty ? null : body,
           );
       ref.invalidate(driverTicketsProvider);
@@ -299,6 +309,7 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
   Widget build(BuildContext context) {
     final hoppin = context.hoppin;
     final colors = hoppin.colors;
+    final types = ref.watch(driverComplaintTypesProvider);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -327,6 +338,16 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
             category: _category,
             onTap: _busy ? null : _pickCategory,
           ),
+          if (types.hasValue && types.requireValue.isNotEmpty) ...[
+            SizedBox(height: hoppin.spacing.sm),
+            _ComplaintTypeField(
+              selected: _typeCode,
+              types: types.requireValue,
+              onChanged: _busy
+                  ? null
+                  : (value) => setState(() => _typeCode = value),
+            ),
+          ],
           SizedBox(height: hoppin.spacing.sm),
           TextField(
             key: const Key('driverSupport.newTicket.body'),
@@ -356,6 +377,29 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
       ),
     );
   }
+}
+
+class _ComplaintTypeField extends StatelessWidget {
+  const _ComplaintTypeField({
+    required this.selected,
+    required this.types,
+    required this.onChanged,
+  });
+  final String? selected;
+  final List<ComplaintTypeOption> types;
+  final ValueChanged<String?>? onChanged;
+
+  @override
+  Widget build(BuildContext context) => DropdownButtonFormField<String>(
+    value: selected,
+    decoration: const InputDecoration(labelText: 'Complaint type'),
+    items: [
+      const DropdownMenuItem<String>(value: null, child: Text('Select a type')),
+      for (final type in types)
+        DropdownMenuItem(value: type.code, child: Text(type.label)),
+    ],
+    onChanged: onChanged,
+  );
 }
 
 /// The category control — a tappable token-styled field, not a raw dropdown.
@@ -433,10 +477,10 @@ class _CategorySheet extends StatelessWidget {
 /// The icon for a support category. Shared with the help hub so the two
 /// surfaces cannot drift.
 IconData driverSupportCategoryIcon(String value) => switch (value) {
-      DriverSupportCategories.trip => Icons.route_outlined,
-      DriverSupportCategories.earnings => Icons.payments_outlined,
-      DriverSupportCategories.documents => Icons.description_outlined,
-      DriverSupportCategories.account => Icons.person_outline,
-      DriverSupportCategories.app => Icons.phone_iphone_outlined,
-      _ => Icons.help_outline,
-    };
+  DriverSupportCategories.trip => Icons.route_outlined,
+  DriverSupportCategories.earnings => Icons.payments_outlined,
+  DriverSupportCategories.documents => Icons.description_outlined,
+  DriverSupportCategories.account => Icons.person_outline,
+  DriverSupportCategories.app => Icons.phone_iphone_outlined,
+  _ => Icons.help_outline,
+};

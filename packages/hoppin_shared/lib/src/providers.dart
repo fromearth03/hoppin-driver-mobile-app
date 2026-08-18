@@ -67,8 +67,9 @@ final imageAuthHeadersProvider = Provider<Map<String, String>>((ref) {
 /// Initial credentials for the login form. Null in production (fields
 /// start empty); the demo composition overrides this with seeded
 /// credentials so sign-in is a single tap.
-final loginPrefillProvider =
-    Provider<({String email, String password})?>((_) => null);
+final loginPrefillProvider = Provider<({String email, String password})?>(
+  (_) => null,
+);
 
 // ── Feature repositories ────────────────────────────────────────────────────
 
@@ -82,6 +83,10 @@ final driverRepositoryProvider = Provider<DriverRepository>((ref) {
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   return ProfileRepository(ref.watch(apiClientProvider));
+});
+
+final profileSnapshotProvider = FutureProvider.autoDispose((ref) {
+  return ref.watch(profileRepositoryProvider).getProfile();
 });
 
 final safetyRepositoryProvider = Provider<SafetyRepository>((ref) {

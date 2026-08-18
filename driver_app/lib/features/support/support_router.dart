@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'help_support_screen.dart';
 import 'support_screen.dart';
 import 'ticket_screen.dart';
+import '../safety/driver_safety_screen.dart';
+
+const String kDriverSafetyRoute = '/safety';
 
 /// The driver's support hub route.
 ///

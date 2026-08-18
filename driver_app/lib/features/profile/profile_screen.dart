@@ -36,6 +36,8 @@ abstract final class DriverProfileKeys {
   /// Route to support.
   static const supportRow = ValueKey('driver-profile-support-row');
 
+  static const safetyRow = ValueKey('driver-profile-safety-row');
+
   /// Ends the session. Genuinely bound — this one really works.
   static const signOutRow = ValueKey('driver-profile-signout-row');
 }
@@ -75,6 +77,16 @@ class DriverProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hoppin = context.hoppin;
     final colors = hoppin.colors;
+    ref.watch(profileSnapshotProvider);
+    ref.listen(profileSnapshotProvider, (_, next) {
+      next.whenData((profile) {
+        final current = ref.read(avatarUploadControllerProvider);
+        if (current is AvatarUploading || current is AvatarUploaded) return;
+        ref
+            .read(avatarUploadControllerProvider.notifier)
+            .seed(profile.avatarUrl.isEmpty ? null : profile.avatarUrl);
+      });
+    });
     final facts = ref.watch(driverPersonalFactsProvider);
     final avatar = ref.watch(avatarUploadControllerProvider);
 
@@ -130,15 +142,17 @@ class DriverProfileScreen extends ConsumerWidget {
                         SizedBox(height: hoppin.spacing.md),
                         Text(
                           name,
-                          style: hoppin.type.section
-                              .copyWith(color: colors.textHi),
+                          style: hoppin.type.section.copyWith(
+                            color: colors.textHi,
+                          ),
                         ),
                         if (email != null) ...[
                           SizedBox(height: hoppin.spacing.xs),
                           Text(
                             email,
-                            style: hoppin.type.meta
-                                .copyWith(color: colors.textMid),
+                            style: hoppin.type.meta.copyWith(
+                              color: colors.textMid,
+                            ),
                           ),
                         ],
                       ],
@@ -198,6 +212,12 @@ class DriverProfileScreen extends ConsumerWidget {
                           icon: Icons.support_agent_outlined,
                           label: 'Help & support',
                           onTap: () => context.go('/support'),
+                        ),
+                        HopListRow(
+                          key: DriverProfileKeys.safetyRow,
+                          icon: Icons.sos_outlined,
+                          label: 'Safety & emergency',
+                          onTap: () => context.push('/safety'),
                         ),
                       ],
                     ),

@@ -4,6 +4,7 @@ import '../api/api_client.dart';
 import '../api/api_exception.dart';
 import '../models/app_status.dart';
 import '../models/cancellation_reason_option.dart';
+import '../models/complaint_type.dart';
 import '../models/driver_position.dart';
 import '../models/fare_estimate.dart';
 import '../models/place_suggestion.dart';
@@ -265,6 +266,16 @@ class RidesRepository {
     } on ApiException {
       return const PlatformContacts();
     }
+  }
+
+  /// `GET /complaint-types` — only active admin-managed complaint types.
+  Future<List<ComplaintTypeOption>> complaintTypes() async {
+    final res = await _api.get<Map<String, dynamic>>('/complaint-types');
+    final rows = (res.data?['complaint_types'] as List<dynamic>?) ?? const [];
+    return rows
+        .map((e) => ComplaintTypeOption.fromJson(e as Map<String, dynamic>))
+        .where((e) => e.code.isNotEmpty && e.label.isNotEmpty)
+        .toList();
   }
 
   /// `GET /vehicle-types` — the bookable vehicle classes with their REAL ids.

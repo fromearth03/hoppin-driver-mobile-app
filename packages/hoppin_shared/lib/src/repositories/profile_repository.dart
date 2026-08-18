@@ -114,9 +114,37 @@ class ProfileRepository {
   Future<void> registerDeviceToken({
     required String fcmToken,
     required String deviceOs,
-  }) =>
-      _api.post<Map<String, dynamic>>(
-        '/me/device-tokens',
-        body: {'fcm_token': fcmToken, 'device_os': deviceOs},
-      );
+  }) => _api.post<Map<String, dynamic>>(
+    '/me/device-tokens',
+    body: {'fcm_token': fcmToken, 'device_os': deviceOs},
+  );
+
+  /// `POST /me/device` — refresh the device fingerprint used by admin safety.
+  Future<void> registerDeviceFingerprint({
+    required String deviceHardwareId,
+    required String operatingSystem,
+    required String appVersion,
+    required bool isEmulator,
+  }) => _api.post<Map<String, dynamic>>(
+    '/me/device',
+    body: {
+      'device_hardware_id': deviceHardwareId,
+      'operating_system': operatingSystem,
+      'app_version': appVersion,
+      'is_emulator': isEmulator,
+    },
+  );
+
+  /// `GET /me/profile` — the canonical identity and current avatar.
+  Future<({String fullName, String phone, String email, String avatarUrl})>
+  getProfile() async {
+    final res = await _api.get<Map<String, dynamic>>('/me/profile');
+    final d = res.data ?? const <String, dynamic>{};
+    return (
+      fullName: (d['full_name'] as String?)?.trim() ?? '',
+      phone: (d['phone_number'] as String?)?.trim() ?? '',
+      email: (d['email'] as String?)?.trim() ?? '',
+      avatarUrl: (d['avatar_url'] as String?)?.trim() ?? '',
+    );
+  }
 }
