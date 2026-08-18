@@ -451,16 +451,22 @@ class RidesRepository {
     }
   }
 
-  /// Capability seam: pre-ride promo-code check for entry-time feedback.
-  /// `:8080` can only validate a promo against an existing ride
-  /// (`POST /rides/:id/promo`), so live answers null — "cannot check" —
-  /// and the booking flow stages the code for the match beat. The demo
-  /// fake answers true/false from the seeded promo table. NOTE:
-  /// implementers of this class's implicit interface must override this
-  /// member too.
-  ///
-  /// SEAM(#46, state: SEAMED, ledgerRef: row:24, feature: Promotions, unavailable: PromoUnavailableState)
-  Future<bool?> isPromoValid(String promoCode) async => null;
+  /// `GET /promotions/validate?code=` — checks a code before a ride exists.
+  /// Fare-dependent rules are repeated by `POST /rides/:id/promo` after the
+  /// booking has a quote. A rejected code returns false; transport failures
+  /// propagate so callers can disclose that it could not be checked.
+  Future<bool?> isPromoValid(String promoCode) async {
+    try {
+      final res = await _api.get<Map<String, dynamic>>(
+        '/promotions/validate',
+        query: {'code': promoCode},
+      );
+      return res.data?['valid'] == true;
+    } on ApiException catch (e) {
+      if (e.statusCode >= 400 && e.statusCode < 500) return false;
+      rethrow;
+    }
+  }
 
   /// The assigned driver's live position for the active [rideId], read from
   /// `GET /rides/:id/driver-location`. The demo fake overrides this from the

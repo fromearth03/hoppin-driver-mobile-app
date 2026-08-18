@@ -55,6 +55,12 @@ final driverStatsProvider =
   }
 });
 
+/// Active advertisements for the driver-facing campaign surface. The server
+/// matches the JWT role to the `drivers` audience; the app never supplies it.
+final driverAdsProvider = FutureProvider.autoDispose<List<Ad>>((ref) {
+  return ref.watch(adsRepositoryProvider).activeAds();
+});
+
 /// Pending ride offers — `GET /drivers/me/offers`. Polls every 1s so the
 /// offer takeover's entrance feels immediate; the world's own pacing
 /// (arrival, decline, re-offer) carries the demo beats.

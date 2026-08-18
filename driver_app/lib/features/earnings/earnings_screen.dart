@@ -8,6 +8,17 @@ import '../../providers.dart';
 import '../comms/url_launcher_gateway.dart';
 import 'earnings_providers.dart';
 
+bool _isInternalCampaignTarget(String? target) {
+  if (target == null || target.isEmpty || !target.startsWith('/')) return false;
+  if (target.contains('://') || target.contains('\\')) return false;
+  return target == '/' ||
+      target.startsWith('/earnings') ||
+      target.startsWith('/profile') ||
+      target.startsWith('/support') ||
+      target.startsWith('/settings') ||
+      target.startsWith('/notifications');
+}
+
 /// The driver's money surface — balances, today, and payout history.
 ///
 /// WHAT IS REAL HERE. Two balances and the payout runs come from
@@ -62,6 +73,8 @@ class DriverEarningsScreen extends ConsumerWidget {
                     hoppin.spacing.xl,
                   ),
                   children: [
+                    const _DriverCampaigns(),
+                    SizedBox(height: hoppin.spacing.lg),
                     _BalancesCard(wallet: wallet),
                     SizedBox(height: hoppin.spacing.lg),
                     const _SectionHeader('Today'),
@@ -88,6 +101,91 @@ class DriverEarningsScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Driver-targeted advertisements are shown on a real authenticated surface,
+/// and engagement is reported once per rendered campaign.
+class _DriverCampaigns extends ConsumerWidget {
+  const _DriverCampaigns();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final campaigns = ref.watch(driverAdsProvider);
+    if (campaigns.hasError) return const SizedBox.shrink();
+    final ads = campaigns.value ?? const <Ad>[];
+    if (ads.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionHeader('Campaigns'),
+        SizedBox(height: context.hoppin.spacing.sm),
+        for (final ad in ads) ...[
+          _DriverCampaignCard(ad: ad, key: ValueKey(ad.id)),
+          SizedBox(height: context.hoppin.spacing.sm),
+        ],
+      ],
+    );
+  }
+}
+
+class _DriverCampaignCard extends ConsumerStatefulWidget {
+  const _DriverCampaignCard({required this.ad, super.key});
+
+  final Ad ad;
+
+  @override
+  ConsumerState<_DriverCampaignCard> createState() => _DriverCampaignCardState();
+}
+
+class _DriverCampaignCardState extends ConsumerState<_DriverCampaignCard> {
+  @override
+  void initState() {
+    super.initState();
+    ref.read(adsRepositoryProvider).reportImpression(widget.ad.id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ad = widget.ad;
+    final target = ad.targetUrl;
+    final canTap = _isInternalCampaignTarget(target);
+    return HopCard(
+      padding: EdgeInsets.zero,
+      onTap: canTap
+          ? () {
+              ref.read(adsRepositoryProvider).reportClick(ad.id);
+              context.go(target!);
+            }
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (ad.imageUrl case final image? when image.isNotEmpty)
+            SizedBox(
+              height: 110,
+              child: Image.network(
+                image,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+            ),
+          Padding(
+            padding: EdgeInsets.all(context.hoppin.spacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(ad.title, style: context.hoppin.type.bodyMedium),
+                if (ad.body case final body? when body.isNotEmpty) ...[
+                  SizedBox(height: context.hoppin.spacing.xs),
+                  Text(body, style: context.hoppin.type.meta),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
