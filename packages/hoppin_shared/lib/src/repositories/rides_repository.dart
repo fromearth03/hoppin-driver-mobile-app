@@ -200,6 +200,19 @@ class RidesRepository {
     }
   }
 
+  /// `GET /drivers/me/promotions` — active driver/both bonus campaigns.
+  /// `[driver]`; the ride-service enforces the driver role on this route.
+  Future<List<PromoOffer>> driverPromotions() async {
+    final res = await _api.get<Map<String, dynamic>>('/drivers/me/promotions');
+    final rows =
+        (res.data?['promotions'] as List<dynamic>?) ?? const <dynamic>[];
+    return rows
+        .whereType<Map<String, dynamic>>()
+        .map(PromoOffer.fromJson)
+        .where((p) => p.promoCode.isNotEmpty)
+        .toList();
+  }
+
   /// `GET /api/v1/app-status?platform=&version=` — the launch gate. `[either]`,
   /// PUBLIC (no JWT — it runs before login).
   ///

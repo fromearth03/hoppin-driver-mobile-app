@@ -114,19 +114,70 @@ class _DriverCampaigns extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final campaigns = ref.watch(driverAdsProvider);
-    if (campaigns.hasError) return const SizedBox.shrink();
+    final promotions = ref.watch(driverPromotionsProvider);
     final ads = campaigns.value ?? const <Ad>[];
-    if (ads.isEmpty) return const SizedBox.shrink();
+    final promos = promotions.value ?? const <PromoOffer>[];
+    if (ads.isEmpty && promos.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _SectionHeader('Campaigns'),
-        SizedBox(height: context.hoppin.spacing.sm),
-        for (final ad in ads) ...[
-          _DriverCampaignCard(ad: ad, key: ValueKey(ad.id)),
+        if (promos.isNotEmpty) ...[
+          const _SectionHeader('Driver promotions'),
           SizedBox(height: context.hoppin.spacing.sm),
+          for (final promo in promos) ...[
+            _DriverPromotionCard(promotion: promo, key: ValueKey(promo.promoCode)),
+            SizedBox(height: context.hoppin.spacing.sm),
+          ],
+        ],
+        if (ads.isNotEmpty) ...[
+          const _SectionHeader('Campaigns'),
+          SizedBox(height: context.hoppin.spacing.sm),
+          for (final ad in ads) ...[
+            _DriverCampaignCard(ad: ad, key: ValueKey(ad.id)),
+            SizedBox(height: context.hoppin.spacing.sm),
+          ],
         ],
       ],
+    );
+  }
+}
+
+class _DriverPromotionCard extends StatelessWidget {
+  const _DriverPromotionCard({required this.promotion, super.key});
+
+  final PromoOffer promotion;
+
+  @override
+  Widget build(BuildContext context) {
+    final bonus = promotion.driverBonusAmount ?? promotion.discountValue;
+    final details = [
+      '£${bonus.toStringAsFixed(2)} bonus per eligible ride',
+      if (promotion.minRideAmount != null)
+        'Trips over £${promotion.minRideAmount!.toStringAsFixed(2)}',
+      if (promotion.expiresAt != null)
+        'Ends ${promotion.expiresAt!.day}/${promotion.expiresAt!.month}/${promotion.expiresAt!.year}',
+    ].join(' · ');
+    return HopCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            promotion.displayTitle,
+            style: context.hoppin.type.bodyMedium,
+          ),
+          if (promotion.description.isNotEmpty) ...[
+            SizedBox(height: context.hoppin.spacing.xs),
+            Text(promotion.description, style: context.hoppin.type.meta),
+          ],
+          SizedBox(height: context.hoppin.spacing.xs),
+          Text(details, style: context.hoppin.type.labelSmall),
+          SizedBox(height: context.hoppin.spacing.sm),
+          Text(
+            'Campaign code: ${promotion.promoCode}',
+            style: context.hoppin.type.labelSmall,
+          ),
+        ],
+      ),
     );
   }
 }

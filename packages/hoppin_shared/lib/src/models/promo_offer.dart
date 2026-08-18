@@ -19,6 +19,7 @@ class PromoOffer {
     required this.discountValue,
     this.maxDiscountCap,
     this.minRideAmount,
+    this.driverBonusAmount,
     this.newUsersOnly = false,
     this.expiresAt,
   });
@@ -32,6 +33,7 @@ class PromoOffer {
       discountValue: (json['discount_value'] as num?)?.toDouble() ?? 0,
       maxDiscountCap: (json['max_discount_cap'] as num?)?.toDouble(),
       minRideAmount: (json['min_ride_amount'] as num?)?.toDouble(),
+      driverBonusAmount: (json['driver_bonus_amount'] as num?)?.toDouble(),
       newUsersOnly: json['new_users_only'] as bool? ?? false,
       expiresAt: _parseDate(json['expires_at']),
     );
@@ -58,6 +60,8 @@ class PromoOffer {
 
   /// Minimum fare the offer applies to, in pounds. Null when there is none.
   final double? minRideAmount;
+  /// Per-ride driver bonus for driver/both campaigns.
+  final double? driverBonusAmount;
   final bool newUsersOnly;
   final DateTime? expiresAt;
 
@@ -85,6 +89,7 @@ class PromoOffer {
         'discount_value': discountValue,
         'max_discount_cap': maxDiscountCap,
         'min_ride_amount': minRideAmount,
+        'driver_bonus_amount': driverBonusAmount,
         'new_users_only': newUsersOnly,
         'expires_at': expiresAt?.toIso8601String(),
       };
@@ -99,10 +104,12 @@ class PromoOffer {
       other.discountValue == discountValue &&
       other.maxDiscountCap == maxDiscountCap &&
       other.minRideAmount == minRideAmount &&
+      other.driverBonusAmount == driverBonusAmount &&
       other.newUsersOnly == newUsersOnly &&
       other.expiresAt == expiresAt;
 
   @override
   int get hashCode => Object.hash(promoCode, title, description, discountType,
-      discountValue, maxDiscountCap, minRideAmount, newUsersOnly, expiresAt);
+      discountValue, maxDiscountCap, minRideAmount, driverBonusAmount,
+      newUsersOnly, expiresAt);
 }

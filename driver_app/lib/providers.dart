@@ -61,6 +61,13 @@ final driverAdsProvider = FutureProvider.autoDispose<List<Ad>>((ref) {
   return ref.watch(adsRepositoryProvider).activeAds();
 });
 
+/// Active driver/both promotion campaigns. The bonus is granted automatically
+/// after eligible rides complete; this feed is informational.
+final driverPromotionsProvider =
+    FutureProvider.autoDispose<List<PromoOffer>>((ref) {
+  return ref.watch(ridesRepositoryProvider).driverPromotions();
+});
+
 /// Pending ride offers — `GET /drivers/me/offers`. Polls every 1s so the
 /// offer takeover's entrance feels immediate; the world's own pacing
 /// (arrival, decline, re-offer) carries the demo beats.

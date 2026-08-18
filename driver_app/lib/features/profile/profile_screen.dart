@@ -24,6 +24,9 @@ abstract final class DriverProfileKeys {
   /// Route to the earnings + payouts surface.
   static const earningsRow = ValueKey('driver-profile-earnings-row');
 
+  /// Route to active driver promotion campaigns.
+  static const promotionsRow = ValueKey('driver-profile-promotions-row');
+
   /// Route to the document wallet (Phase 3 built it).
   static const documentsRow = ValueKey('driver-profile-documents-row');
 
@@ -168,6 +171,13 @@ class DriverProfileScreen extends ConsumerWidget {
                           label: 'Earnings & payouts',
                           divider: true,
                           onTap: () => context.go('/earnings'),
+                        ),
+                        HopListRow(
+                          key: DriverProfileKeys.promotionsRow,
+                          icon: Icons.local_offer_outlined,
+                          label: 'Promotions',
+                          divider: true,
+                          onTap: () => context.go(kDriverPromotionsRoute),
                         ),
                         HopListRow(
                           key: DriverProfileKeys.documentsRow,
