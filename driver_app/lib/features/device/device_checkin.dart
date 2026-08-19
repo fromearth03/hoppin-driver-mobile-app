@@ -22,14 +22,24 @@ Future<void> checkInDriverDevice(ProfileRepository profiles) async {
       emulator = !data.isPhysicalDevice;
     }
     if (id.trim().isEmpty) return;
-    await profiles.registerDeviceFingerprint(
-      deviceHardwareId: id,
-      operatingSystem: os,
-      appVersion: const String.fromEnvironment(
-        'APP_VERSION',
-        defaultValue: '0.1.0+1',
-      ),
-      isEmulator: emulator,
-    );
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        await profiles.registerDeviceFingerprint(
+          deviceHardwareId: id,
+          operatingSystem: os,
+          appVersion: const String.fromEnvironment(
+            'APP_VERSION',
+            defaultValue: '0.1.0+1',
+          ),
+          isEmulator: emulator,
+        );
+        return;
+      } on ApiException catch (error) {
+        if (error.statusCode >= 400 && error.statusCode < 500) return;
+      } catch (_) {
+        // Retry transient network and server failures below.
+      }
+      await Future<void>.delayed(Duration(seconds: attempt + 1));
+    }
   } catch (_) {}
 }

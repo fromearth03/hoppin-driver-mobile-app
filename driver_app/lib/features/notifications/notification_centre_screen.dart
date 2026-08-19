@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hoppin_ui/hoppin_ui.dart';
 
 import 'notification_feed.dart';
+import 'driver_fcm_gateway.dart';
 import 'widgets/notification_history_unavailable.dart';
 
 /// Which slice of the feed the segmented control is showing.
@@ -109,7 +110,10 @@ class _DriverNotificationCentreScreenState
                   // that vanishes the moment one notification arrives is a rung
                   // that disappears exactly when the driver starts believing
                   // the list is complete.
-                  const NotificationHistoryUnavailable(),
+                  NotificationHistoryUnavailable(
+                    pushAvailable: ref.watch(driverFcmGatewayProvider)
+                        is! NoopDriverFcmGateway,
+                  ),
 
                   SizedBox(height: hoppin.spacing.md),
 

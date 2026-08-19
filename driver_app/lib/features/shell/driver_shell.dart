@@ -77,6 +77,19 @@ class _FcmTokenBinderState extends ConsumerState<_FcmTokenBinder> {
   StreamSubscription<DriverPushMessage>? _openedSub;
   StreamSubscription<String>? _tokenSub;
 
+  void _registerPushIfAvailable() {
+    final gateway = ref.read(driverFcmGatewayProvider);
+    if (gateway is NoopDriverFcmGateway) return;
+    unawaited(
+      registerDriverDeviceToken(
+        gateway: gateway,
+        profiles: ref.read(profileRepositoryProvider),
+        isWeb: kIsWeb,
+        platform: defaultTargetPlatform,
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -84,25 +97,20 @@ class _FcmTokenBinderState extends ConsumerState<_FcmTokenBinder> {
     _authSub = auth.onAuthStateChange.listen((_) {
       if (auth.isSignedIn) {
         unawaited(checkInDriverDevice(ref.read(profileRepositoryProvider)));
+        _registerPushIfAvailable();
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (auth.isSignedIn) {
         unawaited(checkInDriverDevice(ref.read(profileRepositoryProvider)));
+        _registerPushIfAvailable();
       }
       final gateway = ref.read(driverFcmGatewayProvider);
       if (gateway is NoopDriverFcmGateway) return;
-      unawaited(
-        registerDriverDeviceToken(
-          gateway: gateway,
-          profiles: ref.read(profileRepositoryProvider),
-          isWeb: kIsWeb,
-          platform: defaultTargetPlatform,
-        ),
-      );
       unawaited(gateway.initialMessage().then(_wakeFromPush));
       _openedSub = gateway.onMessageOpened().listen(_wakeFromPush);
       _tokenSub = gateway.onTokenRefresh().listen((token) {
+        if (!auth.isSignedIn) return;
         unawaited(
           ref
               .read(profileRepositoryProvider)

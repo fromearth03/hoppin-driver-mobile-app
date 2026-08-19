@@ -34,7 +34,10 @@ import 'package:hoppin_ui/hoppin_ui.dart';
 /// Body-swaps to the live read with zero view changes when the endpoint ships.
 class NotificationHistoryUnavailable extends StatelessWidget {
   /// Creates the #68 history disclosure.
-  const NotificationHistoryUnavailable({super.key});
+  const NotificationHistoryUnavailable({super.key, this.pushAvailable = false});
+
+  /// Whether this build has a live Firebase client configured.
+  final bool pushAvailable;
 
   @override
   Widget build(BuildContext context) {
@@ -54,8 +57,7 @@ class NotificationHistoryUnavailable extends StatelessWidget {
                   // Says what we CANNOT DO. It does not say what the driver
                   // does or does not have — we have no way to know that.
                   "Older notifications can't be loaded yet",
-                  style:
-                      hoppin.type.titleSmall.copyWith(color: colors.textHi),
+                  style: hoppin.type.titleSmall.copyWith(color: colors.textHi),
                 ),
               ),
             ],
@@ -72,8 +74,11 @@ class NotificationHistoryUnavailable extends StatelessWidget {
             // correctly-registered token that never receives anything is the
             // honest state of a wired client waiting on a server — it is not a
             // licence to imply pushes are coming.
-            'Push notifications are not being sent by the platform yet, so '
-            'nothing is arriving that way.',
+            pushAvailable
+                ? 'New alerts can arrive here while the app is signed in. '
+                      'Earlier notification history is not available yet.'
+                : 'Push notifications are not configured in this build. '
+                      'Earlier notification history is not available yet.',
             style: hoppin.type.bodySmall.copyWith(color: colors.textMid),
           ),
         ],

@@ -58,16 +58,21 @@ Future<DriverTokenRegistration> registerDriverDeviceToken({
     return DriverTokenRegistration.gatedNoToken;
   }
 
-  try {
-    await profiles.registerDeviceToken(fcmToken: token, deviceOs: deviceOs);
-    return DriverTokenRegistration.registered;
-  } on Exception {
-    // A failed registration is a push the driver will not get. It is NOT a
-    // reason to fail the GO tap: presence, dispatch and the heartbeat are
-    // entirely independent of push, and a driver blocked from working because a
-    // notification token would not register would be an absurd defect.
-    return DriverTokenRegistration.gatedNoToken;
+  for (var attempt = 0; attempt < 3; attempt++) {
+    try {
+      await profiles.registerDeviceToken(fcmToken: token, deviceOs: deviceOs);
+      return DriverTokenRegistration.registered;
+    } on ApiException catch (error) {
+      if (error.statusCode >= 400 && error.statusCode < 500) {
+        return DriverTokenRegistration.gatedNoToken;
+      }
+    } on Exception {
+      // Retry transient network/server failures below. Push registration must
+      // never block presence, dispatch, or the driver's shift.
+    }
+    await Future<void>.delayed(Duration(seconds: attempt + 1));
   }
+  return DriverTokenRegistration.gatedNoToken;
 }
 
 /// The `device_os` value the contract accepts for this platform, or `null` when
