@@ -78,6 +78,7 @@ abstract interface class DriverFcmGateway {
 class DriverPushMessage {
   /// Creates a normalised push.
   const DriverPushMessage({
+    this.notificationId,
     this.title,
     this.body,
     this.rideId,
@@ -87,6 +88,9 @@ class DriverPushMessage {
 
   /// Display headline.
   final String? title;
+
+  /// Durable server id, used to reconcile a foreground push with history.
+  final String? notificationId;
 
   /// Display body.
   final String? body;

@@ -25,7 +25,7 @@ class DriverAppNotification {
     DriverPushMessage m, {
     required String id,
   }) => DriverAppNotification(
-    id: id,
+    id: m.notificationId ?? id,
     title: m.title ?? 'Hoppin',
     body: m.body,
     receivedAt: m.sentAt ?? DateTime.now(),

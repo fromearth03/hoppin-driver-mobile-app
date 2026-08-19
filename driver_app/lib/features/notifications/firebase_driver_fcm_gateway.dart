@@ -46,8 +46,7 @@ class FirebaseDriverFcmGateway implements DriverFcmGateway {
       // never a fabricated "granted".
       return switch (settings.authorizationStatus) {
         AuthorizationStatus.authorized ||
-        AuthorizationStatus.provisional =>
-          DriverFcmPermission.granted,
+        AuthorizationStatus.provisional => DriverFcmPermission.granted,
         AuthorizationStatus.denied => DriverFcmPermission.denied,
         AuthorizationStatus.notDetermined => DriverFcmPermission.notDetermined,
       };
@@ -96,9 +95,12 @@ DriverPushMessage driverPushFromRemote(RemoteMessage m) {
   }
 
   final rideId = str('ride_id') ?? str('rideId');
-  final deepLink = str('deep_link') ?? str('deepLink') ??
+  final deepLink =
+      str('deep_link') ??
+      str('deepLink') ??
       (str('type') == 'ride_offer' ? '/offer' : null);
   return DriverPushMessage(
+    notificationId: str('notification_id') ?? str('notificationId'),
     title: m.notification?.title ?? str('title'),
     body: m.notification?.body ?? str('body'),
     rideId: rideId,
