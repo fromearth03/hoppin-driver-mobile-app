@@ -1,6 +1,29 @@
+import 'dart:math';
+
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hoppin_shared/hoppin_shared.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+Future<String>? _androidInstallationIdFuture;
+
+Future<String> _androidInstallationId() {
+  return _androidInstallationIdFuture ??= _loadAndroidInstallationId();
+}
+
+Future<String> _loadAndroidInstallationId() async {
+  const key = 'hoppin_device_fingerprint_v2';
+  final prefs = await SharedPreferences.getInstance();
+  final existing = prefs.getString(key)?.trim();
+  if (existing != null && existing.isNotEmpty) return existing;
+
+  final random = Random.secure();
+  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+  final id =
+      'android-install-${bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}';
+  await prefs.setString(key, id);
+  return id;
+}
 
 /// Records the app/device identity after authentication. Failure is silent to
 /// the driver because this telemetry must never block dispatch or safety UI.
@@ -12,7 +35,9 @@ Future<void> checkInDriverDevice(ProfileRepository profiles) async {
     var emulator = false;
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       final data = await info.androidInfo;
-      id = data.id.isNotEmpty ? data.id : data.model;
+      // AndroidDeviceInfo.id is Build.ID, shared by every emulator/device on
+      // the same system image. Use a persistent per-install ID instead.
+      id = await _androidInstallationId();
       os = 'android';
       emulator = !data.isPhysicalDevice;
     } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {

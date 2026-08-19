@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:hoppin_ui/hoppin_ui.dart';
 
 import 'notification_feed.dart';
-import 'driver_fcm_gateway.dart';
-import 'widgets/notification_history_unavailable.dart';
 
 /// Which slice of the feed the segmented control is showing.
 enum DriverNotificationFilter {
@@ -27,18 +25,8 @@ enum DriverNotificationFilter {
 ///
 /// 🔴 THREE THINGS IT DELIBERATELY DOES NOT DO.
 ///
-///   * **It never asserts emptiness.** There is no `GET /me/notifications`
-///     (#68), so this client cannot know whether the driver has history. An
-///     empty centre reading "you have no notifications" asserts a fact we do not
-///     have. It discloses ignorance instead — see
-///     [NotificationHistoryUnavailable]. **There is no `HopEmptyState` on this
-///     screen, and there must never be one.**
-///   * **It draws no badge over a dead handler.** Delivery is GATED (#15/#16):
-///     the server cannot send. The unread count is a real count over a real
-///     feed, and over the live gateway it is 0.
-///   * **"Delete all notifications" ships DISABLED**, inside the disclosure.
-///     Deleting a SERVER record we cannot reach would be a lie. "Mark all as
-///     read" stays ENABLED — read-state is purely local and lies about nothing.
+/// Push delivery is additive; history comes from the API. Delete-all remains
+/// disabled until a server retention contract is added.
 class DriverNotificationCentreScreen extends ConsumerStatefulWidget {
   /// Creates the driver notification centre.
   const DriverNotificationCentreScreen({super.key});
@@ -57,12 +45,19 @@ class _DriverNotificationCentreScreenState
     final hoppin = context.hoppin;
     final colors = hoppin.colors;
     final feed = ref.watch(driverNotificationFeedProvider);
+    final history = ref.watch(driverNotificationHistoryProvider);
+    ref.listen(driverNotificationHistoryProvider, (_, next) {
+      next.whenData(
+        (items) => ref
+            .read(driverNotificationFeedProvider.notifier)
+            .mergeHistory(items),
+      );
+    });
 
     final shown = switch (_filter) {
       DriverNotificationFilter.all => feed,
       DriverNotificationFilter.read => feed.where((n) => n.read).toList(),
-      DriverNotificationFilter.unread =>
-        feed.where((n) => !n.read).toList(),
+      DriverNotificationFilter.unread => feed.where((n) => !n.read).toList(),
     };
 
     return Scaffold(
@@ -99,36 +94,28 @@ class _DriverNotificationCentreScreenState
                   hoppin.spacing.xl,
                 ),
                 children: [
+                  if (history.isLoading && feed.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 48),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                   ..._sections(context, shown),
-                  SizedBox(height: hoppin.spacing.md),
-
-                  // 🔴 THE #68 MOUNT SITE (Group C reachability).
-                  //
-                  // Constructed on BOTH branches — the empty feed AND pinned
-                  // below a populated list. Live events do not make OLDER
-                  // history readable, so the disclosure never goes away. A rung
-                  // that vanishes the moment one notification arrives is a rung
-                  // that disappears exactly when the driver starts believing
-                  // the list is complete.
-                  NotificationHistoryUnavailable(
-                    pushAvailable: ref.watch(driverFcmGatewayProvider)
-                        is! NoopDriverFcmGateway,
-                  ),
+                  if (history.hasError && feed.isEmpty)
+                    _HistoryLoadError(
+                      onRetry: () =>
+                          ref.invalidate(driverNotificationHistoryProvider),
+                    ),
 
                   SizedBox(height: hoppin.spacing.md),
 
-                  // Deleting a SERVER record we cannot reach is a lie. The
-                  // control ships (the design is real, and it body-swaps when
-                  // the endpoint lands) but it is inert and disclosed.
+                  // Deletion is intentionally not exposed until a server
+                  // retention contract exists. Read-state is fully wired.
                   const HopButton.secondary(
                     label: 'Delete all notifications',
                     onPressed: null,
                   ),
                   SizedBox(height: hoppin.spacing.sm),
 
-                  // Read-state is purely LOCAL. Nothing is claimed about a
-                  // server, so this one genuinely works — it stays enabled and
-                  // really does what it says.
                   HopButton.secondary(
                     label: 'Mark all as read',
                     onPressed: () => ref
@@ -192,6 +179,27 @@ class _DriverNotificationCentreScreenState
     if (delta == 1) return 'Yesterday';
     return '${day.day}/${day.month}/${day.year}';
   }
+}
+
+class _HistoryLoadError extends StatelessWidget {
+  const _HistoryLoadError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => HopCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Notifications could not be loaded',
+          style: context.hoppin.type.titleSmall,
+        ),
+        SizedBox(height: context.hoppin.spacing.sm),
+        HopButton.secondary(label: 'Retry', onPressed: onRetry),
+      ],
+    ),
+  );
 }
 
 /// The All / Read / Unread segmented control.
@@ -284,8 +292,9 @@ class _NotificationCard extends ConsumerWidget {
                   SizedBox(height: hoppin.spacing.xs),
                   Text(
                     notification.body!,
-                    style:
-                        hoppin.type.bodySmall.copyWith(color: colors.textMid),
+                    style: hoppin.type.bodySmall.copyWith(
+                      color: colors.textMid,
+                    ),
                   ),
                 ],
               ],

@@ -94,6 +94,7 @@ dependencies:
   # and picks a PDF of their insurance (files).
   image_picker: ^1.1.2
   device_info_plus: ^11.5.0
+  shared_preferences: ^2.5.5
   file_picker: ^10.3.4
 
   # Client-side downscale BEFORE the PUT. A modern phone camera routinely

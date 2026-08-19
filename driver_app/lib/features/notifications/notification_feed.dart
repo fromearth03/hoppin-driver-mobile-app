@@ -1,12 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoppin_shared/hoppin_shared.dart';
 
 import 'driver_fcm_gateway.dart';
 
-/// One notification the driver's client actually SAW arrive.
-///
-/// Deliberately NOT called `Notification` (that name is taken by Flutter) and
-/// deliberately not persisted — see [driverNotificationFeedProvider].
+/// One notification shown by the driver client, from history or live delivery.
 @immutable
 class DriverAppNotification {
   /// Creates a session notification.
@@ -24,16 +24,25 @@ class DriverAppNotification {
   factory DriverAppNotification.fromPush(
     DriverPushMessage m, {
     required String id,
-  }) =>
+  }) => DriverAppNotification(
+    id: id,
+    title: m.title ?? 'Hoppin',
+    body: m.body,
+    receivedAt: m.sentAt ?? DateTime.now(),
+    rideId: m.rideId,
+  );
+
+  factory DriverAppNotification.fromHistory(UserNotification n) =>
       DriverAppNotification(
-        id: id,
-        title: m.title ?? 'Hoppin',
-        body: m.body,
-        receivedAt: m.sentAt ?? DateTime.now(),
-        rideId: m.rideId,
+        id: n.id,
+        title: n.title,
+        body: n.body.isEmpty ? null : n.body,
+        receivedAt: n.createdAt,
+        read: n.isRead,
+        rideId: n.rideId,
       );
 
-  /// Session-local identity.
+  /// Server id for history records, or a local id for a live event.
   final String id;
 
   /// The headline shown on the card.
@@ -45,7 +54,8 @@ class DriverAppNotification {
   /// When this client saw it.
   final DateTime receivedAt;
 
-  /// Local read state. There is no server read-state to sync with (#68).
+  /// Read state returned by the server for history, or local state for a live
+  /// event until the next history refresh.
   final bool read;
 
   /// The trip this is about, when it is about one.
@@ -53,13 +63,13 @@ class DriverAppNotification {
 
   /// Returns a copy with [read] flipped.
   DriverAppNotification copyWith({bool? read}) => DriverAppNotification(
-        id: id,
-        title: title,
-        body: body,
-        receivedAt: receivedAt,
-        read: read ?? this.read,
-        rideId: rideId,
-      );
+    id: id,
+    title: title,
+    body: body,
+    receivedAt: receivedAt,
+    read: read ?? this.read,
+    rideId: rideId,
+  );
 }
 
 /// The driver's notification feed.
@@ -80,8 +90,8 @@ class DriverAppNotification {
 /// endpoint ships.
 final driverNotificationFeedProvider =
     NotifierProvider<DriverNotificationFeed, List<DriverAppNotification>>(
-  DriverNotificationFeed.new,
-);
+      DriverNotificationFeed.new,
+    );
 
 /// The unread count that a bell badge would read from.
 ///
@@ -102,10 +112,11 @@ class DriverNotificationFeed extends Notifier<List<DriverAppNotification>> {
   /// A pre-seeded feed. TEST/DEMO composition only — it deliberately does NOT
   /// subscribe to the gateway, so nothing arrives behind a test's back.
   DriverNotificationFeed.seeded(List<DriverAppNotification> seed)
-      : _seed = seed;
+    : _seed = seed;
 
   final List<DriverAppNotification>? _seed;
   int _counter = 0;
+  bool _historyMerged = false;
 
   @override
   List<DriverAppNotification> build() {
@@ -127,14 +138,25 @@ class DriverNotificationFeed extends Notifier<List<DriverAppNotification>> {
     state = <DriverAppNotification>[n, ...state];
   }
 
+  /// Merges durable history without duplicating live records.
+  void mergeHistory(List<UserNotification> history) {
+    if (_historyMerged && history.isEmpty) return;
+    _historyMerged = true;
+    final byId = <String, DriverAppNotification>{
+      for (final item in state) item.id: item,
+    };
+    for (final item in history) {
+      byId[item.id] = DriverAppNotification.fromHistory(item);
+    }
+    final merged = byId.values.toList()
+      ..sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
+    state = List<DriverAppNotification>.unmodifiable(merged);
+  }
+
   /// Records a local driver-lifecycle event — an offer arriving, a document
   /// status change seen on a poll. This is what makes the centre non-empty
   /// today, while delivery is gated.
-  void addLocal({
-    required String title,
-    String? body,
-    String? rideId,
-  }) {
+  void addLocal({required String title, String? body, String? rideId}) {
     state = <DriverAppNotification>[
       DriverAppNotification(
         id: 'local-${_counter++}',
@@ -147,12 +169,22 @@ class DriverNotificationFeed extends Notifier<List<DriverAppNotification>> {
     ];
   }
 
-  /// Marks every session notification read. Purely LOCAL read-state — it costs
-  /// nothing and lies about nothing, so unlike "delete all" it stays enabled.
+  /// Marks every notification read locally and persists the same action.
   void markAllRead() {
     state = <DriverAppNotification>[
       for (final n in state) n.read ? n : n.copyWith(read: true),
     ];
+    try {
+      unawaited(
+        ref
+            .read(notificationsRepositoryProvider)
+            .markAllRead()
+            .catchError((_) {}),
+      );
+    } on Object {
+      // A local/demo composition may not have an authenticated API client.
+      // The local state change still remains useful in that mode.
+    }
   }
 
   /// Removes one session notification by [id]. Session-local only — there is no
@@ -165,3 +197,9 @@ class DriverNotificationFeed extends Notifier<List<DriverAppNotification>> {
     ];
   }
 }
+
+/// Loads the driver's durable notification history when the centre is opened.
+final driverNotificationHistoryProvider =
+    FutureProvider.autoDispose<List<UserNotification>>((ref) {
+      return ref.watch(notificationsRepositoryProvider).list();
+    });

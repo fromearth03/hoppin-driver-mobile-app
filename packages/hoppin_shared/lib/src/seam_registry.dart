@@ -593,31 +593,6 @@ const kSeamRegistry = <SeamEntry>[
     ],
   ),
 
-  // #68 notification history — MISSING_BE: there is no `GET /me/notifications`
-  // (nor mark-read / delete / delete-all). The centre is BUILT and reachable
-  // from the shell bell at `/notifications`, fed by a session-local feed that
-  // is deliberately NOT persisted — a local store pretending to be server
-  // history would be fake-as-live. The rung discloses that older history
-  // cannot be LOADED; it is never an empty-state falsely asserting "you have
-  // no notifications", because asserting emptiness when the truth is ignorance
-  // is precisely the quiet lie this phase exists to delete.
-  // MOUNT SITE: `notification_centre_screen.dart` constructs
-  // `NotificationHistoryUnavailable` (on the empty branch AND pinned beneath a
-  // populated list — live events do not make OLDER history readable).
-  SeamEntry(
-    gap: 68,
-    feature: 'Notification history',
-    ledgerRef: 'row:26',
-    state: SeamState.MISSING_BE,
-    kind: SeamKind.view,
-    disclosures: [
-      SeamDisclosure(
-        app: SeamApp.rider,
-        unavailableWidget: 'NotificationHistoryUnavailable',
-      ),
-    ],
-  ),
-
   // ══ RIDER v2.0 PHASE 12 — gap range #70–#79, SCOPE-TRACE rows 30–34 ═════
   //    Account, profile, support & compliance. ALL FIVE ARE `kind: view`:
   //    Phase 12 adds no repository seams and touches no repository file, so

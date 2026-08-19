@@ -7,6 +7,7 @@ import 'repositories/ads_repository.dart';
 import 'repositories/driver_repository.dart';
 import 'repositories/payments_repository.dart';
 import 'repositories/profile_repository.dart';
+import 'repositories/notifications_repository.dart';
 import 'repositories/rides_repository.dart';
 import 'repositories/safety_repository.dart';
 import 'repositories/support_repository.dart';
@@ -103,4 +104,10 @@ final paymentsRepositoryProvider = Provider<PaymentsRepository>((ref) {
 
 final adsRepositoryProvider = Provider<AdsRepository>((ref) {
   return AdsRepository(ref.watch(apiClientProvider));
+});
+
+final notificationsRepositoryProvider = Provider<NotificationsRepository>((
+  ref,
+) {
+  return NotificationsRepository(ref.watch(apiClientProvider));
 });
