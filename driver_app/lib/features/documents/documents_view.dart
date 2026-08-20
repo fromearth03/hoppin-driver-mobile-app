@@ -220,6 +220,12 @@ class _Wallet extends ConsumerWidget {
               // button is its own lie. `upload_wiring_test.dart` fails if this
               // ever goes back to a no-op.
               onUpload: ref.watch(documentUploadRequestProvider),
+              onAppeal: () {
+                final document = state.documentFor(type);
+                if (document != null) {
+                  interactor.appealDocument(document);
+                }
+              },
             ),
             SizedBox(height: hoppin.spacing.sm),
           ],

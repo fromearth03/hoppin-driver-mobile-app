@@ -85,4 +85,28 @@ class DocumentsInteractor extends Notifier<DocumentsState> {
       );
     }
   }
+
+  /// Opens a real, reviewable support ticket for a document decision. Appeals
+  /// carry the document id and server status so support can act without asking
+  /// the driver to repeat the compliance context.
+  Future<void> appealDocument(DriverDocument document) async {
+    state = state.copyWith(supportPhase: SupportPhase.sending, error: null);
+    try {
+      await ref.read(supportRepositoryProvider).createTicket(
+            subject: 'Appeal document review: ${document.documentType}',
+            category: 'documents',
+            priority: 'high',
+            body: 'I would like to appeal the review decision for document '
+                '${document.documentType} (id: ${document.id}). Current status: '
+                '${document.verificationStatus}. Please review this document '
+                'and tell me what correction or replacement is required.',
+          );
+      state = state.copyWith(supportPhase: SupportPhase.sent);
+    } on Exception catch (e) {
+      state = state.copyWith(
+        supportPhase: SupportPhase.failed,
+        error: friendlyErrorMessage(e),
+      );
+    }
+  }
 }

@@ -32,6 +32,7 @@ class DocumentRow extends StatelessWidget {
     required this.documentType,
     required this.document,
     required this.onUpload,
+    this.onAppeal,
     super.key,
   });
 
@@ -44,6 +45,9 @@ class DocumentRow extends StatelessWidget {
 
   /// Fires the upload chain for [documentType] (LANE B owns the chain).
   final DocumentUploadRequest onUpload;
+
+  /// Opens a compliance appeal ticket for the current document, when supplied.
+  final VoidCallback? onAppeal;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +79,19 @@ class DocumentRow extends StatelessWidget {
                   )
                 else
                   DocumentStatusChip(status: doc.verificationStatus),
+                if (doc != null && onAppeal != null) ...[
+                  SizedBox(height: hoppin.spacing.xs),
+                  TextButton.icon(
+                    onPressed: onAppeal,
+                    icon: const Icon(Icons.gavel_outlined, size: 16),
+                    label: const Text('Appeal this document'),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
