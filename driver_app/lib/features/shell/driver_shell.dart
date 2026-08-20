@@ -77,6 +77,17 @@ class _FcmTokenBinderState extends ConsumerState<_FcmTokenBinder> {
   StreamSubscription<DriverPushMessage>? _openedSub;
   StreamSubscription<String>? _tokenSub;
 
+  void _checkInDevice() {
+    unawaited(
+      checkInDriverDevice(ref.read(profileRepositoryProvider)).then((message) {
+        if (!mounted || message == null) return;
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }),
+    );
+  }
+
   void _registerPushIfAvailable() {
     final gateway = ref.read(driverFcmGatewayProvider);
     if (gateway is NoopDriverFcmGateway) return;
@@ -96,13 +107,13 @@ class _FcmTokenBinderState extends ConsumerState<_FcmTokenBinder> {
     final auth = ref.read(authServiceProvider);
     _authSub = auth.onAuthStateChange.listen((_) {
       if (auth.isSignedIn) {
-        unawaited(checkInDriverDevice(ref.read(profileRepositoryProvider)));
+        _checkInDevice();
         _registerPushIfAvailable();
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (auth.isSignedIn) {
-        unawaited(checkInDriverDevice(ref.read(profileRepositoryProvider)));
+        _checkInDevice();
         _registerPushIfAvailable();
       }
       final gateway = ref.read(driverFcmGatewayProvider);

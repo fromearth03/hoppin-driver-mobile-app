@@ -44,6 +44,16 @@ String friendlyErrorMessage(Object error) {
     if (error.code == 'NETWORK_ERROR') {
       return "Can't reach the server — check your connection and try again.";
     }
+    switch (error.code) {
+      case 'DEVICE_BLACKLISTED':
+        return 'This device has been blocked from using Hoppin. Contact support.';
+      case 'ACCOUNT_SUSPENDED':
+        return 'Your account is suspended and cannot work. Contact support.';
+      case 'ACCOUNT_BANNED':
+        return 'Your account is blocked from working. Contact support.';
+      case 'DEVICE_STATUS_UNAVAILABLE':
+        return 'We could not verify this device right now. Please try again.';
+    }
     return error.message;
   }
   // Defensive: a DioException that escaped ApiClient's unwrapping.

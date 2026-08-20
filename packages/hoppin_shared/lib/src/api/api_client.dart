@@ -47,6 +47,10 @@ class ApiClient {
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          final deviceID = _deviceHardwareId;
+          if (deviceID != null) {
+            options.headers['X-Hoppin-Device-ID'] = deviceID;
+          }
           handler.next(options);
         },
         onError: _onError,
@@ -57,6 +61,13 @@ class ApiClient {
   final Dio _dio;
   late final Dio _claimDio;
   final AuthService _auth;
+  String? _deviceHardwareId;
+
+  /// Sets the per-install identity sent with subsequent authenticated calls.
+  void setDeviceHardwareId(String deviceHardwareId) {
+    final value = deviceHardwareId.trim();
+    _deviceHardwareId = value.isEmpty ? null : value;
+  }
 
   /// The single in-flight refresh. All 401s that arrive while a refresh is
   /// running await THIS future, so N concurrent 401s trigger exactly ONE

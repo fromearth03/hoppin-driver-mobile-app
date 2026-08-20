@@ -25,9 +25,10 @@ Future<String> _loadAndroidInstallationId() async {
   return id;
 }
 
-/// Records the app/device identity after authentication. Failure is silent to
-/// the driver because this telemetry must never block dispatch or safety UI.
-Future<void> checkInDriverDevice(ProfileRepository profiles) async {
+/// Records the app/device identity after authentication. Returns a displayable
+/// message only for a definitive server rejection; transient telemetry errors
+/// stay non-blocking.
+Future<String?> checkInDriverDevice(ProfileRepository profiles) async {
   try {
     final info = DeviceInfoPlugin();
     var id = 'web-${defaultTargetPlatform.name}';
@@ -46,7 +47,7 @@ Future<void> checkInDriverDevice(ProfileRepository profiles) async {
       os = 'ios';
       emulator = !data.isPhysicalDevice;
     }
-    if (id.trim().isEmpty) return;
+    if (id.trim().isEmpty) return null;
     for (var attempt = 0; attempt < 3; attempt++) {
       try {
         await profiles.registerDeviceFingerprint(
@@ -58,13 +59,16 @@ Future<void> checkInDriverDevice(ProfileRepository profiles) async {
           ),
           isEmulator: emulator,
         );
-        return;
+        return null;
       } on ApiException catch (error) {
-        if (error.statusCode >= 400 && error.statusCode < 500) return;
+        if (error.statusCode >= 400 && error.statusCode < 500) {
+          return friendlyErrorMessage(error);
+        }
       } catch (_) {
         // Retry transient network and server failures below.
       }
       await Future<void>.delayed(Duration(seconds: attempt + 1));
     }
   } catch (_) {}
+  return null;
 }

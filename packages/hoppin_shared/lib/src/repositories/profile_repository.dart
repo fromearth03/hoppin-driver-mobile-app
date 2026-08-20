@@ -125,15 +125,18 @@ class ProfileRepository {
     required String operatingSystem,
     required String appVersion,
     required bool isEmulator,
-  }) => _api.post<Map<String, dynamic>>(
-    '/me/device',
-    body: {
-      'device_hardware_id': deviceHardwareId,
-      'operating_system': operatingSystem,
-      'app_version': appVersion,
-      'is_emulator': isEmulator,
-    },
-  );
+  }) {
+    _api.setDeviceHardwareId(deviceHardwareId);
+    return _api.post<Map<String, dynamic>>(
+      '/me/device',
+      body: {
+        'device_hardware_id': deviceHardwareId,
+        'operating_system': operatingSystem,
+        'app_version': appVersion,
+        'is_emulator': isEmulator,
+      },
+    );
+  }
 
   /// `GET /me/profile` — the canonical identity and current avatar.
   Future<({String fullName, String phone, String email, String avatarUrl})>
