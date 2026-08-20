@@ -48,6 +48,7 @@ class _StuckExitSheetState extends ConsumerState<StuckExitSheet> {
       final id = await ref.read(supportRepositoryProvider).createTicket(
             subject: 'Stuck on trip ${widget.rideId}',
             category: 'app',
+            rideId: widget.rideId,
             body: 'Driver reported being stuck on ride ${widget.rideId}.',
           );
       if (!mounted) return;

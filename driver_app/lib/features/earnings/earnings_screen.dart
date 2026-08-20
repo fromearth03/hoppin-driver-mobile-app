@@ -77,6 +77,8 @@ class DriverEarningsScreen extends ConsumerWidget {
                     SizedBox(height: hoppin.spacing.lg),
                     _BalancesCard(wallet: wallet),
                     SizedBox(height: hoppin.spacing.lg),
+                    _PromotionBonusesCard(wallet: wallet),
+                    SizedBox(height: hoppin.spacing.lg),
                     const _SectionHeader('Today'),
                     const _TodayCard(),
                     SizedBox(height: hoppin.spacing.lg),
@@ -101,6 +103,55 @@ class DriverEarningsScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PromotionBonusesCard extends StatelessWidget {
+  const _PromotionBonusesCard({required this.wallet});
+
+  final AsyncValue<DriverWallet?> wallet;
+
+  @override
+  Widget build(BuildContext context) {
+    final hoppin = context.hoppin;
+    final colors = hoppin.colors;
+    final data = wallet.value;
+    if (data == null || data.recentBonuses.isEmpty) {
+      return HopCard(
+        child: Text(
+          'No promotion bonuses yet',
+          style: hoppin.type.body.copyWith(color: colors.textMid),
+        ),
+      );
+    }
+    return HopCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Promotion bonuses', style: hoppin.type.section.copyWith(color: colors.textHi)),
+          SizedBox(height: hoppin.spacing.sm),
+          for (final bonus in data.recentBonuses) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    bonus.promoCode.isEmpty ? bonus.title : '${bonus.title} (${bonus.promoCode})',
+                    style: hoppin.type.body.copyWith(color: colors.textHi),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  '+${formatPence(bonus.amountPence)}',
+                  style: hoppin.type.body.copyWith(color: colors.success),
+                ),
+              ],
+            ),
+            if (bonus != data.recentBonuses.last) SizedBox(height: hoppin.spacing.sm),
+          ],
+        ],
       ),
     );
   }

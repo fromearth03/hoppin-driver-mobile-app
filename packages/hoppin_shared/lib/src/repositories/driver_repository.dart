@@ -51,6 +51,15 @@ typedef DriverPayout = ({
   DateTime? transferredAt,
 });
 
+typedef DriverBonus = ({
+  String id,
+  int amountPence,
+  String title,
+  String promoCode,
+  String? rideId,
+  DateTime? grantedAt,
+});
+
 /// Capability payload: the driver's wallet balances and recent payout runs,
 /// from `GET /drivers/me/wallet`.
 ///
@@ -80,6 +89,7 @@ typedef DriverWallet = ({
   String currency,
   DateTime? lastPayoutAt,
   List<DriverPayout> recentPayouts,
+  List<DriverBonus> recentBonuses,
 });
 
 /// The presigned upload slot `POST /drivers/me/documents/upload-url` issues:
@@ -308,6 +318,22 @@ class DriverRepository {
         )
         .toList(growable: false);
 
+    final bonuses = (body['recent_bonuses'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>()
+        .map<DriverBonus>(
+          (b) => (
+            id: b['id'] as String,
+            amountPence: toPence(b['amount'] as num?),
+            title: b['title'] as String? ?? 'Promotion bonus',
+            promoCode: b['promo_code'] as String? ?? '',
+            rideId: b['ride_id'] as String?,
+            grantedAt: b['granted_at'] == null
+                ? null
+                : DateTime.parse(b['granted_at'] as String),
+          ),
+        )
+        .toList(growable: false);
+
     return (
       availableBalancePence: toPence(body['available_balance'] as num?),
       pendingBalancePence: toPence(body['pending_balance'] as num?),
@@ -316,6 +342,7 @@ class DriverRepository {
           ? null
           : DateTime.parse(body['last_payout_at'] as String),
       recentPayouts: payouts,
+      recentBonuses: bonuses,
     );
   }
 

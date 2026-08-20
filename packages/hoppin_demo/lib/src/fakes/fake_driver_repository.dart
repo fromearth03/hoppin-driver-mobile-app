@@ -197,6 +197,7 @@ class FakeDriverRepository implements DriverRepository {
         currency: 'GBP',
         lastPayoutAt: null,
         recentPayouts: const <DriverPayout>[],
+        recentBonuses: const <DriverBonus>[],
       );
 
   /// The ride THIS driver accepted and is running, else null. The head of

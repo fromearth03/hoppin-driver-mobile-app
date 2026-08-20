@@ -19,6 +19,10 @@ final driverComplaintTypesProvider =
       return ref.watch(ridesRepositoryProvider).complaintTypes();
     });
 
+final driverSupportRidesProvider = FutureProvider.autoDispose<List<Ride>>((ref) {
+  return ref.watch(ridesRepositoryProvider).history(limit: 20);
+});
+
 /// The driver's support hub (PS-03) — over three BOUND endpoints.
 ///
 /// `POST | GET /me/support-tickets`, `GET /me/support-tickets/:id` and
@@ -262,6 +266,7 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
   final _subjectCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
   String? _typeCode;
+  String? _rideId;
 
   /// The picked category — ALWAYS a value from the single-source taxonomy.
   late String _category = widget.category;
@@ -309,6 +314,7 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
             subject: subject,
             category: _category,
             typeCode: _typeCode,
+            rideId: _rideId,
             body: body.isEmpty ? null : body,
           );
       ref.invalidate(driverTicketsProvider);
@@ -330,6 +336,7 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
     final hoppin = context.hoppin;
     final colors = hoppin.colors;
     final types = ref.watch(driverComplaintTypesProvider);
+    final rides = ref.watch(driverSupportRidesProvider).value ?? const <Ride>[];
 
     return Padding(
       padding: EdgeInsets.only(
@@ -368,6 +375,16 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
                   : (value) => setState(() => _typeCode = value),
             ),
           ],
+          if (rides.isNotEmpty) ...[
+            SizedBox(height: hoppin.spacing.sm),
+            _RideAttachmentField(
+              selected: _rideId,
+              rides: rides,
+              onChanged: _busy
+                  ? null
+                  : (value) => setState(() => _rideId = value),
+            ),
+          ],
           SizedBox(height: hoppin.spacing.sm),
           TextField(
             key: const Key('driverSupport.newTicket.body'),
@@ -397,6 +414,39 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
       ),
     );
   }
+}
+
+class _RideAttachmentField extends StatelessWidget {
+  const _RideAttachmentField({
+    required this.selected,
+    required this.rides,
+    required this.onChanged,
+  });
+
+  final String? selected;
+  final List<Ride> rides;
+  final ValueChanged<String?>? onChanged;
+
+  @override
+  Widget build(BuildContext context) => DropdownButtonFormField<String>(
+    value: selected,
+    decoration: const InputDecoration(labelText: 'Attach a ride (optional)'),
+    items: [
+      const DropdownMenuItem<String>(
+        value: null,
+        child: Text('No ride attached'),
+      ),
+      for (final ride in rides.take(20))
+        DropdownMenuItem(
+          value: ride.id,
+          child: Text(
+            '${ride.status} · ${ride.id.substring(0, 8)}',
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+    ],
+    onChanged: onChanged,
+  );
 }
 
 class _ComplaintTypeField extends StatelessWidget {
