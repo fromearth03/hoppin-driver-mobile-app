@@ -152,6 +152,7 @@ class _AmbientHeadline extends StatelessWidget {
             : 'Waiting for ${rider.name.split(' ').first}',
       TripPhase.inTrip => 'Trip in progress',
       TripPhase.completed => 'Trip complete',
+      TripPhase.cancelled => 'Trip cancelled',
     };
   }
 
@@ -197,7 +198,7 @@ class _RunnerCard extends ConsumerWidget {
   int get _activeStage => switch (state.phase) {
     TripPhase.headingToPickup || TripPhase.arrivedAtPickup => 0,
     TripPhase.inTrip => 1,
-    TripPhase.completed => 2,
+    TripPhase.completed || TripPhase.cancelled => 2,
   };
 
   /// The ETA rung: seconds-to-pickup from telemetry, floored at the calm
@@ -276,7 +277,8 @@ class _RunnerCard extends ConsumerWidget {
             // 🔴 ONE TAP EACH, AND THEY STAY LIVE IN MOTION. Not wrapped in the
             // typing lock — a cradled tap is legal and it is how the job gets
             // done. This is exactly what 15-00's gate side B protects.
-            if (state.phase != TripPhase.completed) ...[
+            if (state.phase != TripPhase.completed &&
+                state.phase != TripPhase.cancelled) ...[
               SizedBox(height: hoppin.spacing.md),
               TripCommsRow(rideId: rideId),
             ],
@@ -347,6 +349,14 @@ class _RunnerCard extends ConsumerWidget {
         child: HopButton.primary(
           label: 'Done',
           onPressed: () => notifier.dismiss(),
+        ),
+      ),
+      TripPhase.cancelled => Center(
+        key: const ValueKey('action-cancelled'),
+        child: Text(
+          'This ride was cancelled.',
+          textAlign: TextAlign.center,
+          style: hoppin.type.body.copyWith(color: colors.textMid),
         ),
       ),
     };

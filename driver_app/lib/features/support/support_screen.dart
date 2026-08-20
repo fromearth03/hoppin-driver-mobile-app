@@ -141,11 +141,27 @@ class DriverSupportScreen extends ConsumerWidget {
                 hoppin.spacing.gutter,
                 hoppin.spacing.md,
               ),
-              child: HopButton.primary(
-                label: 'New ticket',
-                icon: Icons.add,
-                expand: true,
-                onPressed: () => showDriverNewTicketSheet(context),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  HopButton.primary(
+                    label: 'File a complaint',
+                    icon: Icons.add,
+                    expand: true,
+                    onPressed: () => showDriverNewTicketSheet(
+                      context,
+                      complaint: true,
+                    ),
+                  ),
+                  SizedBox(height: hoppin.spacing.sm),
+                  HopButton.secondary(
+                    label: 'New support ticket',
+                    icon: Icons.support_agent_outlined,
+                    expand: true,
+                    onPressed: () => showDriverNewTicketSheet(context),
+                  ),
+                ],
               ),
             ),
           ],
@@ -162,6 +178,7 @@ class DriverSupportScreen extends ConsumerWidget {
 void showDriverNewTicketSheet(
   BuildContext context, {
   String category = DriverSupportCategories.general,
+  bool complaint = false,
 }) {
   final colors = context.hoppin.colors;
   showModalBottomSheet<void>(
@@ -171,7 +188,9 @@ void showDriverNewTicketSheet(
     elevation: 0,
     backgroundColor: Colors.transparent,
     barrierColor: colors.scrim,
-    builder: (_) => HopSheet(child: _NewTicketSheet(category: category)),
+    builder: (_) => HopSheet(
+      child: _NewTicketSheet(category: category, complaint: complaint),
+    ),
   );
 }
 
@@ -230,9 +249,10 @@ class _DriverTicketCard extends StatelessWidget {
 }
 
 class _NewTicketSheet extends ConsumerStatefulWidget {
-  const _NewTicketSheet({required this.category});
+  const _NewTicketSheet({required this.category, this.complaint = false});
 
   final String category;
+  final bool complaint;
 
   @override
   ConsumerState<_NewTicketSheet> createState() => _NewTicketSheetState();
@@ -320,7 +340,7 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'New support ticket',
+            widget.complaint ? 'File a complaint' : 'New support ticket',
             style: hoppin.type.section.copyWith(color: colors.textHi),
           ),
           SizedBox(height: hoppin.spacing.md),
@@ -368,7 +388,7 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
           SizedBox(height: hoppin.spacing.md),
           HopButton.primary(
             key: const Key('driverSupport.newTicket.submit'),
-            label: 'Open ticket',
+            label: widget.complaint ? 'Submit complaint' : 'Open ticket',
             expand: true,
             busy: _busy,
             onPressed: _busy ? null : _submit,

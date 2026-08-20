@@ -18,7 +18,11 @@ enum TripPhase {
 
   /// Trip complete — the earned moment takes over.
   completed,
-}
+
+  /// The rider or platform cancelled the trip. This is terminal and exits
+  /// through the runner router without showing a stale pickup action.
+  cancelled,
+} 
 
 /// Immutable snapshot of everything the trip runner view renders. One class
 /// + a phase enum, hand-rolled in the DashboardState style (riblet

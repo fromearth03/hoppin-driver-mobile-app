@@ -234,13 +234,13 @@ class DriverRepository {
   /// at a no-show is no longer trapped in a live trip.
   Future<void> cancelRide({
     required String rideId,
-    required String reasonId,
+    String? reasonId,
     required String driverId,
   }) =>
       _api.patch<Map<String, dynamic>>(
         '/rides/$rideId/cancel',
         body: {
-          'reason_id': reasonId,
+          'reason_id': ?reasonId,
           'canceled_by_user_id': driverId,
           'actor_type': 'driver',
         },

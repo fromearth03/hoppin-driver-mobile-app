@@ -107,16 +107,15 @@ class _StuckExitSheetState extends ConsumerState<StuckExitSheet> {
     try {
       final repo = ref.read(driverRepositoryProvider);
       final reasons = await repo.driverCancellationReasons();
-      if (reasons.isEmpty) {
-        throw Exception('No cancellation reason is available right now.');
-      }
-      final reason = reasons.firstWhere(
-        (r) => !r.appliesPenaltyFee,
-        orElse: () => reasons.first,
-      );
+      final reason = reasons.isEmpty
+          ? null
+          : reasons.firstWhere(
+              (r) => !r.appliesPenaltyFee,
+              orElse: () => reasons.first,
+            );
       await repo.cancelRide(
         rideId: widget.rideId,
-        reasonId: reason.id,
+        reasonId: reason?.id,
         driverId: driverId,
       );
       if (!mounted) return;

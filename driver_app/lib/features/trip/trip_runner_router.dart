@@ -65,6 +65,12 @@ class TripRunnerRouterListener extends ConsumerWidget {
         return;
       }
 
+      if (next.phase == TripPhase.cancelled &&
+          previous?.phase != TripPhase.cancelled) {
+        context.go('/');
+        return;
+      }
+
       final completed = next.phase == TripPhase.completed;
       final wasCompleted =
           previous != null && previous.phase == TripPhase.completed;

@@ -82,12 +82,17 @@ class TripRunnerInteractor extends Notifier<TripRunnerState> {
   }
 
   void _onRide(Ride ride) {
+    if (ride.status == RideStatus.cancelled) {
+      _closeOut();
+      state = state.copyWith(phase: TripPhase.cancelled, busy: false);
+      return;
+    }
     final mapped = switch (ride.status) {
       RideStatus.accepted => TripPhase.headingToPickup,
       RideStatus.arriving => TripPhase.arrivedAtPickup,
       RideStatus.started => TripPhase.inTrip,
       RideStatus.completed => TripPhase.completed,
-      // unknown / cancelled / pre-accept rows: hold the current phase —
+      // unknown / pre-accept rows: hold the current phase —
       // the card never blanks or regresses mid-demo.
       _ => null,
     };
