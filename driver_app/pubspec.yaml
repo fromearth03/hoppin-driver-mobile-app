@@ -110,6 +110,11 @@ dependencies:
   # import this, behind the UrlLauncher seam (same isolation as geolocator).
   url_launcher: ^6.3.1
 
+# jni 1.0.1 is retracted and calls the removed Kotlin extension during AGP 9
+# configuration. 1.0.3 keeps the same Dart API and removes that obsolete block.
+dependency_overrides:
+  jni: ^1.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
