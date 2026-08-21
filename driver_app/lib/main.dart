@@ -51,6 +51,10 @@ Future<void> main() async {
     // callback on web while retaining PKCE for native authentication.
     authOptions: FlutterAuthClientOptions(
       authFlowType: kIsWeb ? AuthFlowType.implicit : AuthFlowType.pkce,
+      // The reset screen deliberately exchanges links on submit. Automatic
+      // URI handling would try to exchange an old PKCE `code` on startup and
+      // surface the browser-local verifier error before the user can act.
+      detectSessionInUri: kIsWeb ? false : true,
     ),
   );
   // After GoTrue has read `#access_token=` / `?code=` from the bar.

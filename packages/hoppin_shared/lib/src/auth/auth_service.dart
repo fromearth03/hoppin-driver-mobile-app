@@ -391,6 +391,7 @@ String hoppinResetErrorMessage(Object error) {
     return 'That password is too weak or too common. Use letters, numbers and symbols — not 12345678.';
   }
   if (m.contains('no reset session') ||
+      m.contains('code verifier could not be found') ||
       m.contains('expired') ||
       m.contains('invalid') ||
       m.contains('otp') ||
