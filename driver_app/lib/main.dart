@@ -46,6 +46,12 @@ Future<void> main() async {
   await Supabase.initialize(
     url: Env.supabaseUrl,
     publishableKey: Env.supabaseAnonKey,
+    // Web reset links must work even when the email is opened in another tab
+    // or browser. PKCE's verifier is browser-local, so use an implicit token
+    // callback on web while retaining PKCE for native authentication.
+    authOptions: FlutterAuthClientOptions(
+      authFlowType: kIsWeb ? AuthFlowType.implicit : AuthFlowType.pkce,
+    ),
   );
   // After GoTrue has read `#access_token=` / `?code=` from the bar.
   hoppinUsePathUrlStrategy();
