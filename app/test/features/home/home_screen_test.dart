@@ -11,9 +11,9 @@ import 'package:hoppin_driver/features/home/logic/home_controller.dart';
 import 'package:hoppin_driver/features/home/ui/home_screen.dart';
 import 'package:mocktail/mocktail.dart';
 
-class _MockStatusRepo extends Mock implements DriverStatusRepository {}
+class MockStatusRepo extends Mock implements DriverStatusRepository {}
 
-class _MockOfferRepo extends Mock implements OfferRepository {}
+class MockOfferRepo extends Mock implements OfferRepository {}
 
 DriverStatus buildStatus({
   Presence presence = Presence.offline,
@@ -28,7 +28,7 @@ DriverStatus buildStatus({
       blockingDocumentTypes: docs,
     );
 
-Widget wrap(_MockStatusRepo s, _MockOfferRepo o) => ProviderScope(
+Widget wrap(MockStatusRepo s, MockOfferRepo o) => ProviderScope(
       overrides: [
         driverStatusRepositoryProvider.overrideWithValue(s),
         offerRepositoryProvider.overrideWithValue(o),
@@ -37,12 +37,12 @@ Widget wrap(_MockStatusRepo s, _MockOfferRepo o) => ProviderScope(
     );
 
 void main() {
-  late _MockStatusRepo status;
-  late _MockOfferRepo offers;
+  late MockStatusRepo status;
+  late MockOfferRepo offers;
 
   setUp(() {
-    status = _MockStatusRepo();
-    offers = _MockOfferRepo();
+    status = MockStatusRepo();
+    offers = MockOfferRepo();
     when(() => offers.offers()).thenAnswer((_) async => const Ok([]));
   });
 

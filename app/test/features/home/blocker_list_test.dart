@@ -78,8 +78,8 @@ void main() {
   });
 
   testWidgets('renders nothing when the driver is not blocked', (tester) async {
-    await tester.pumpWidget(wrap(BlockerList(
-        status: const DriverStatus(
+    await tester.pumpWidget(wrap(const BlockerList(
+        status: DriverStatus(
             presence: Presence.online,
             staleAfterSeconds: 90,
             dispatchable: true))));
