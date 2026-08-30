@@ -143,7 +143,7 @@ void main() {
 
     test('asks the summary endpoint for the chosen period', () async {
       when(() => adapter.fetch(any(), any(), any())).thenAnswer(
-          (_) async => body('{"total_pence":24000,"trip_count":12}', 200));
+          (_) async => body('{"net_pence":24000,"trips":12}', 200));
 
       await repo.summary('week');
 

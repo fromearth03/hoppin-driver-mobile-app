@@ -22,7 +22,7 @@ void main() {
   setUp(() {
     repo = MockEarningsRepo();
     when(() => repo.summary(any())).thenAnswer((_) async =>
-        const Ok(EarningsSummary(total: Pence(24000), tripCount: 12)));
+        const Ok(EarningsSummary(net: Pence(24000), tripCount: 12)));
     when(() => repo.wallet()).thenAnswer((_) async => const Ok(Wallet(
         availableBalance: Pence(21050), pendingBalance: Pence(4200))));
   });

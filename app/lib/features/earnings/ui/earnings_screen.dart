@@ -104,10 +104,25 @@ class EarningsScreen extends ConsumerWidget {
           children: [
             const Text('You earned', style: AppText.caption),
             const SizedBox(height: 4),
-            Text(state.summary?.total.format() ?? '—', style: AppText.money),
+            Text(state.summary?.net.format() ?? '—', style: AppText.money),
             const SizedBox(height: 4),
             Text('${state.summary?.tripCount ?? 0} trips',
                 style: AppText.caption),
+            // The headline is take-home. Without the deductions beside it a
+            // driver cannot tell a quiet week from a week eaten by charges,
+            // so show what came off - and only what actually applied.
+            ...?state.summary?.deductions.map(
+              (line) => Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(line.label, style: AppText.caption),
+                    Text('-${line.amount.format()}', style: AppText.caption),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       );
