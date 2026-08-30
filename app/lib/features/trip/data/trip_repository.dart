@@ -1,0 +1,53 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/api/api_client.dart';
+import '../../../core/result.dart';
+import 'models/ride.dart';
+import 'models/waiting_policy.dart';
+
+class TripRepository {
+  final ApiClient _api;
+  TripRepository(this._api);
+
+  Future<Result<Ride>> ride(String rideId) =>
+      _rideCall(() => _api.get<Map<String, dynamic>>('/rides/$rideId'));
+
+  Future<Result<Ride>> arrive(String rideId) =>
+      _rideCall(() => _api.patch<Map<String, dynamic>>('/rides/$rideId/arrive'));
+
+  Future<Result<Ride>> start(String rideId) =>
+      _rideCall(() => _api.patch<Map<String, dynamic>>('/rides/$rideId/start'));
+
+  Future<Result<Ride>> complete(String rideId) => _rideCall(
+      () => _api.patch<Map<String, dynamic>>('/rides/$rideId/complete'));
+
+  /// `reasonId` comes from the picker, which only ever offers entries the
+  /// server marked `pickable: true`.
+  Future<Result<Ride>> cancel(String rideId, {required String reasonId}) =>
+      _rideCall(() => _api.patch<Map<String, dynamic>>('/rides/$rideId/cancel',
+          body: {'reason_id': reasonId}));
+
+  Future<Result<WaitingPolicy>> waitingPolicy(String rideId) async {
+    final r =
+        await _api.get<Map<String, dynamic>>('/rides/$rideId/waiting-policy');
+    return r.when(
+      ok: (json) => Ok(WaitingPolicy.fromJson(json)),
+      err: (e) => Err(e),
+    );
+  }
+
+  Future<Result<Map<String, dynamic>>> riderContext(String rideId) =>
+      _api.get<Map<String, dynamic>>('/rides/$rideId/rider-context');
+
+  Future<Result<Ride>> _rideCall(
+      Future<Result<Map<String, dynamic>>> Function() call) async {
+    final r = await call();
+    return r.when(
+      ok: (json) => Ok(Ride.fromJson(json)),
+      err: (e) => Err(e),
+    );
+  }
+}
+
+final tripRepositoryProvider = Provider<TripRepository>(
+    (ref) => TripRepository(ref.watch(apiClientProvider)));

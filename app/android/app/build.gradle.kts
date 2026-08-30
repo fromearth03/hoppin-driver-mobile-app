@@ -23,6 +23,12 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Passed in per build (-PMAPS_API_KEY=… or gradle.properties outside
+        // the repo). Restricted by application id and SHA-1, and to the Maps
+        // SDK. Empty by default so a key is never committed here.
+        manifestPlaceholders["MAPS_API_KEY"] =
+            (project.findProperty("MAPS_API_KEY") as String?) ?: ""
     }
 
     buildTypes {

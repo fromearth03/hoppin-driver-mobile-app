@@ -8,7 +8,14 @@ import 'features/auth/logic/auth_controller.dart';
 import 'features/auth/ui/forgot_password_screen.dart';
 import 'features/auth/ui/reset_password_screen.dart';
 import 'features/auth/ui/sign_in_screen.dart';
+import 'features/documents/ui/documents_screen.dart';
+import 'features/earnings/ui/earnings_screen.dart';
 import 'features/home/ui/home_screen.dart';
+import 'features/statement/ui/statement_screen.dart';
+import 'features/stats/ui/stats_screen.dart';
+import 'features/trip/ui/chat_screen.dart';
+import 'features/trip/ui/trip_screen.dart';
+import 'features/trips/ui/trips_screen.dart';
 import 'shared/nav/app_shell.dart';
 
 /// Placeholder bodies. Each is replaced by its real screen in a later batch.
@@ -61,29 +68,24 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: Routes.home, builder: (_, __) => const HomeScreen()),
           GoRoute(
               path: Routes.earnings,
-              builder: (_, __) => _placeholder('Earnings')),
+              builder: (_, __) => const EarningsScreen()),
+          GoRoute(
+              path: Routes.statement,
+              builder: (_, __) => const StatementScreen()),
           GoRoute(
               path: Routes.documents,
-              builder: (_, __) => _placeholder('Documents')),
-          GoRoute(
-              path: Routes.stats, builder: (_, __) => _placeholder('Stats')),
-          GoRoute(
-              path: Routes.trips, builder: (_, __) => _placeholder('Trips')),
-          // Accepting an offer lands here. The real trip screen is Batch 4;
-          // until then this states what happened rather than dropping the
-          // driver on GoRouter's error page after they took a job.
+              builder: (_, __) => const DocumentsScreen()),
+          GoRoute(path: Routes.stats, builder: (_, __) => const StatsScreen()),
+          GoRoute(path: Routes.trips, builder: (_, __) => const TripsScreen()),
           GoRoute(
             path: '${Routes.trip}/:rideId',
-            builder: (_, state) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Text(
-                  'Ride ${state.pathParameters['rideId']} accepted.\n\n'
-                  'The trip screen is not built yet.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
+            builder: (_, state) =>
+                TripScreen(rideId: state.pathParameters['rideId']!),
+          ),
+          GoRoute(
+            path: '${Routes.trip}/:rideId/chat',
+            builder: (_, state) =>
+                ChatScreen(rideId: state.pathParameters['rideId']!),
           ),
           GoRoute(
               path: Routes.personalInfo,
