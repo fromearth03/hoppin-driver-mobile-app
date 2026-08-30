@@ -1,0 +1,8 @@
+# Change Log
+> Auto-maintained by session-exit hook. Last updated: 2026-08-30
+
+- **2026-08-30 15:05** [docs] — Changed: `005-backend-ask-3-driver-app.md`, `superpowers\specs\2026-08-30-driver-app-phase1-design.md`. ## Where we are **Process:** brainstorming → **spec (written, needs revision)** → implementation plan → code ``` ✅ Backend contract 23 asks, 22 closed, verified in code + deployed ✅ Figma audit 39 scr
+- **2026-08-30 15:02** [docs] — Changed: `005-backend-ask-3-driver-app.md`, `superpowers\specs\2026-08-30-driver-app-phase1-design.md`. All five verified deployed. Every claim in both docs checks out. ## Round 4 + 5 review — A13 answered, and it changes the spec **A13 resolved: the ledger is authoritative.** They didn't just rule on i
+- **2026-08-27 19:11** [docs] — Changed: `001-figma-to-backend-map.md`, `002-backend-asks-driver-app.md`, `003-figma-spec-driver-app.md`, `004-backend-ask-2-driver-app.md`. Yes — three more, and one is serious. ## 🔴 A21 — a rejected document never tells the driver why `DriverDocumentRow` returns `{id, document_type, verification_status, uploaded_at, expires_at}`. When s
+- **2026-08-27 19:01** [docs] — Changed: `001-figma-to-backend-map.md`, `002-backend-asks-driver-app.md`, `003-figma-spec-driver-app.md`, `004-backend-ask-2-driver-app.md`. Two updates to Ask-2. ## A12 trimmed Removed the rate-limiting question. Now states plainly: *"Rate limiting is understood to be out of scope for v1 — we are not asking for it, and we will not build 4
+- **2026-08-27 13:54** [docs] — Changed: `001-figma-to-backend-map.md`. Doc corrected. I was wrong on the debt — it's built, and it's the biggest thing I missed. ## What I found on driver debt You were right. It's not a missing concept at all — it's a proper **double-entr
