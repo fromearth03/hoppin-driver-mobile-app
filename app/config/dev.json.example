@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy this file to dev.json and fill in the values. dev.json is gitignored and must never be committed. Run with: flutter run --dart-define-from-file=config/dev.json",
+
+  "SUPABASE_URL": "https://buoreyyxpzvwnxvzpfea.supabase.co",
+  "SUPABASE_ANON_KEY": "paste the anon / publishable key here",
+
+  "_maps_note": "Maps keys are NOT read from this file. Android reads a Gradle property (see android/gradle.properties), iOS reads Info.plist. Both are gitignored.",
+
+  "API_BASE_URL": "https://api.hoppin.tech/api/v1"
+}

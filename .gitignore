@@ -7,3 +7,11 @@ app/android/.gradle/
 *.iml
 .idea/
 .DS_Store
+
+# Secrets — never commit. Copy the .example files and fill them in.
+app/config/*.json
+!app/config/*.example
+app/android/gradle.properties
+app/android/app/google-services.json
+app/ios/Runner/GoogleService-Info.plist
+app/ios/Flutter/Secrets.xcconfig
