@@ -140,7 +140,7 @@ void main() {
       when(() => adapter.fetch(any(), any(), any())).thenAnswer((_) async =>
           body('{"code":"STORAGE_DISABLED","error":"bucket down"}', 503));
 
-      final r = await repo.uploadUrl('vehicle_insurance');
+      final r = await repo.uploadUrl('vehicle_insurance', 'image/jpeg');
 
       expect(r.errorOrNull!.code, 'STORAGE_DISABLED');
       expect(r.errorOrNull!.isRetryable, isTrue);

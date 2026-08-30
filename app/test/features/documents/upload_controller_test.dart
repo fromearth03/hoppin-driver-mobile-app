@@ -36,15 +36,15 @@ void main() {
   final bytes = Uint8List.fromList([1, 2, 3]);
 
   test('presigns, uploads, then confirms — in that order', () async {
-    when(() => repo.uploadUrl(any())).thenAnswer((_) async => const Ok({
+    when(() => repo.uploadUrl(any(), any())).thenAnswer((_) async => const Ok({
           'upload_url': 'https://storage/put',
-          'file_url': 'https://storage/file.jpg',
+          'key': 'driver-docs/u1/vehicle_insurance/abc.jpg',
         }));
     when(() => uploader.put(any(), any(), any()))
         .thenAnswer((_) async => const Ok(null));
     when(() => repo.confirm(
             documentType: any(named: 'documentType'),
-            fileUrl: any(named: 'fileUrl'),
+            key: any(named: 'key'),
             expiresAt: any(named: 'expiresAt')))
         .thenAnswer((_) async => const Ok(DriverDocument(
             id: 'd1',
@@ -58,19 +58,19 @@ void main() {
 
     expect(r.isOk, isTrue);
     verifyInOrder([
-      () => repo.uploadUrl('vehicle_insurance'),
+      () => repo.uploadUrl('vehicle_insurance', 'image/jpeg'),
       () => uploader.put('https://storage/put', bytes, any()),
       () => repo.confirm(
           documentType: 'vehicle_insurance',
-          fileUrl: 'https://storage/file.jpg',
+          key: 'driver-docs/u1/vehicle_insurance/abc.jpg',
           expiresAt: any(named: 'expiresAt')),
     ]);
   });
 
   test('does not confirm when the file never reached storage', () async {
-    when(() => repo.uploadUrl(any())).thenAnswer((_) async => const Ok({
+    when(() => repo.uploadUrl(any(), any())).thenAnswer((_) async => const Ok({
           'upload_url': 'https://storage/put',
-          'file_url': 'https://storage/file.jpg',
+          'key': 'driver-docs/u1/vehicle_insurance/abc.jpg',
         }));
     when(() => uploader.put(any(), any(), any()))
         .thenAnswer((_) async => Err(ApiException('INTERNAL', 'network', 0)));
@@ -85,12 +85,12 @@ void main() {
     // compliant with nothing uploaded.
     verifyNever(() => repo.confirm(
         documentType: any(named: 'documentType'),
-        fileUrl: any(named: 'fileUrl'),
+        key: any(named: 'key'),
         expiresAt: any(named: 'expiresAt')));
   });
 
   test('surfaces STORAGE_DISABLED without attempting an upload', () async {
-    when(() => repo.uploadUrl(any()))
+    when(() => repo.uploadUrl(any(), any()))
         .thenAnswer((_) async => Err(ApiException('STORAGE_DISABLED', '', 503)));
 
     final c = container();
@@ -104,15 +104,15 @@ void main() {
 
   test('passes an expiry date through to the confirm call', () async {
     final expires = DateTime.utc(2027, 6, 1);
-    when(() => repo.uploadUrl(any())).thenAnswer((_) async => const Ok({
+    when(() => repo.uploadUrl(any(), any())).thenAnswer((_) async => const Ok({
           'upload_url': 'https://storage/put',
-          'file_url': 'https://storage/file.jpg',
+          'key': 'driver-docs/u1/vehicle_insurance/abc.jpg',
         }));
     when(() => uploader.put(any(), any(), any()))
         .thenAnswer((_) async => const Ok(null));
     when(() => repo.confirm(
             documentType: any(named: 'documentType'),
-            fileUrl: any(named: 'fileUrl'),
+            key: any(named: 'key'),
             expiresAt: any(named: 'expiresAt')))
         .thenAnswer((_) async => const Ok(DriverDocument(
             id: 'd1',
@@ -126,7 +126,7 @@ void main() {
 
     verify(() => repo.confirm(
         documentType: 'vehicle_insurance',
-        fileUrl: 'https://storage/file.jpg',
+        key: 'driver-docs/u1/vehicle_insurance/abc.jpg',
         expiresAt: expires)).called(1);
   });
 }

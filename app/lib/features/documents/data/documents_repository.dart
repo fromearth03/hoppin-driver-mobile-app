@@ -44,20 +44,33 @@ class DocumentsRepository {
   }
 
   /// Step one of the upload: ask for a presigned destination.
-  Future<Result<Map<String, dynamic>>> uploadUrl(String documentType) =>
+  ///
+  /// [contentType] is not optional on the service — the handler rejects the
+  /// request outright without it, and the extension of the storage key it
+  /// mints is derived from it, so the PUT must send the same value back.
+  Future<Result<Map<String, dynamic>>> uploadUrl(
+          String documentType, String contentType) =>
       _api.post<Map<String, dynamic>>('/drivers/me/documents/upload-url',
-          body: {'document_type': documentType});
+          body: {
+            'document_type': documentType,
+            'content_type': contentType,
+          });
 
   /// Step two: tell the server the file landed.
+  ///
+  /// [key] is the storage key from step one, echoed back verbatim. The service
+  /// checks it starts with `driver-docs/{driver}/{type}/` so one driver can
+  /// never confirm a document sitting under another's prefix; anything else,
+  /// a bucket URL included, is refused.
   Future<Result<DriverDocument>> confirm({
     required String documentType,
-    required String fileUrl,
+    required String key,
     DateTime? expiresAt,
   }) async {
     final r =
         await _api.post<Map<String, dynamic>>('/drivers/me/documents', body: {
       'document_type': documentType,
-      'bucket_file_url': fileUrl,
+      'key': key,
       if (expiresAt != null) 'expires_at': expiresAt.toUtc().toIso8601String(),
     });
     return r.when(
