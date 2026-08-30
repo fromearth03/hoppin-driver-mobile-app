@@ -8,6 +8,7 @@ import 'features/auth/logic/auth_controller.dart';
 import 'features/auth/ui/forgot_password_screen.dart';
 import 'features/auth/ui/reset_password_screen.dart';
 import 'features/auth/ui/sign_in_screen.dart';
+import 'features/home/ui/home_screen.dart';
 import 'shared/nav/app_shell.dart';
 
 /// Placeholder bodies. Each is replaced by its real screen in a later batch.
@@ -57,7 +58,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ),
         routes: [
-          GoRoute(path: Routes.home, builder: (_, __) => _placeholder('Home')),
+          GoRoute(path: Routes.home, builder: (_, __) => const HomeScreen()),
           GoRoute(
               path: Routes.earnings,
               builder: (_, __) => _placeholder('Earnings')),
