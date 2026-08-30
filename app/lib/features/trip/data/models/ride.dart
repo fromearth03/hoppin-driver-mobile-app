@@ -119,20 +119,38 @@ class Ride {
   static DateTime? _time(dynamic v) =>
       v == null ? null : DateTime.tryParse(v as String);
 
-  factory Ride.fromJson(Map<String, dynamic> json) => Ride(
-        id: json['id'] as String,
-        ref: json['ref'] as String?,
-        status: (json['status'] as String?) ?? '',
-        geo: RideGeo.fromJson(Map<String, dynamic>.from(json['geo'] as Map)),
-        rider: json['rider'] == null
-            ? null
-            : Rider.fromJson(Map<String, dynamic>.from(json['rider'] as Map)),
-        chatUnread: (json['chat_unread'] as num?)?.toInt() ?? 0,
-        pickupEtaSeconds: (json['pickup_eta_seconds'] as num?)?.toInt(),
-        acceptedAt: _time(json['accepted_at']),
-        arrivedAt: _time(json['arrived_at']),
-        startedAt: _time(json['started_at']),
-      );
+  factory Ride.fromJson(Map<String, dynamic> json) {
+    // The service nests these under a `timestamps` block. Reading them at
+    // the top level as well keeps the model working if that ever flattens,
+    // and costs nothing.
+    final times = (json['timestamps'] as Map?) ?? const {};
+    DateTime? at(String key) => _time(times[key] ?? json[key]);
+
+    // `geo` is a pointer server-side, so it can be absent. A hard cast here
+    // would throw inside the repository and escape Result entirely, becoming
+    // an unhandled async error rather than an Err the screen can render.
+    final geo = json['geo'] as Map?;
+
+    return Ride(
+      id: json['id'] as String,
+      ref: json['ref'] as String?,
+      status: (json['status'] as String?) ?? '',
+      geo: geo == null
+          ? const RideGeo(
+              pickup: GeoPoint(lat: 0, lng: 0),
+              dropoff: GeoPoint(lat: 0, lng: 0),
+            )
+          : RideGeo.fromJson(Map<String, dynamic>.from(geo)),
+      rider: json['rider'] == null
+          ? null
+          : Rider.fromJson(Map<String, dynamic>.from(json['rider'] as Map)),
+      chatUnread: (json['chat_unread'] as num?)?.toInt() ?? 0,
+      pickupEtaSeconds: (json['pickup_eta_seconds'] as num?)?.toInt(),
+      acceptedAt: at('accepted_at'),
+      arrivedAt: at('arrived_at'),
+      startedAt: at('started_at'),
+    );
+  }
 
   @override
   String toString() => 'Ride($id, $status)';
