@@ -23,7 +23,9 @@ class BlockerList extends StatelessWidget {
     this.onContactSupport,
   });
 
-  static const _counts = ['No', 'One', 'Two', 'Three', 'Four', 'Five'];
+  /// Indexed from one: the widget returns early when nothing is blocking,
+  /// so a zero case cannot arise.
+  static const _counts = ['', 'One', 'Two', 'Three', 'Four', 'Five'];
 
   /// `vehicle_insurance` becomes `Vehicle Insurance`. The tokens are a closed
   /// server enum, so title-casing them is safe — unlike prettifying free

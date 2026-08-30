@@ -42,7 +42,10 @@ class PendingOffer {
           {DateTime? receivedAt}) =>
       PendingOffer(
         id: json['id'] as String,
-        rideId: (json['ride_id'] ?? json['rideId']) as String,
+        // Defaulted rather than cast: a missing ride_id would otherwise
+        // throw inside the repository, escaping Result entirely and
+        // surfacing as an unhandled async error instead of an Err.
+        rideId: (json['ride_id'] ?? json['rideId']) as String? ?? '',
         // fare_pence is authoritative; the float `fare` is deprecated and
         // only read if the integer is somehow absent.
         fare: json['fare_pence'] != null
@@ -50,7 +53,11 @@ class PendingOffer {
             : Pence.fromPounds(((json['fare'] as num?) ?? 0).toDouble()),
         pickupLabel: (json['pickup_label'] as String?) ?? '',
         dropoffLabel: (json['dropoff_label'] as String?) ?? '',
-        rideCategory: json['ride_category'] as String?,
+        // Empty string normalised to null so the badge is simply omitted
+        // rather than crashing on category[0].
+        rideCategory: (json['ride_category'] as String?)?.trim().isEmpty ?? true
+            ? null
+            : json['ride_category'] as String?,
         estimatedDurationSeconds:
             (json['estimated_duration_seconds'] as num?)?.toInt(),
         pickupEtaSeconds: (json['pickup_eta_seconds'] as num?)?.toInt(),

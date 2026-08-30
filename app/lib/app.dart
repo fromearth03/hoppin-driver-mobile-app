@@ -69,6 +69,22 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: Routes.stats, builder: (_, __) => _placeholder('Stats')),
           GoRoute(
               path: Routes.trips, builder: (_, __) => _placeholder('Trips')),
+          // Accepting an offer lands here. The real trip screen is Batch 4;
+          // until then this states what happened rather than dropping the
+          // driver on GoRouter's error page after they took a job.
+          GoRoute(
+            path: '${Routes.trip}/:rideId',
+            builder: (_, state) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text(
+                  'Ride ${state.pathParameters['rideId']} accepted.\n\n'
+                  'The trip screen is not built yet.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
           GoRoute(
               path: Routes.personalInfo,
               builder: (_, __) => _placeholder('Personal Information')),

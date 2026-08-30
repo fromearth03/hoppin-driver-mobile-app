@@ -32,7 +32,17 @@ class HomeState {
         error: clearError ? null : (error ?? this.error),
       );
 
-  bool get isOnline => status?.presence == Presence.online;
+  /// On shift as far as the dispatcher is concerned. `stale` counts: the
+  /// driver is still marked online server-side, their GPS has just gone
+  /// quiet. Reading stale as offline would show them an "off" toggle while
+  /// they remain dispatchable, and tapping it would re-send `goOnline`.
+  bool get isOnline =>
+      status?.presence == Presence.online || status?.presence == Presence.stale;
+
+  /// Online *and* reachable — the only state in which polling for offers is
+  /// worthwhile, since a stale driver will not be dispatched anyway.
+  bool get isDispatchable => status?.presence == Presence.online;
+
   bool get onTrip => status?.activeRideId != null;
 }
 
@@ -48,6 +58,13 @@ final pollIntervalProvider =
 /// runs only while online and off-trip, so an idle or driving app is quiet.
 class HomeController extends AsyncNotifier<HomeState> {
   Timer? _timer;
+  bool _disposed = false;
+
+  /// The offer the driver has already acted on. A decline, or an accept that
+  /// came back OFFER_EXPIRED, means this one is finished — but the server may
+  /// still list it for a tick or two, and re-rendering a card the driver was
+  /// just told had lapsed reads as a bug.
+  String? _dismissedOfferId;
 
   DriverStatusRepository get _statusRepo =>
       ref.read(driverStatusRepositoryProvider);
@@ -55,7 +72,10 @@ class HomeController extends AsyncNotifier<HomeState> {
 
   @override
   Future<HomeState> build() async {
-    ref.onDispose(stopPolling);
+    ref.onDispose(() {
+      _disposed = true;
+      stopPolling();
+    });
     final result = await _statusRepo.status();
     return result.when(
       ok: (status) => HomeState(status: status),
@@ -65,40 +85,55 @@ class HomeController extends AsyncNotifier<HomeState> {
 
   HomeState get _current => state.value ?? const HomeState();
 
+  /// Every write goes through here. Requests started before the driver
+  /// navigated away resolve afterwards, and Riverpod throws on assigning to
+  /// a disposed notifier, so the guard belongs at the single write point.
+  void _emit(HomeState next) {
+    if (_disposed) return;
+    state = AsyncData(next);
+  }
+
   Future<void> refresh() async {
     final result = await _statusRepo.status();
     result.when(
       ok: (status) =>
-          state = AsyncData(_current.copyWith(status: status, clearError: true)),
-      err: (e) => state = AsyncData(_current.copyWith(error: e)),
+          _emit(_current.copyWith(status: status, clearError: true)),
+      err: (e) => _emit(_current.copyWith(error: e)),
     );
   }
 
   Future<void> toggleOnline() async {
-    final current = _current;
-    state = AsyncData(current.copyWith(isBusy: true, clearError: true));
+    state = AsyncData(_current.copyWith(isBusy: true, clearError: true));
 
-    if (current.isOnline) {
-      await _statusRepo.goOffline();
-      stopPolling();
-      await refresh();
-      state = AsyncData(_current.copyWith(isBusy: false, clearOffer: true));
+    if (_current.isOnline) {
+      final result = await _statusRepo.goOffline();
+      result.when(
+        ok: (_) async {
+          stopPolling();
+          await refresh();
+          _emit(_current.copyWith(isBusy: false, clearOffer: true));
+        },
+        // A failed go-offline leaves the driver online and dispatchable
+        // server-side. Flipping the toggle off anyway would strand them
+        // taking jobs the app has stopped polling for.
+        err: (e) => _emit(_current.copyWith(isBusy: false, error: e)),
+      );
       return;
     }
 
     final result = await _statusRepo.goOnline();
     result.when(
       ok: (status) {
-        state = AsyncData(current.copyWith(status: status, isBusy: false));
+        _emit(_current.copyWith(status: status, isBusy: false));
         startPolling();
       },
       err: (e) {
         // A refusal is not an error toast — it is a state the Home screen
         // renders as a resolution list. Fold the reason into the status so
         // one widget handles both the polled and refused paths.
-        state = AsyncData(current.copyWith(
+        _emit(_current.copyWith(
           isBusy: false,
-          status: _blockedFrom(e, current.status),
+          status: _blockedFrom(e, _current.status),
         ));
       },
     );
@@ -121,6 +156,10 @@ class HomeController extends AsyncNotifier<HomeState> {
       blockedReason: reason,
       blockingDocumentTypes: docs,
       activeRideId: previous?.activeRideId,
+      // Carried through: a refusal says nothing about where the driver is,
+      // and discarding it would make the stale-GPS check read wrong until
+      // the next successful poll.
+      lastLocationAt: previous?.lastLocationAt,
     );
   }
 
@@ -137,37 +176,58 @@ class HomeController extends AsyncNotifier<HomeState> {
   /// One tick fetches offers and status together — the stale-GPS warning is
   /// as time-sensitive as an offer, and a second timer would double the load.
   Future<void> _tick() async {
-    final current = _current;
-    if (!current.isOnline || current.onTrip) return;
+    if (!_canReceiveOffers) return;
 
     final offersResult = await _offerRepo.offers();
+    // Re-checked after the await: the driver may have gone offline or
+    // accepted a ride while this request was in flight, and committing the
+    // result then would put a card back on top of a driver already driving.
+    if (!_canReceiveOffers) return;
     offersResult.when(
-      ok: (list) => state = AsyncData(list.isEmpty
-          ? _current.copyWith(clearOffer: true)
-          : _current.copyWith(offer: list.first)),
+      ok: (list) {
+        final fresh = _withoutDismissed(list);
+        _emit(fresh.isEmpty
+            ? _current.copyWith(clearOffer: true)
+            : _current.copyWith(offer: fresh.first));
+      },
       // A failed poll is not worth surfacing; the next tick retries.
       err: (_) {},
     );
 
     final statusResult = await _statusRepo.status();
     statusResult.when(
-      ok: (s) => state = AsyncData(_current.copyWith(status: s)),
+      ok: (s) => _emit(_current.copyWith(status: s)),
       err: (_) {},
     );
   }
+
+  bool get _canReceiveOffers =>
+      !_disposed && _current.isDispatchable && !_current.onTrip;
 
   /// Called when an FCM ride-offer push wakes the app. The push payload is
   /// a trigger only — nothing in it is rendered.
   Future<void> onPushWake() async {
     final result = await _offerRepo.offers();
+    if (_disposed) return;
     result.when(
       ok: (list) {
-        if (list.isNotEmpty) {
-          state = AsyncData(_current.copyWith(offer: list.first));
+        final fresh = _withoutDismissed(list);
+        if (fresh.isNotEmpty) {
+          _emit(_current.copyWith(offer: fresh.first));
         }
       },
       err: (_) {},
     );
+  }
+
+  /// Drops the offer already acted on, and forgets the id once the server
+  /// stops sending it so a later, genuinely new offer is never suppressed.
+  List<PendingOffer> _withoutDismissed(List<PendingOffer> list) {
+    if (_dismissedOfferId == null) return list;
+    final remaining =
+        list.where((o) => o.id != _dismissedOfferId).toList();
+    if (remaining.length == list.length) _dismissedOfferId = null;
+    return remaining;
   }
 
   Future<Result<String>> acceptOffer() async {
@@ -175,20 +235,27 @@ class HomeController extends AsyncNotifier<HomeState> {
     if (offer == null) {
       return Err(ApiException('OFFER_NOT_FOUND', 'no offer on screen', 404));
     }
-    state = AsyncData(_current.copyWith(isBusy: true));
+    // Stopped before the request, not after: an in-flight tick that resolved
+    // mid-accept could otherwise re-render the offer being accepted.
+    stopPolling();
+    _emit(_current.copyWith(isBusy: true));
     final result = await _offerRepo.accept(offer.id);
 
     // Either way the card comes down: accepted offers become a trip, and a
     // lapsed one must not linger looking tappable.
-    state = AsyncData(_current.copyWith(isBusy: false, clearOffer: true));
-    if (result.isOk) stopPolling();
+    _dismissedOfferId = offer.id;
+    _emit(_current.copyWith(isBusy: false, clearOffer: true));
+    // A failed accept leaves the driver online and waiting, so resume the
+    // safety net; only a successful one hands over to the trip screen.
+    if (!result.isOk && _canReceiveOffers) startPolling();
     return result;
   }
 
   Future<void> declineOffer() async {
     final offer = _current.offer;
     if (offer == null) return;
-    state = AsyncData(_current.copyWith(clearOffer: true));
+    _dismissedOfferId = offer.id;
+    _emit(_current.copyWith(clearOffer: true));
     await _offerRepo.decline(offer.id);
   }
 }

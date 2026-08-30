@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app_router.dart';
+import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
+import '../../../shared/nav/app_shell.dart';
 import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
 import '../data/models/driver_status.dart';
@@ -23,11 +25,12 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
+        // Opens AppShell's drawer, not this Scaffold's — this one has none.
+        // Scaffold.of(context) would resolve to the nearest ancestor and
+        // throw, so the shell exposes its state via a key instead.
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => AppShell.openDrawer(),
         ),
         title: async.maybeWhen(
           data: (s) => OnlineToggle(
@@ -56,7 +59,17 @@ class HomeScreen extends ConsumerWidget {
                 error: state.error!, onRetry: controller.refresh);
           }
           return RefreshIndicator(
-            onRefresh: controller.refresh,
+            onRefresh: () async {
+              await controller.refresh();
+              final error = ref.read(homeControllerProvider).value?.error;
+              // A pull-to-refresh the driver asked for must say when it
+              // failed, rather than redisplaying stale data as current.
+              if (error != null && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(errorCopy(error))),
+                );
+              }
+            },
             child: ListView(
               children: [
                 if (state.status?.presence == Presence.stale) _staleBanner(),
@@ -76,7 +89,11 @@ class HomeScreen extends ConsumerWidget {
                       if (!context.mounted) return;
                       result.when(
                         ok: (rideId) => context.go('${Routes.trip}/$rideId'),
-                        err: (_) {},
+                        // A driver who taps Accept and sees the card simply
+                        // vanish has no idea whether they got the job.
+                        err: (e) => ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(errorCopy(e))),
+                        ),
                       );
                     },
                     onDecline: controller.declineOffer,

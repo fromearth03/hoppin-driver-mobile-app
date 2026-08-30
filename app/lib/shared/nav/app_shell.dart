@@ -19,8 +19,17 @@ class AppShell extends StatelessWidget {
     this.onLogout,
   });
 
+  /// The shell owns the only drawer in the tree. Screens inside it build
+  /// their own Scaffold for an app bar, so `Scaffold.of(context)` from a
+  /// screen finds that inner one — which has no drawer and throws. They
+  /// call this instead.
+  static final scaffoldKey = GlobalKey<ScaffoldState>();
+
+  static void openDrawer() => scaffoldKey.currentState?.openDrawer();
+
   @override
   Widget build(BuildContext context) => Scaffold(
+        key: scaffoldKey,
         drawer: SideDrawer(onLogout: onLogout),
         body: child,
         bottomNavigationBar: NavigationBar(

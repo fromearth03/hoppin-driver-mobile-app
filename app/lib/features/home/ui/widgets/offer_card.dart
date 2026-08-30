@@ -35,8 +35,12 @@ class _OfferCardState extends State<OfferCard> {
   @override
   void initState() {
     super.initState();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
+    _ticker = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      // Nothing left to count; rebuilding once a second forever would burn
+      // battery on a card that can no longer change.
+      if (widget.offer.hasExpired) timer.cancel();
+      setState(() {});
     });
   }
 
@@ -52,6 +56,10 @@ class _OfferCardState extends State<OfferCard> {
   Widget build(BuildContext context) {
     final offer = widget.offer;
     final remaining = offer.secondsRemaining;
+    // The server drops a lapsed offer on its next poll, but the card is on
+    // screen in between. Accepting here would fail with OFFER_EXPIRED, so
+    // the button says so rather than inviting the tap.
+    final expired = offer.hasExpired;
     final fraction =
         offer.expiresInSec == 0 ? 0.0 : remaining / offer.expiresInSec;
 
@@ -100,13 +108,15 @@ class _OfferCardState extends State<OfferCard> {
             ),
             const SizedBox(height: 20),
             FilledButton(
-              onPressed: widget.isBusy ? null : widget.onAccept,
-              child: Text('Accept for ${offer.fare.format()}'),
+              onPressed: (widget.isBusy || expired) ? null : widget.onAccept,
+              child: Text(expired
+                  ? 'Offer expired'
+                  : 'Accept for ${offer.fare.format()}'),
             ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: widget.isBusy ? null : widget.onDecline,
-              child: const Text('Decline'),
+              child: Text(expired ? 'Dismiss' : 'Decline'),
             ),
           ],
         ),
