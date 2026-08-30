@@ -34,13 +34,19 @@ class DriverBonus {
   const DriverBonus(
       {required this.label, required this.amount, this.awardedAt});
 
-  factory DriverBonus.fromJson(Map<String, dynamic> json) => DriverBonus(
-        label: (json['label'] ?? json['reason'] ?? 'Bonus') as String,
-        amount: Pence.fromPounds(((json['amount'] as num?) ?? 0).toDouble()),
-        awardedAt: json['awarded_at'] == null
-            ? null
-            : DateTime.tryParse(json['awarded_at'] as String),
-      );
+  factory DriverBonus.fromJson(Map<String, dynamic> json) {
+    // The service names these `title` and `granted_at`. Reading `label` and
+    // `awarded_at` meant every bonus rendered as the placeholder with no
+    // date, so a driver could not tell what they had been paid for.
+    final title = (json['title'] as String?) ?? '';
+    return DriverBonus(
+      label: title.isEmpty ? 'Bonus' : title,
+      amount: Pence.fromPounds(((json['amount'] as num?) ?? 0).toDouble()),
+      awardedAt: json['granted_at'] == null
+          ? null
+          : DateTime.tryParse(json['granted_at'] as String),
+    );
+  }
 }
 
 /// The driver's balance and payout history.

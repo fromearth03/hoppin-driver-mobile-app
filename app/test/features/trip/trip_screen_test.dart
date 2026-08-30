@@ -44,6 +44,11 @@ void main() {
   setUp(() {
     trip = MockTripRepo();
     reasons = MockReasonRepo();
+    // The controller now enriches a live ride with rider-context. These
+    // tests are not about the rider, so answer with the empty-handed case.
+    when(() => trip.riderContext(any())).thenAnswer(
+        (_) async => Err(ApiException('NOT_FOUND', 'no rider context', 404)));
+
     when(() => trip.waitingPolicy(any())).thenAnswer((_) async => const Ok(
         WaitingPolicy(
             freeWaitSeconds: 180,

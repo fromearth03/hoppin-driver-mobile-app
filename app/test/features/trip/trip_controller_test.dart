@@ -34,6 +34,11 @@ void main() {
     repo = MockTripRepo();
     when(() => repo.waitingPolicy(any()))
         .thenAnswer((_) async => Ok(buildPolicy()));
+    // The controller now enriches a live ride with rider-context. These
+    // tests are not about the rider, so answer with the empty-handed case.
+    when(() => repo.riderContext(any())).thenAnswer(
+        (_) async => Err(ApiException('NOT_FOUND', 'no rider context', 404)));
+
   });
 
   ProviderContainer container() {

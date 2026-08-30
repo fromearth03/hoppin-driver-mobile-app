@@ -116,6 +116,21 @@ class Ride {
   bool get isFinished =>
       phase == TripPhase.completed || phase == TripPhase.cancelled;
 
+  /// `GET /rides/:id` carries no rider block — that identity lives only on
+  /// `/rides/:id/rider-context`, so it is attached after the fact.
+  Ride withRider(Rider? value) => Ride(
+        id: id,
+        status: status,
+        geo: geo,
+        ref: ref,
+        rider: value ?? rider,
+        chatUnread: chatUnread,
+        pickupEtaSeconds: pickupEtaSeconds,
+        acceptedAt: acceptedAt,
+        arrivedAt: arrivedAt,
+        startedAt: startedAt,
+      );
+
   static DateTime? _time(dynamic v) =>
       v == null ? null : DateTime.tryParse(v as String);
 

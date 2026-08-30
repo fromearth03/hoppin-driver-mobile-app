@@ -58,7 +58,10 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
 
     final result = await _repo.ride(rideId);
     final loaded = await result.when(
-      ok: (ride) async => TripState(ride: ride, policy: await _policyFor(ride)),
+      ok: (ride) async => TripState(
+        ride: await _withRider(ride),
+        policy: await _policyFor(ride),
+      ),
       err: (e) async => TripState(error: e),
     );
     if (!(loaded.ride?.isFinished ?? true)) _startPolling();
@@ -70,6 +73,20 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
   void _emit(TripState next) {
     if (_disposed) return;
     state = AsyncData(next);
+  }
+
+  /// Attaches the rider, whose identity `GET /rides/:id` does not carry at
+  /// all — it lives only on `/rides/:id/rider-context`.
+  ///
+  /// Best-effort on purpose: the context 409s once the ride reaches a
+  /// terminal state, and losing the rider's name must never cost the driver
+  /// the trip screen and its Arrive/Start/Complete actions.
+  Future<Ride> _withRider(Ride ride) async {
+    if (ride.isFinished) return ride;
+    final result = await _repo.riderContext(ride.id);
+    final json = result.valueOrNull;
+    if (json == null) return ride;
+    return ride.withRider(Rider.fromJson(json));
   }
 
   /// The waiting terms only exist once the driver has marked arrival, so
@@ -101,8 +118,14 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
         final policy =
             waiting ? (_current.policy ?? await _policyFor(ride)) : null;
         if (_disposed) return;
+        // The rider does not change mid-trip, so carry the one already
+        // loaded rather than spending a request on every poll.
+        final withRider = _current.ride?.rider != null
+            ? ride.withRider(_current.ride!.rider)
+            : await _withRider(ride);
+        if (_disposed) return;
         _emit(_current.copyWith(
-          ride: ride,
+          ride: withRider,
           policy: policy,
           clearPolicy: !waiting,
           clearError: true,
