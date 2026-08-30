@@ -28,40 +28,36 @@ void main() {
   test('a driver with no saved preferences gets sensible defaults', () {
     final p = DriverPreferences.fromJson(const {});
 
+    // Offers and payouts matter to a working driver, so they default on.
+    // SMS is the one channel that costs the driver attention uninvited.
     expect(p.notificationsEnabled, isTrue);
     expect(p.rideRequestSound, isTrue);
-    expect(p.distanceUnit, DistanceUnit.miles);
-    expect(p.navApp, NavApp.google);
+    expect(p.pushPayouts, isTrue);
+    expect(p.smsTripUpdates, isFalse);
   });
 
   test('round-trips through json', () {
     const original = DriverPreferences(
       notificationsEnabled: false,
-      keepScreenAwake: true,
-      distanceUnit: DistanceUnit.kilometres,
-      navApp: NavApp.apple,
+      pushPromotions: false,
+      smsTripUpdates: true,
     );
 
     final restored = DriverPreferences.fromJson(original.toJson());
 
     expect(restored.notificationsEnabled, isFalse);
-    expect(restored.keepScreenAwake, isTrue);
-    expect(restored.distanceUnit, DistanceUnit.kilometres);
-    expect(restored.navApp, NavApp.apple);
-  });
-
-  test('an unrecognised unit falls back to miles', () {
-    final p = DriverPreferences.fromJson({'distance_unit': 'furlongs'});
-    expect(p.distanceUnit, DistanceUnit.miles);
+    expect(restored.pushPromotions, isFalse);
+    expect(restored.smsTripUpdates, isTrue);
   });
 
   test('reads the preferences envelope', () async {
     when(() => adapter.fetch(any(), any(), any())).thenAnswer((_) async =>
-        body('{"preferences":{"distance_unit":"kilometres"}}', 200));
+        body('{"preferences":{"push_trip_updates":false}}', 200));
 
     final r = await repo.load();
 
-    expect(r.valueOrNull!.distanceUnit, DistanceUnit.kilometres);
+    // The GET wraps its result in an envelope; the PATCH body does not.
+    expect(r.valueOrNull!.notificationsEnabled, isFalse);
   });
 
   test('preserves keys another client may have stored', () async {
@@ -76,6 +72,6 @@ void main() {
         .last as RequestOptions;
     // This blob is shared; dropping unknown keys would silently wipe
     // settings this app knows nothing about.
-    expect(sent.data['preferences']['rider_only_setting'], 'keep me');
+    expect(sent.data['rider_only_setting'], 'keep me');
   });
 }

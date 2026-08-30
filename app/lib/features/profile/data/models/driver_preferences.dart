@@ -1,79 +1,86 @@
-enum DistanceUnit { miles, kilometres }
-
-enum NavApp { google, apple }
-
 /// App preferences.
 ///
-/// `/me/preferences` stores an opaque JSON blob shared with other clients,
+/// `/me/preferences` stores an opaque JSON blob shared with the rider app,
 /// so [unknown] carries anything this app does not recognise straight back
 /// on save. Dropping it would wipe settings we know nothing about.
+///
+/// The server owns a strict key whitelist and rejects the whole patch if it
+/// sees anything else, so the field names here are its names. A setting that
+/// describes the handset rather than the account has no home on this
+/// endpoint and does not belong in this model.
 class DriverPreferences {
+  /// Offers and trip updates. The one toggle a working driver actually
+  /// depends on, so it defaults on.
   final bool notificationsEnabled;
   final bool rideRequestSound;
-  final bool keepScreenAwake;
-  final DistanceUnit distanceUnit;
-  final NavApp navApp;
+  final bool pushPromotions;
+  final bool pushPayouts;
+  final bool emailReceipts;
+  final bool smsTripUpdates;
   final Map<String, dynamic> unknown;
 
   const DriverPreferences({
     this.notificationsEnabled = true,
     this.rideRequestSound = true,
-    this.keepScreenAwake = false,
-    this.distanceUnit = DistanceUnit.miles,
-    this.navApp = NavApp.google,
+    this.pushPromotions = true,
+    this.pushPayouts = true,
+    this.emailReceipts = true,
+    this.smsTripUpdates = false,
     this.unknown = const {},
   });
 
+  /// The whitelisted keys this app owns. Everything else on the row belongs
+  /// to another client and rides along untouched in [unknown].
   static const _known = {
-    'notifications_enabled',
-    'ride_request_sound',
-    'keep_screen_awake',
-    'distance_unit',
-    'nav_app',
+    'push_trip_updates',
+    'sound_offer_chime',
+    'push_promotions',
+    'push_payouts',
+    'email_receipts',
+    'sms_trip_updates',
   };
 
   DriverPreferences copyWith({
     bool? notificationsEnabled,
     bool? rideRequestSound,
-    bool? keepScreenAwake,
-    DistanceUnit? distanceUnit,
-    NavApp? navApp,
+    bool? pushPromotions,
+    bool? pushPayouts,
+    bool? emailReceipts,
+    bool? smsTripUpdates,
   }) =>
       DriverPreferences(
         notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
         rideRequestSound: rideRequestSound ?? this.rideRequestSound,
-        keepScreenAwake: keepScreenAwake ?? this.keepScreenAwake,
-        distanceUnit: distanceUnit ?? this.distanceUnit,
-        navApp: navApp ?? this.navApp,
+        pushPromotions: pushPromotions ?? this.pushPromotions,
+        pushPayouts: pushPayouts ?? this.pushPayouts,
+        emailReceipts: emailReceipts ?? this.emailReceipts,
+        smsTripUpdates: smsTripUpdates ?? this.smsTripUpdates,
         unknown: unknown,
       );
 
   factory DriverPreferences.fromJson(Map<String, dynamic> json) =>
       DriverPreferences(
-        notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
-        rideRequestSound: json['ride_request_sound'] as bool? ?? true,
-        keepScreenAwake: json['keep_screen_awake'] as bool? ?? false,
-        distanceUnit: switch (json['distance_unit'] as String?) {
-          'kilometres' || 'km' => DistanceUnit.kilometres,
-          _ => DistanceUnit.miles,
-        },
-        navApp: switch (json['nav_app'] as String?) {
-          'apple' => NavApp.apple,
-          _ => NavApp.google,
-        },
+        notificationsEnabled: json['push_trip_updates'] as bool? ?? true,
+        rideRequestSound: json['sound_offer_chime'] as bool? ?? true,
+        pushPromotions: json['push_promotions'] as bool? ?? true,
+        pushPayouts: json['push_payouts'] as bool? ?? true,
+        emailReceipts: json['email_receipts'] as bool? ?? true,
+        smsTripUpdates: json['sms_trip_updates'] as bool? ?? false,
         unknown: {
           for (final e in json.entries)
             if (!_known.contains(e.key)) e.key: e.value,
         },
       );
 
+  /// The patch to send. Only whitelisted keys: an unknown one makes the
+  /// server reject the entire request, losing the real settings with it.
   Map<String, dynamic> toJson() => {
         ...unknown,
-        'notifications_enabled': notificationsEnabled,
-        'ride_request_sound': rideRequestSound,
-        'keep_screen_awake': keepScreenAwake,
-        'distance_unit':
-            distanceUnit == DistanceUnit.kilometres ? 'kilometres' : 'miles',
-        'nav_app': navApp == NavApp.apple ? 'apple' : 'google',
+        'push_trip_updates': notificationsEnabled,
+        'sound_offer_chime': rideRequestSound,
+        'push_promotions': pushPromotions,
+        'push_payouts': pushPayouts,
+        'email_receipts': emailReceipts,
+        'sms_trip_updates': smsTripUpdates,
       };
 }

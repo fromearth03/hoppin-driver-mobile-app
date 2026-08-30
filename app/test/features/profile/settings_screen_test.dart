@@ -32,8 +32,13 @@ void main() {
 
     expect(find.text('Notifications'), findsOneWidget);
     expect(find.text('Ride request sound'), findsOneWidget);
-    expect(find.text('Keep screen awake'), findsOneWidget);
-    expect(find.text('Distance units'), findsOneWidget);
+    expect(find.text('Promotions'), findsOneWidget);
+    expect(find.text('Payout alerts'), findsOneWidget);
+    // Every row here maps to a key the server actually stores. "Keep screen
+    // awake", "Distance units" and "Navigation app" were toggles wired to
+    // nothing, on an endpoint that would never have persisted them.
+    expect(find.text('Keep screen awake'), findsNothing);
+    expect(find.text('Distance units'), findsNothing);
   });
 
   testWidgets('has no Language row', (tester) async {

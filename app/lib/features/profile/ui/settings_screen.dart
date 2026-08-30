@@ -41,45 +41,31 @@ class SettingsScreen extends ConsumerWidget {
                     controller.apply(prefs.copyWith(rideRequestSound: v)),
               ),
               SwitchListTile(
-                title: const Text('Keep screen awake'),
-                subtitle: const Text('While you are on a trip'),
-                value: prefs.keepScreenAwake,
+                title: const Text('Promotions'),
+                subtitle: const Text('Bonuses and incentives'),
+                value: prefs.pushPromotions,
                 onChanged: (v) =>
-                    controller.apply(prefs.copyWith(keepScreenAwake: v)),
+                    controller.apply(prefs.copyWith(pushPromotions: v)),
+              ),
+              SwitchListTile(
+                title: const Text('Payout alerts'),
+                subtitle: const Text('When money reaches your bank'),
+                value: prefs.pushPayouts,
+                onChanged: (v) =>
+                    controller.apply(prefs.copyWith(pushPayouts: v)),
               ),
               const Divider(color: AppColors.border),
-              ListTile(
-                title: const Text('Distance units'),
-                trailing: DropdownButton<DistanceUnit>(
-                  value: prefs.distanceUnit,
-                  underline: const SizedBox.shrink(),
-                  items: const [
-                    DropdownMenuItem(
-                        value: DistanceUnit.miles, child: Text('Miles')),
-                    DropdownMenuItem(
-                        value: DistanceUnit.kilometres,
-                        child: Text('Kilometres')),
-                  ],
-                  onChanged: (v) => v == null
-                      ? null
-                      : controller.apply(prefs.copyWith(distanceUnit: v)),
-                ),
+              SwitchListTile(
+                title: const Text('Email receipts'),
+                value: prefs.emailReceipts,
+                onChanged: (v) =>
+                    controller.apply(prefs.copyWith(emailReceipts: v)),
               ),
-              ListTile(
-                title: const Text('Navigation app'),
-                trailing: DropdownButton<NavApp>(
-                  value: prefs.navApp,
-                  underline: const SizedBox.shrink(),
-                  items: const [
-                    DropdownMenuItem(
-                        value: NavApp.google, child: Text('Google Maps')),
-                    DropdownMenuItem(
-                        value: NavApp.apple, child: Text('Apple Maps')),
-                  ],
-                  onChanged: (v) => v == null
-                      ? null
-                      : controller.apply(prefs.copyWith(navApp: v)),
-                ),
+              SwitchListTile(
+                title: const Text('Trip updates by SMS'),
+                value: prefs.smsTripUpdates,
+                onChanged: (v) =>
+                    controller.apply(prefs.copyWith(smsTripUpdates: v)),
               ),
               const Divider(color: AppColors.border),
               ListTile(

@@ -18,8 +18,10 @@ class PreferencesRepository {
   }
 
   Future<Result<void>> save(DriverPreferences prefs) async {
+    // The handler binds the body itself as the patch map. A `preferences`
+    // envelope would be read as one unknown key and 400 the whole save.
     final r = await _api.patch<dynamic>('/me/preferences',
-        body: {'preferences': prefs.toJson()});
+        body: prefs.toJson());
     return r.when(ok: (_) => const Ok(null), err: (e) => Err(e));
   }
 }
