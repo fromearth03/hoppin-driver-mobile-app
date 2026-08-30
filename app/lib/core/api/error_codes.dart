@@ -53,7 +53,9 @@ const _copy = <String, String>{
 /// string — that is log material and can carry internals.
 String errorCopy(ApiException e) {
   if (e.code == 'NO_SHOW_TOO_EARLY') {
-    final seconds = (e.fields['seconds'] as num?)?.round() ?? 0;
+    // The server sends `seconds_remaining`; an earlier draft of this map
+    // read `seconds`, which is not a key the API returns.
+    final seconds = (e.fields['seconds_remaining'] as num?)?.round() ?? 0;
     final minutes = (seconds / 60).ceil();
     return 'You can report a no-show in $minutes min.';
   }

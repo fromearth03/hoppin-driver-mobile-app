@@ -24,8 +24,8 @@ void main() {
     });
 
     test('NO_SHOW_TOO_EARLY reports the remaining wait', () {
-      final e =
-          ApiException('NO_SHOW_TOO_EARLY', '', 400, fields: {'seconds': 120});
+      final e = ApiException('NO_SHOW_TOO_EARLY', '', 400,
+          fields: {'seconds_remaining': 120});
       expect(errorCopy(e), 'You can report a no-show in 2 min.');
     });
   });
