@@ -14,8 +14,11 @@ class CancelReasonRepository {
         .get<dynamic>('/cancellation-reasons', query: {'actor': 'driver'});
     return r.when(
       ok: (data) {
+        // The handler writes {"cancellation_reasons": [...]}; `reasons` is
+        // accepted as a fallback only.
         final list = data is Map
-            ? ((data['reasons'] as List?) ?? const [])
+            ? ((data['cancellation_reasons'] ?? data['reasons']) as List? ??
+                const [])
             : (data as List? ?? const []);
         return Ok(list
             .map((e) =>

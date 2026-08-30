@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoppin_driver/core/api/api_exception.dart';
+import 'package:hoppin_driver/core/auth/token_store.dart';
 import 'package:hoppin_driver/core/money.dart';
 import 'package:hoppin_driver/core/result.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride.dart';
@@ -38,6 +39,9 @@ void main() {
   ProviderContainer container() {
     final c = ProviderContainer(overrides: [
       tripRepositoryProvider.overrideWithValue(repo),
+      // Cancelling needs the acting driver's id; overriding the narrow
+      // provider avoids standing up the whole Supabase SDK in a unit test.
+      currentUserIdProvider.overrideWithValue('driver-1'),
       tripPollIntervalProvider
           .overrideWithValue(const Duration(milliseconds: 20)),
     ]);
@@ -109,7 +113,7 @@ void main() {
       () async {
     when(() => repo.ride('r1'))
         .thenAnswer((_) async => Ok(buildRide('arrived')));
-    when(() => repo.cancel(any(), reasonId: any(named: 'reasonId'))).thenAnswer(
+    when(() => repo.cancel(any(), reasonId: any(named: 'reasonId'), driverUserId: any(named: 'driverUserId'))).thenAnswer(
         (_) async => Err(ApiException('NO_SHOW_TOO_EARLY', '', 400,
             fields: {'seconds_remaining': 120})));
 

@@ -22,6 +22,11 @@ class EarningsState {
 class EarningsController extends AsyncNotifier<EarningsState> {
   bool _disposed = false;
 
+  /// Incremented on every period change. A stale response is dropped —
+  /// showing a week's total under a "Month" label is money against the
+  /// wrong question.
+  int _request = 0;
+
   @override
   Future<EarningsState> build() async {
     ref.onDispose(() => _disposed = true);
@@ -56,11 +61,19 @@ class EarningsController extends AsyncNotifier<EarningsState> {
   Future<void> setPeriod(String period) async {
     if (period == _period) return;
     _period = period;
+    final ticket = ++_request;
     state = const AsyncLoading();
-    _emit(await _fetch(period));
+    final next = await _fetch(period);
+    if (ticket != _request) return;
+    _emit(next);
   }
 
-  Future<void> refresh() async => _emit(await _fetch(_period));
+  Future<void> refresh() async {
+    final ticket = ++_request;
+    final next = await _fetch(_period);
+    if (ticket != _request) return;
+    _emit(next);
+  }
 }
 
 final earningsControllerProvider =

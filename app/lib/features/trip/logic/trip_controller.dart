@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_exception.dart';
+import '../../../core/auth/token_store.dart';
 import '../../../core/result.dart';
 import '../data/models/ride.dart';
 import '../data/models/waiting_policy.dart';
@@ -116,8 +117,18 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
   Future<Result<Ride>> start() => _transition(() => _repo.start(arg));
   Future<Result<Ride>> complete() => _transition(() => _repo.complete(arg));
 
-  Future<Result<Ride>> cancel(String reasonId) =>
-      _transition(() => _repo.cancel(arg, reasonId: reasonId));
+  Future<Result<Ride>> cancel(String reasonId) {
+    // The handler requires the acting user's id. It comes from the live
+    // Supabase session rather than being passed down from the UI, so a
+    // screen cannot forget it and turn every cancellation into a 400.
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) {
+      return Future.value(
+          Err(ApiException('AUTH_FAILED', 'no signed-in driver', 0)));
+    }
+    return _transition(
+        () => _repo.cancel(arg, reasonId: reasonId, driverUserId: userId));
+  }
 
   Future<Result<Ride>> _transition(Future<Result<Ride>> Function() call) async {
     _emit(_current.copyWith(isBusy: true, clearError: true));

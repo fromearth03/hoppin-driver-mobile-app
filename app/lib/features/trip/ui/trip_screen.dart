@@ -59,6 +59,10 @@ class TripScreen extends ConsumerWidget {
           }
           return Column(
             children: [
+              // A poll that keeps failing leaves the driver looking at a
+              // ride that may already have been cancelled underneath them.
+              // The stale data is the right fallback, but silence is not.
+              if (state.error != null) _staleBanner(),
               Expanded(
                 child: TripMap(
                   geo: ride.geo,
@@ -141,6 +145,27 @@ class TripScreen extends ConsumerWidget {
       child: Text(label),
     );
   }
+
+  /// Shown when the trip poll is failing. The ride on screen may be out of
+  /// date — the driver needs to know that before they keep driving to a
+  /// pickup that could already have been cancelled.
+  Widget _staleBanner() => Container(
+        width: double.infinity,
+        color: AppColors.warning.withValues(alpha: 0.15),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: const Row(
+          children: [
+            Icon(Icons.cloud_off, size: 18, color: AppColors.warning),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "We've lost contact with the server — this may be out of date.",
+                style: AppText.caption,
+              ),
+            ),
+          ],
+        ),
+      );
 
   Future<void> _cancel(BuildContext context, WidgetRef ref) async {
     final reasonId = await CancelSheet.show(context);

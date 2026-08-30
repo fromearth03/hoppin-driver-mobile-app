@@ -14,6 +14,10 @@ class DriverTrip {
   final Pence penalty;
 
   /// `driver` | `rider` | `admin` | `system`, null on a completed trip.
+  ///
+  /// Note the server sends `completed_at` for cancellations too — it selects
+  /// `COALESCE(dropoff_time, updated_at)`, so a cancelled trip carries the
+  /// time it was cancelled rather than nothing.
   final String? cancelledBy;
 
   /// Server-owned prose. Rendered verbatim when present.

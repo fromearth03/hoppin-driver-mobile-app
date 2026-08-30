@@ -29,12 +29,15 @@ class OfferRepository {
   }
 
   /// Returns the ride id to hand to the trip screen.
-  Future<Result<String>> accept(String offerId) async {
+  ///
+  /// The handler acknowledges with `{"message": ...}` and no ride id, so the
+  /// caller supplies the one the offer already carried. Parsing an id out of
+  /// that acknowledgement threw on a *successful* accept, leaving the driver
+  /// assigned to a ride the app never opened.
+  Future<Result<String>> accept(String offerId,
+      {required String rideId}) async {
     final r = await _api.post<Map<String, dynamic>>('/offers/$offerId/accept');
-    return r.when(
-      ok: (json) => Ok((json['ride_id'] ?? json['id']) as String),
-      err: (e) => Err(e),
-    );
+    return r.when(ok: (_) => Ok(rideId), err: (e) => Err(e));
   }
 
   Future<Result<void>> decline(String offerId) async {

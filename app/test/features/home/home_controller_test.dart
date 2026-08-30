@@ -175,7 +175,7 @@ void main() {
     when(() => status.status())
         .thenAnswer((_) async => Ok(buildStatus(presence: Presence.online)));
     when(() => offers.offers()).thenAnswer((_) async => Ok([buildOffer()]));
-    when(() => offers.accept('o1')).thenAnswer((_) async => const Ok('ride-9'));
+    when(() => offers.accept('o1', rideId: any(named: 'rideId'))).thenAnswer((_) async => const Ok('ride-9'));
 
     final c = container();
     await c.read(homeControllerProvider.future);
@@ -191,7 +191,7 @@ void main() {
     when(() => status.status())
         .thenAnswer((_) async => Ok(buildStatus(presence: Presence.online)));
     when(() => offers.offers()).thenAnswer((_) async => Ok([buildOffer()]));
-    when(() => offers.accept(any()))
+    when(() => offers.accept(any(), rideId: any(named: 'rideId')))
         .thenAnswer((_) async => Err(ApiException('OFFER_EXPIRED', '', 409)));
 
     final c = container();

@@ -88,8 +88,18 @@ class UploadController extends Notifier<UploadState> {
     }
 
     final urls = presigned.valueOrNull!;
-    final uploadUrl = (urls['upload_url'] ?? urls['url']) as String;
-    final fileUrl = (urls['file_url'] ?? urls['bucket_file_url']) as String;
+    // Read nullably: a hard cast on a key the server renamed or omitted
+    // would throw inside this method and escape Result entirely, reaching
+    // the driver as an unhandled async error rather than a failure the
+    // documents screen can render.
+    final uploadUrl = (urls['upload_url'] ?? urls['url']) as String?;
+    final fileUrl = (urls['file_url'] ?? urls['bucket_file_url']) as String?;
+    if (uploadUrl == null || fileUrl == null) {
+      final failure =
+          ApiException('INTERNAL', 'upload destination missing', 0);
+      state = UploadState(error: failure);
+      return Err(failure);
+    }
 
     final put = await ref
         .read(fileUploaderProvider)

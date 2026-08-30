@@ -239,7 +239,7 @@ class HomeController extends AsyncNotifier<HomeState> {
     // mid-accept could otherwise re-render the offer being accepted.
     stopPolling();
     _emit(_current.copyWith(isBusy: true));
-    final result = await _offerRepo.accept(offer.id);
+    final result = await _offerRepo.accept(offer.id, rideId: offer.rideId);
 
     // Either way the card comes down: accepted offers become a trip, and a
     // lapsed one must not linger looking tappable.

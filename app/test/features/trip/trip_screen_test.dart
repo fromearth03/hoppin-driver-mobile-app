@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoppin_driver/core/api/api_exception.dart';
+import 'package:hoppin_driver/core/auth/token_store.dart';
 import 'package:hoppin_driver/core/money.dart';
 import 'package:hoppin_driver/core/result.dart';
 import 'package:hoppin_driver/features/trip/data/cancel_reason_repository.dart';
@@ -31,6 +32,7 @@ Widget wrap(MockTripRepo trip, MockReasonRepo reasons) => ProviderScope(
       overrides: [
         tripRepositoryProvider.overrideWithValue(trip),
         cancelReasonRepositoryProvider.overrideWithValue(reasons),
+        currentUserIdProvider.overrideWithValue('driver-1'),
       ],
       child: const MaterialApp(home: TripScreen(rideId: 'r1')),
     );
@@ -129,13 +131,13 @@ void main() {
 
     // The driver sees the amount before the charge, not after.
     expect(find.textContaining('£59.00'), findsOneWidget);
-    verifyNever(() => trip.cancel(any(), reasonId: any(named: 'reasonId')));
+    verifyNever(() => trip.cancel(any(), reasonId: any(named: 'reasonId'), driverUserId: any(named: 'driverUserId')));
   });
 
   testWidgets('an early no-show says how long is left', (tester) async {
     when(() => trip.ride('r1'))
         .thenAnswer((_) async => Ok(buildRide('arrived')));
-    when(() => trip.cancel(any(), reasonId: any(named: 'reasonId'))).thenAnswer(
+    when(() => trip.cancel(any(), reasonId: any(named: 'reasonId'), driverUserId: any(named: 'driverUserId'))).thenAnswer(
         (_) async => Err(ApiException('NO_SHOW_TOO_EARLY', '', 400,
             fields: {'seconds_remaining': 120})));
 

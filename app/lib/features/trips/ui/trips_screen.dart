@@ -24,6 +24,12 @@ class TripsScreen extends ConsumerWidget {
     TripFilter.cancelled: 'Cancelled',
   };
 
+  /// Groups a trip whose date the server did not send under an explicit
+  /// "Undated" heading. Substituting today would tell a driver checking last
+  /// week's cancellations that they happened this morning.
+  static String dayLabelFor(DateTime? when) =>
+      when == null ? 'Undated' : dayLabel(when);
+
   static String dayLabel(DateTime when) {
     final now = DateTime.now();
     final date = DateTime(when.year, when.month, when.day);
@@ -71,9 +77,9 @@ class TripsScreen extends ConsumerWidget {
                   itemBuilder: (context, trip) {
                     final index = state.trips.indexOf(trip);
                     final showHeader = index == 0 ||
-                        dayLabel(trip.completedAt ?? DateTime.now()) !=
-                            dayLabel(state.trips[index - 1].completedAt ??
-                                DateTime.now());
+                        dayLabelFor(trip.completedAt) !=
+                            dayLabelFor(
+                                state.trips[index - 1].completedAt);
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -81,7 +87,7 @@ class TripsScreen extends ConsumerWidget {
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                             child: Text(
-                                dayLabel(trip.completedAt ?? DateTime.now()),
+                                dayLabelFor(trip.completedAt),
                                 style: AppText.caption),
                           ),
                         TripRow(trip: trip),

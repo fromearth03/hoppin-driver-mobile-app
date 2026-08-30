@@ -153,7 +153,7 @@ void main() {
       when(() => status.status())
           .thenAnswer((_) async => Ok(buildStatus(presence: Presence.online)));
       when(() => offers.offers()).thenAnswer((_) async => Ok([buildOffer()]));
-      when(() => offers.accept(any()))
+      when(() => offers.accept(any(), rideId: any(named: 'rideId')))
           .thenAnswer((_) async => Err(ApiException('OFFER_EXPIRED', '', 409)));
 
       final c = container();

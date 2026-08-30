@@ -142,7 +142,7 @@ void main() {
       when(() => adapter.fetch(any(), any(), any()))
           .thenAnswer((_) async => body('{"ride_id":"ride-9"}', 200));
 
-      final r = await repo.accept('offer-1');
+      final r = await repo.accept('offer-1', rideId: 'ride-9');
 
       expect(r.valueOrNull, 'ride-9');
     });
@@ -151,7 +151,7 @@ void main() {
       when(() => adapter.fetch(any(), any(), any())).thenAnswer(
           (_) async => body('{"code":"OFFER_EXPIRED","error":"lapsed"}', 409));
 
-      final r = await repo.accept('offer-1');
+      final r = await repo.accept('offer-1', rideId: 'ride-9');
 
       expect(r.errorOrNull!.code, 'OFFER_EXPIRED');
     });

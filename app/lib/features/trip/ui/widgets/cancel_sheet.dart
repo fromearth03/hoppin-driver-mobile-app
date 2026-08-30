@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/api/error_codes.dart';
+import '../../../../core/result.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../shared/widgets/app_loading.dart';
@@ -28,15 +30,15 @@ class CancelSheet extends ConsumerStatefulWidget {
 
 class _CancelSheetState extends ConsumerState<CancelSheet> {
   CancelReason? _selected;
-  late final Future<List<CancelReason>> _reasons;
+  late final Future<Result<List<CancelReason>>> _reasons;
 
   @override
   void initState() {
     super.initState();
-    _reasons = ref
-        .read(cancelReasonRepositoryProvider)
-        .forDriver()
-        .then((r) => r.valueOrNull ?? const []);
+    // The Result is kept rather than flattened to an empty list: a driver
+    // who cannot load reasons must be told, not shown a question with no
+    // answers at the moment they need to cancel.
+    _reasons = ref.read(cancelReasonRepositoryProvider).forDriver();
   }
 
   @override
@@ -47,11 +49,32 @@ class _CancelSheetState extends ConsumerState<CancelSheet> {
         ),
       );
 
-  Widget _picker() => FutureBuilder<List<CancelReason>>(
+  Widget _picker() => FutureBuilder<Result<List<CancelReason>>>(
         future: _reasons,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const SizedBox(height: 160, child: AppLoading());
+          }
+          final result = snapshot.data!;
+          final reasons = result.valueOrNull;
+          // An empty picker under a question the driver cannot answer is
+          // worse than an error: they are trying to cancel and cannot see
+          // why they are stuck.
+          if (reasons == null) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Why are you cancelling?', style: AppText.title),
+                const SizedBox(height: 12),
+                Text(errorCopy(result.errorOrNull!), style: AppText.body),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Keep the ride'),
+                ),
+              ],
+            );
           }
           return Column(
             mainAxisSize: MainAxisSize.min,
@@ -59,7 +82,7 @@ class _CancelSheetState extends ConsumerState<CancelSheet> {
             children: [
               const Text('Why are you cancelling?', style: AppText.title),
               const SizedBox(height: 12),
-              ...snapshot.data!.map((r) => ListTile(
+              ...reasons.map((r) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(r.text, style: AppText.body),
                     subtitle: r.hasPenalty

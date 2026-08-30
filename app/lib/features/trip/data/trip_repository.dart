@@ -13,19 +13,41 @@ class TripRepository {
       _rideCall(() => _api.get<Map<String, dynamic>>('/rides/$rideId'));
 
   Future<Result<Ride>> arrive(String rideId) =>
-      _rideCall(() => _api.patch<Map<String, dynamic>>('/rides/$rideId/arrive'));
+      _transition(rideId, '/rides/$rideId/arrive');
 
   Future<Result<Ride>> start(String rideId) =>
-      _rideCall(() => _api.patch<Map<String, dynamic>>('/rides/$rideId/start'));
+      _transition(rideId, '/rides/$rideId/start');
 
-  Future<Result<Ride>> complete(String rideId) => _rideCall(
-      () => _api.patch<Map<String, dynamic>>('/rides/$rideId/complete'));
+  Future<Result<Ride>> complete(String rideId) =>
+      _transition(rideId, '/rides/$rideId/complete');
 
   /// `reasonId` comes from the picker, which only ever offers entries the
   /// server marked `pickable: true`.
-  Future<Result<Ride>> cancel(String rideId, {required String reasonId}) =>
-      _rideCall(() => _api.patch<Map<String, dynamic>>('/rides/$rideId/cancel',
-          body: {'reason_id': reasonId}));
+  ///
+  /// `canceled_by_user_id` and `actor_type` are `binding:"required"` on the
+  /// handler, so omitting them fails validation before the ride is even
+  /// looked at and every cancellation returns 400.
+  Future<Result<Ride>> cancel(
+    String rideId, {
+    required String reasonId,
+    required String driverUserId,
+  }) =>
+      _transition(rideId, '/rides/$rideId/cancel', body: {
+        'reason_id': reasonId,
+        'canceled_by_user_id': driverUserId,
+        'actor_type': 'driver',
+      });
+
+  /// The lifecycle endpoints acknowledge with `{"message": ...}` rather than
+  /// returning the ride, so the updated ride is re-read afterwards. Parsing
+  /// that acknowledgement as a ride throws on a *successful* transition,
+  /// which is how a working arrive/start/complete looked like a crash.
+  Future<Result<Ride>> _transition(String rideId, String path,
+      {Map<String, dynamic>? body}) async {
+    final result = await _api.patch<Map<String, dynamic>>(path, body: body);
+    if (!result.isOk) return Err(result.errorOrNull!);
+    return ride(rideId);
+  }
 
   Future<Result<WaitingPolicy>> waitingPolicy(String rideId) async {
     final r =

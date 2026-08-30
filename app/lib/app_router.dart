@@ -14,6 +14,8 @@ class Routes {
   static const notifications = '/notifications';
   static const support = '/support';
   static const settings = '/settings';
+  static const payouts = '/payouts';
+  static const deleteAccount = '/delete-account';
 
   // Auth
   static const signIn = '/sign-in';

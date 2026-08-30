@@ -21,9 +21,14 @@ class PendingOffer {
 
   final int expiresInSec;
 
-  /// When this app received the offer — the countdown runs from here, not
-  /// from an absolute server timestamp we would have to trust the clock for.
+  /// When this app received the offer. The countdown runs from here when the
+  /// server sends only a relative window.
   final DateTime receivedAt;
+
+  /// Absolute expiry, which is what the service actually sends. Preferred
+  /// over [expiresInSec] when present: a relative default would tell the
+  /// driver they had longer than they do.
+  final DateTime? expiresAt;
 
   const PendingOffer({
     required this.id,
@@ -36,12 +41,16 @@ class PendingOffer {
     this.rideCategory,
     this.estimatedDurationSeconds,
     this.pickupEtaSeconds,
+    this.expiresAt,
   });
 
   factory PendingOffer.fromJson(Map<String, dynamic> json,
           {DateTime? receivedAt}) =>
       PendingOffer(
-        id: json['id'] as String,
+        // The service keys this `offer_id`; `id` is a fallback only. A hard
+        // cast here threw on every offer the server sent, which meant no
+        // offer could ever be displayed.
+        id: (json['offer_id'] ?? json['id']) as String? ?? '',
         // Defaulted rather than cast: a missing ride_id would otherwise
         // throw inside the repository, escaping Result entirely and
         // surfacing as an unhandled async error instead of an Err.
@@ -62,12 +71,16 @@ class PendingOffer {
             (json['estimated_duration_seconds'] as num?)?.toInt(),
         pickupEtaSeconds: (json['pickup_eta_seconds'] as num?)?.toInt(),
         expiresInSec: (json['expires_in_sec'] as num?)?.toInt() ?? 60,
+        expiresAt: json['expires_at'] == null
+            ? null
+            : DateTime.tryParse(json['expires_at'] as String),
         receivedAt: receivedAt ?? DateTime.now(),
       );
 
   int get secondsRemaining {
-    final elapsed = DateTime.now().difference(receivedAt).inSeconds;
-    final left = expiresInSec - elapsed;
+    final left = expiresAt != null
+        ? expiresAt!.difference(DateTime.now().toUtc()).inSeconds
+        : expiresInSec - DateTime.now().difference(receivedAt).inSeconds;
     return left < 0 ? 0 : left;
   }
 

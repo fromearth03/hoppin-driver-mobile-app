@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_empty_state.dart';
@@ -32,15 +33,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (text.isEmpty) return;
 
     setState(() => _sending = true);
-    await ref
+    final result = await ref
         .read(chatControllerProvider(widget.rideId).notifier)
         .send(text, replyToId: _replyingTo?.id);
     if (!mounted) return;
-    _input.clear();
-    setState(() {
-      _replyingTo = null;
-      _sending = false;
-    });
+
+    setState(() => _sending = false);
+    result.when(
+      ok: (_) {
+        _input.clear();
+        setState(() => _replyingTo = null);
+      },
+      // The driver's own words stay in the composer. Clearing it on a
+      // failure tells them the rider was informed when they were not —
+      // exactly wrong for a message sent while waiting at a pickup.
+      err: (e) => ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorCopy(e)))),
+    );
   }
 
   @override

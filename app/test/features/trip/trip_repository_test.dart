@@ -64,7 +64,7 @@ void main() {
         '{"code":"NO_SHOW_TOO_EARLY","error":"wait","seconds_remaining":120}',
         400));
 
-    final r = await repo.cancel('r1', reasonId: 'rider_no_show');
+    final r = await repo.cancel('r1', reasonId: 'rider_no_show', driverUserId: 'u1');
 
     expect(r.errorOrNull!.code, 'NO_SHOW_TOO_EARLY');
     expect(r.errorOrNull!.fields['seconds_remaining'], 120);
@@ -88,7 +88,7 @@ void main() {
             '{"lat":1.0,"lng":2.0},"dropoff":{"lat":3.0,"lng":4.0},'
             '"route":[]}}', 200));
 
-    await repo.cancel('r1', reasonId: 'vehicle_issue');
+    await repo.cancel('r1', reasonId: 'vehicle_issue', driverUserId: 'u1');
 
     final sent = verify(() => adapter.fetch(captureAny(), any(), any()))
         .captured

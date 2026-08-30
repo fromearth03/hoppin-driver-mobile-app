@@ -11,16 +11,18 @@ import 'features/auth/ui/sign_in_screen.dart';
 import 'features/documents/ui/documents_screen.dart';
 import 'features/earnings/ui/earnings_screen.dart';
 import 'features/home/ui/home_screen.dart';
+import 'features/notifications/ui/notifications_screen.dart';
+import 'features/payment/ui/payout_screen.dart';
+import 'features/profile/ui/delete_account_screen.dart';
+import 'features/profile/ui/profile_screen.dart';
+import 'features/profile/ui/settings_screen.dart';
 import 'features/statement/ui/statement_screen.dart';
 import 'features/stats/ui/stats_screen.dart';
+import 'features/support/ui/support_screen.dart';
 import 'features/trip/ui/chat_screen.dart';
 import 'features/trip/ui/trip_screen.dart';
 import 'features/trips/ui/trips_screen.dart';
 import 'shared/nav/app_shell.dart';
-
-/// Placeholder bodies. Each is replaced by its real screen in a later batch.
-Widget _placeholder(String name) =>
-    Center(child: Text('$name — not built yet'));
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -89,16 +91,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
               path: Routes.personalInfo,
-              builder: (_, __) => _placeholder('Personal Information')),
+              builder: (_, __) => const ProfileScreen()),
           GoRoute(
               path: Routes.notifications,
-              builder: (_, __) => _placeholder('Notifications')),
+              builder: (_, __) => const NotificationsScreen()),
           GoRoute(
-              path: Routes.support,
-              builder: (_, __) => _placeholder('Support')),
+              path: Routes.support, builder: (_, __) => const SupportScreen()),
           GoRoute(
               path: Routes.settings,
-              builder: (_, __) => _placeholder('Settings')),
+              builder: (_, __) => const SettingsScreen()),
+          GoRoute(
+              path: Routes.payouts, builder: (_, __) => const PayoutScreen()),
+          GoRoute(
+              path: Routes.deleteAccount,
+              builder: (_, __) => const DeleteAccountScreen()),
         ],
       ),
     ],

@@ -33,3 +33,11 @@ final supabaseClientProvider =
 
 final tokenStoreProvider = Provider<TokenStore>((ref) => CallbackTokenStore(
     () => ref.read(supabaseClientProvider).auth.currentSession?.accessToken));
+
+/// The signed-in driver's user id, or null when signed out.
+///
+/// A narrow seam over the SDK: controllers that need the id should not have
+/// to stand up Supabase to be tested, and reaching for the whole client
+/// makes them untestable without initialising it.
+final currentUserIdProvider = Provider<String?>(
+    (ref) => ref.watch(supabaseClientProvider).auth.currentSession?.user.id);

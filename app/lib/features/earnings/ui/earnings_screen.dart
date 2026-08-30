@@ -37,8 +37,15 @@ class EarningsScreen extends ConsumerWidget {
           }
           return RefreshIndicator(
             onRefresh: controller.refresh,
-            child: ListView(
+            // Not a lazy ListView: the period bar, total card and balance
+            // tile form a tall first section, and a lazy list would never
+            // build the payout rows or the note beneath them — they would
+            // be absent from the tree, not merely scrolled off.
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.only(bottom: 24),
+              child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _periodBar(state.period, controller),
                 _totalCard(state),
@@ -58,7 +65,8 @@ class EarningsScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
-              ],
+                ],
+              ),
             ),
           );
         },

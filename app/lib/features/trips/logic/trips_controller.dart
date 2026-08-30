@@ -42,6 +42,11 @@ class TripsState {
 class TripsController extends AsyncNotifier<TripsState> {
   bool _disposed = false;
 
+  /// Incremented on every filter change. A response whose ticket is stale
+  /// is dropped: without this a slow earlier request can land after a fast
+  /// later one and show the driver a filter they did not choose.
+  int _request = 0;
+
   @override
   Future<TripsState> build() async {
     ref.onDispose(() => _disposed = true);
@@ -71,12 +76,19 @@ class TripsController extends AsyncNotifier<TripsState> {
     if (filter == _current.filter) return;
     // Refetched rather than filtered in place: the server owns which rows
     // belong to a filter, and a client-side filter would page wrongly.
+    final ticket = ++_request;
     state = const AsyncLoading();
     final next = await _fetch(filter);
+    if (ticket != _request) return;
     _emit(next);
   }
 
-  Future<void> refresh() async => _emit(await _fetch(_current.filter));
+  Future<void> refresh() async {
+    final ticket = ++_request;
+    final next = await _fetch(_current.filter);
+    if (ticket != _request) return;
+    _emit(next);
+  }
 
   Future<void> loadMore() async {
     final cursor = _current.nextCursor;
