@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -34,6 +36,63 @@ class AuthRepository {
       return Err(_map(e));
     } catch (e) {
       return Err(ApiException('INTERNAL', e.toString(), 0));
+    }
+  }
+
+  /// Registers a driver.
+  ///
+  /// The metadata key is **`signup_role`**, never `role`: a `role` key is
+  /// reserved for the admin/invite flows and makes the database trigger skip
+  /// the user entirely, leaving an account that is neither rider nor driver.
+  ///
+  /// The trigger creates the driver restricted by construction — pending, not
+  /// active on the platform — so an admin still has to approve them.
+  Future<Result<AuthResponse>> signUpDriver({
+    required String email,
+    required String password,
+    required String fullName,
+    required String phone,
+  }) async {
+    try {
+      final response = await _auth.signUp(
+        email: email.trim(),
+        password: password,
+        data: {
+          'signup_role': 'driver',
+          'full_name': fullName.trim(),
+          'phone': phone.trim(),
+        },
+      );
+      return Ok(response);
+    } on AuthException catch (e) {
+      return Err(_map(e));
+    } catch (e) {
+      return Err(ApiException('INTERNAL', e.toString(), 0));
+    }
+  }
+
+  /// The role the service actually gave this account, read from the
+  /// `user_role` claim on the access token.
+  ///
+  /// Driver registration has an admin kill-switch. With it off, a driver
+  /// signup silently becomes a **rider** rather than an orphan account — so
+  /// asking for a driver account is not proof of getting one, and the app has
+  /// to check rather than assume.
+  String? get currentRole {
+    final token = _auth.currentSession?.accessToken;
+    if (token == null) return null;
+    try {
+      // Read the claim directly rather than taking a dependency for one
+      // field. This is not verification — the token was just issued to us by
+      // the SDK over TLS, and every request is authorised server-side anyway.
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      return (jsonDecode(payload) as Map<String, dynamic>)['user_role']
+          as String?;
+    } catch (_) {
+      // A token we cannot read is not a driver claim we can trust.
+      return null;
     }
   }
 
