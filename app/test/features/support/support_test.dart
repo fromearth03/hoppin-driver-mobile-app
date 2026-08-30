@@ -68,8 +68,11 @@ void main() {
         .captured
         .first as RequestOptions;
     // Citing the entry is what stops support having to ask the driver which
-    // charge they meant.
-    expect(sent.data['ledger_entry_id'], 'e1');
+    // charge they meant. The endpoint has no field for it and drops unknown
+    // keys silently, so it has to travel in the body a human reads.
+    expect(sent.data.containsKey('ledger_entry_id'), isFalse);
+    expect(sent.data['body'], contains('e1'));
+    expect(sent.data['body'], contains('I arrived on time.'));
     expect(sent.data['subject'], 'Dispute: Late arrival penalty');
   });
 

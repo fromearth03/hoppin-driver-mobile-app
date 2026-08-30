@@ -26,6 +26,11 @@ class SupportRepository {
 
   /// `ledgerEntryId` is set when the ticket is a dispute raised from a
   /// statement row, so support sees exactly which charge is contested.
+  ///
+  /// The endpoint has no field for it — an unknown key is dropped silently,
+  /// which is how disputes were reaching support with nothing identifying
+  /// the charge. It goes into the body instead, which is stored and read by
+  /// a human. Move it to a real field if the service ever grows one.
   Future<Result<SupportTicket>> create({
     required String subject,
     required String category,
@@ -33,13 +38,15 @@ class SupportRepository {
     String? rideId,
     String? ledgerEntryId,
   }) async {
+    final body = ledgerEntryId == null
+        ? ticketBody
+        : '$ticketBody\n\nDisputed statement entry: $ledgerEntryId';
     final r =
         await _api.post<Map<String, dynamic>>('/me/support-tickets', body: {
       'subject': subject,
       'category': category,
-      'body': ticketBody,
+      'body': body,
       if (rideId != null) 'ride_id': rideId,
-      if (ledgerEntryId != null) 'ledger_entry_id': ledgerEntryId,
     });
     return r.when(
       ok: (json) => Ok(SupportTicket.fromJson(json)),

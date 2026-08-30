@@ -67,13 +67,13 @@ void main() {
     when(() => repo.wallet()).thenAnswer((_) async => const Ok(
         Wallet(availableBalance: Pence(0), pendingBalance: Pence(0))));
     when(() => repo.summary('today'))
-        .thenAnswer((_) async => const Ok(EarningsSummary(total: Pence(100))));
+        .thenAnswer((_) async => const Ok(EarningsSummary(net: Pence(100))));
     when(() => repo.summary('week')).thenAnswer((_) async {
       await Future<void>.delayed(const Duration(milliseconds: 60));
-      return const Ok(EarningsSummary(total: Pence(700)));
+      return const Ok(EarningsSummary(net: Pence(700)));
     });
     when(() => repo.summary('month'))
-        .thenAnswer((_) async => const Ok(EarningsSummary(total: Pence(3000))));
+        .thenAnswer((_) async => const Ok(EarningsSummary(net: Pence(3000))));
 
     final c = ProviderContainer(
         overrides: [earningsRepositoryProvider.overrideWithValue(repo)]);
@@ -90,6 +90,6 @@ void main() {
     // bug: the driver reads a total for a period they did not ask for.
     final state = c.read(earningsControllerProvider).value!;
     expect(state.period, 'month');
-    expect(state.summary!.total.pence, 3000);
+    expect(state.summary!.net.pence, 3000);
   });
 }
