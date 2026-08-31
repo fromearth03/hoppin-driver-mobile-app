@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
 import '../../data/models/ride_earnings.dart';
-import '../../logic/earnings_controller.dart';
 import 'earnings_card.dart';
 
 /// The 2x2 grid of period totals: today, this week, this month, all time.
@@ -27,6 +26,16 @@ class PeriodGrid extends StatelessWidget {
     'today': "Today's Earnings",
     'week': 'This Week',
     'month': 'This Month',
+    'all': 'All Time',
+  };
+
+  /// The same periods phrased to carry a following noun, so a section reads
+  /// "Today's Breakdown" and "This Week's Trips" rather than gluing the
+  /// card's own caption onto a heading.
+  static const possessives = {
+    'today': "Today's",
+    'week': "This Week's",
+    'month': "This Month's",
     'all': 'All Time',
   };
 
@@ -88,9 +97,20 @@ class PeriodGrid extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Text(labels[period]!, style: AppText.heading.copyWith(fontSize: 15)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(labels[period]!,
+                  maxLines: 1,
+                  style: AppText.heading.copyWith(fontSize: 15)),
+            ),
             const SizedBox(height: 4),
-            Text(_range(period, summary), style: AppText.caption),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(_range(period, summary),
+                  maxLines: 1, style: AppText.caption),
+            ),
           ],
         ),
       ),
@@ -109,7 +129,3 @@ class PeriodGrid extends StatelessWidget {
     return '${DateFormat('d MMM').format(from)} - ${DateFormat('d MMM').format(last)}';
   }
 }
-
-/// The named periods in the order the grid lays them out. Re-exported so a
-/// caller does not have to know the controller's constant.
-const gridPeriods = earningsPeriods;

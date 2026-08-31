@@ -9,7 +9,17 @@ import '../../../shared/widgets/app_text_field.dart';
 import '../data/onboarding_repository.dart';
 import '../logic/onboarding_controller.dart';
 import 'widgets/expiry_field.dart';
+import 'widgets/wizard_scaffold.dart';
 
+/// Step 3 of 4: the vehicle and the two dates it is approved against.
+///
+/// The design shows three boxes — Registration, Model, Type — each with its
+/// label stacked above, which is the shape [AppTextField] already draws. The
+/// service takes make, model, plate, colour, year and seat count, and reads
+/// MOT and insurance expiry off the vehicle for its compliance sweep.
+/// Dropping the rest to match the mock would leave a vehicle that can never
+/// be approved, so the design's rhythm is kept and the fields the service
+/// needs are carried in it.
 class VehicleScreen extends ConsumerStatefulWidget {
   const VehicleScreen({super.key});
 
@@ -31,6 +41,9 @@ class _VehicleScreenState extends ConsumerState<VehicleScreen> {
   bool _caz = false;
   bool _busy = false;
   String? _error;
+
+  /// The design spaces its stacked fields well apart; 22 is that gap.
+  static const _gap = SizedBox(height: 22);
 
   @override
   void dispose() {
@@ -84,141 +97,141 @@ class _VehicleScreenState extends ConsumerState<VehicleScreen> {
       (v == null || v.trim().isEmpty) ? 'Enter $what' : null;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Your vehicle')),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AppTextField(
-                    key: const Key('plate'),
-                    label: 'Registration',
-                    controller: _plate,
-                    enabled: !_busy,
-                    hint: 'WV21 ABC',
-                    textCapitalization: TextCapitalization.characters,
-                    validator: (v) => _requiredField(v, 'the registration'),
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    key: const Key('make'),
-                    label: 'Make',
-                    controller: _make,
-                    enabled: !_busy,
-                    textCapitalization: TextCapitalization.words,
-                    validator: (v) => _requiredField(v, 'the make'),
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    key: const Key('model'),
-                    label: 'Model',
-                    controller: _model,
-                    enabled: !_busy,
-                    textCapitalization: TextCapitalization.words,
-                    validator: (v) => _requiredField(v, 'the model'),
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    key: const Key('color'),
-                    label: 'Colour',
-                    controller: _color,
-                    enabled: !_busy,
-                    textCapitalization: TextCapitalization.words,
-                    validator: (v) => _requiredField(v, 'the colour'),
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    key: const Key('year'),
-                    label: 'Year',
-                    controller: _year,
-                    enabled: !_busy,
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      final year = int.tryParse(v?.trim() ?? '');
-                      if (year == null) return 'Enter the year';
-                      if (year < 1990 || year > DateTime.now().year + 1) {
-                        return 'Enter a valid year';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    key: const Key('seats'),
-                    label: 'Passenger seats',
-                    controller: _seats,
-                    enabled: !_busy,
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      final seats = int.tryParse(v?.trim() ?? '');
-                      if (seats == null || seats < 1) {
-                        return 'Enter the number of passenger seats';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  const Text('Compliance', style: AppText.heading),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'These are what an admin checks before approving you.',
-                    style: AppText.bodySecondary,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    key: const Key('insurer'),
-                    label: 'Insurance provider',
-                    controller: _insurer,
-                    enabled: !_busy,
-                    textCapitalization: TextCapitalization.words,
-                    validator: (v) => _requiredField(v, 'your insurer'),
-                  ),
-                  const SizedBox(height: 16),
-                  ExpiryField(
-                    key: const Key('insurance_expiry'),
-                    label: 'Insurance expiry',
-                    value: _insuranceExpiry,
-                    enabled: !_busy,
-                    onChanged: (d) => setState(() => _insuranceExpiry = d),
-                  ),
-                  const SizedBox(height: 16),
-                  ExpiryField(
-                    key: const Key('mot_expiry'),
-                    label: 'MOT expiry',
-                    value: _motExpiry,
-                    enabled: !_busy,
-                    onChanged: (d) => setState(() => _motExpiry = d),
-                  ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Clean Air Zone compliant'),
-                    value: _caz,
-                    onChanged: _busy ? null : (v) => setState(() => _caz = v),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 16),
-                    Text(_error!,
-                        style:
-                            AppText.body.copyWith(color: AppColors.negative)),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _busy ? null : _submit,
-                    child: _busy
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
-                        : const Text('Save vehicle'),
-                  ),
-                ],
+  Widget build(BuildContext context) => WizardScaffold(
+        title: 'Vehicle Registration',
+        step: 3,
+        onBack: _busy ? null : () => context.pop(),
+        actions: WizardActions(
+          busy: _busy,
+          onBack: _busy ? null : () => context.pop(),
+          onContinue: _busy ? null : _submit,
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppTextField(
+                key: const Key('plate'),
+                label: 'Vehicle Registration',
+                controller: _plate,
+                enabled: !_busy,
+                hint: 'e.g. AB-123',
+                textCapitalization: TextCapitalization.characters,
+                validator: (v) => _requiredField(v, 'the registration'),
               ),
-            ),
+              _gap,
+              AppTextField(
+                key: const Key('make'),
+                label: 'Vehicle Make',
+                controller: _make,
+                enabled: !_busy,
+                hint: 'e.g. Honda',
+                textCapitalization: TextCapitalization.words,
+                validator: (v) => _requiredField(v, 'the make'),
+              ),
+              _gap,
+              AppTextField(
+                key: const Key('model'),
+                label: 'Vehicle Model',
+                controller: _model,
+                enabled: !_busy,
+                hint: 'e.g. Civic',
+                textCapitalization: TextCapitalization.words,
+                validator: (v) => _requiredField(v, 'the model'),
+              ),
+              _gap,
+              // The design's third box is "Vehicle Type", placeholder
+              // "Standard". The vehicle payload has no such field — make,
+              // model, plate, colour, year, capacity and the compliance dates
+              // are the whole of it — so the slot carries colour, which the
+              // service does store and an admin does check.
+              AppTextField(
+                key: const Key('color'),
+                label: 'Vehicle Colour',
+                controller: _color,
+                enabled: !_busy,
+                hint: 'e.g. Silver',
+                textCapitalization: TextCapitalization.words,
+                validator: (v) => _requiredField(v, 'the colour'),
+              ),
+              _gap,
+              AppTextField(
+                key: const Key('year'),
+                label: 'Year',
+                controller: _year,
+                enabled: !_busy,
+                hint: 'e.g. 2019',
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  final year = int.tryParse(v?.trim() ?? '');
+                  if (year == null) return 'Enter the year';
+                  if (year < 1990 || year > DateTime.now().year + 1) {
+                    return 'Enter a valid year';
+                  }
+                  return null;
+                },
+              ),
+              _gap,
+              AppTextField(
+                key: const Key('seats'),
+                label: 'Passenger Seats',
+                controller: _seats,
+                enabled: !_busy,
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  final seats = int.tryParse(v?.trim() ?? '');
+                  if (seats == null || seats < 1) {
+                    return 'Enter the number of passenger seats';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 32),
+              const Text('Compliance', style: AppText.title),
+              const SizedBox(height: 6),
+              const Text(
+                'These are what an admin checks before approving you.',
+                style: AppText.bodySecondary,
+              ),
+              const SizedBox(height: 22),
+              AppTextField(
+                key: const Key('insurer'),
+                label: 'Insurance Provider',
+                controller: _insurer,
+                enabled: !_busy,
+                textCapitalization: TextCapitalization.words,
+                validator: (v) => _requiredField(v, 'your insurer'),
+              ),
+              _gap,
+              ExpiryField(
+                key: const Key('insurance_expiry'),
+                label: 'Insurance expiry',
+                value: _insuranceExpiry,
+                enabled: !_busy,
+                onChanged: (d) => setState(() => _insuranceExpiry = d),
+              ),
+              _gap,
+              ExpiryField(
+                key: const Key('mot_expiry'),
+                label: 'MOT expiry',
+                value: _motExpiry,
+                enabled: !_busy,
+                onChanged: (d) => setState(() => _motExpiry = d),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title:
+                    const Text('Clean Air Zone compliant', style: AppText.body),
+                value: _caz,
+                onChanged: _busy ? null : (v) => setState(() => _caz = v),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 16),
+                Text(_error!,
+                    style: AppText.body.copyWith(color: AppColors.negative)),
+              ],
+            ],
           ),
         ),
       );

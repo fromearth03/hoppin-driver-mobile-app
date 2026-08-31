@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
+import '../../../features/profile/ui/widgets/settings_card.dart';
+import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/app_loading.dart';
 import '../data/models/payout_status.dart';
 import '../data/payout_repository.dart';
@@ -16,6 +18,22 @@ final payoutStatusProvider = FutureProvider<PayoutStatus>((ref) async {
 
 /// Payout setup. The app shows status and opens Stripe's hosted onboarding;
 /// it never asks for a bank account or a card itself.
+///
+/// This screen stands in for the Figma's "Payment Methods" and "Add Payment
+/// Methods" pair, neither of which is built:
+///
+///  * All four `/me/payment-methods` routes are rider-only in the Go source —
+///    a driver calling them gets a 403, so the list would always be empty and
+///    the add form would always fail.
+///  * Drivers are paid OUT through Stripe Connect, not charged, so a saved
+///    card is the wrong instrument entirely.
+///  * The design's card-capture form (PAN, holder name, expiry, CVV) would put
+///    the app in PCI scope. Stripe's hosted page keeps it at SAQ-A, which is
+///    why the button below leaves the app rather than collecting anything.
+///
+/// There is no "Retry payout" action anywhere here: payouts are administered
+/// on the operator's schedule and no endpoint lets a driver trigger one, so a
+/// button would be a lie about what the driver controls.
 class PayoutScreen extends ConsumerStatefulWidget {
   const PayoutScreen({super.key});
 
@@ -56,66 +74,94 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
     final async = ref.watch(payoutStatusProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Payments')),
+      backgroundColor: AppColors.background,
+      appBar: settingsAppBar(context, 'Payments'),
       body: async.when(
         loading: () => const AppLoading(),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
-        data: (status) => SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        data: _body,
+      ),
+    );
+  }
+
+  Widget _body(PayoutStatus status) {
+    final (icon, tint, title, detail) = status.isReady
+        ? (
+            Icons.check_circle,
+            AppColors.positive,
+            'Ready to be paid',
+            'Your payout account is set up. Your operator issues payouts on '
+                'their usual schedule.',
+          )
+        : status.connected
+            ? (
+                Icons.access_time_filled,
+                AppColors.warning,
+                'Setup in review',
+                "We're waiting on Stripe to finish checking your details. "
+                    'Nothing for you to do.',
+              )
+            : (
+                Icons.info_outline,
+                AppColors.negative,
+                'Payment setup needed',
+                'Set up your payout account so your earnings can reach you.',
+              );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 8, bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SettingsCard(
+            title: 'Payout account',
             children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          status.isReady
-                              ? Icons.check_circle
-                              : Icons.info_outline,
-                          color: status.isReady
-                              ? AppColors.positive
-                              : AppColors.warning,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            status.isReady
-                                ? 'Ready to be paid'
-                                : status.connected
-                                    ? 'Setup in review'
-                                    : 'Payment setup needed',
-                            style: AppText.heading,
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                      decoration: BoxDecoration(
+                        color: tint.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(icon, size: 24, color: tint),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: AppText.body.copyWith(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w600,
+                                      color: tint),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(detail, style: AppText.bodySecondary),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      status.isReady
-                          ? 'Your payout account is set up. Your operator issues payouts on their usual schedule.'
-                          : status.connected
-                              ? "We're waiting on Stripe to finish checking your details. Nothing for you to do."
-                              : 'Set up your payout account so your earnings can reach you.',
-                      style: AppText.bodySecondary,
+                        ],
+                      ),
                     ),
                     if (!status.isReady && !status.connected) ...[
                       const SizedBox(height: 20),
-                      FilledButton(
-                        onPressed: _busy ? null : _onboard,
-                        child: const Text('Set up payouts'),
+                      AppButton(
+                        label: 'Set up payouts',
+                        busy: _busy,
+                        onPressed: _onboard,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       const Text(
-                        'You will be taken to Stripe to enter your bank details securely.',
+                        'You will be taken to Stripe to enter your bank '
+                        'details securely.',
                         style: AppText.caption,
                       ),
                     ],
@@ -124,8 +170,62 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
               ),
             ],
           ),
-        ),
+          const SettingsCard(
+            title: 'How you get paid',
+            children: [
+              _InfoRow(
+                icon: Icons.account_balance_outlined,
+                label: 'Bank transfer via Stripe',
+                detail:
+                    'Your earnings are transferred to the bank account you '
+                    'gave Stripe. Hoppin never holds your bank details.',
+              ),
+              _InfoRow(
+                icon: Icons.event_outlined,
+                label: 'On your operator’s schedule',
+                detail:
+                    'Your operator decides when payouts run. You can see past '
+                    'payouts on the Earnings screen.',
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
+}
+
+/// A short explainer row inside a [SettingsCard].
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String detail;
+
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.detail,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 24, color: AppColors.textPrimary),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: AppText.body.copyWith(fontSize: 17)),
+                  const SizedBox(height: 4),
+                  Text(detail, style: AppText.caption),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 }

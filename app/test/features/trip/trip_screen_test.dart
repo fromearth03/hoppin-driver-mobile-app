@@ -37,6 +37,15 @@ Widget wrap(MockTripRepo trip, MockReasonRepo reasons) => ProviderScope(
       child: const MaterialApp(home: TripScreen(rideId: 'r1')),
     );
 
+/// The waiting card and timer tick once a second, so `pumpAndSettle` never
+/// returns on this screen. Fixed pumps advance past every animation and
+/// future the tests care about without waiting on a clock that never stops.
+Future<void> settle(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
 void main() {
   late MockTripRepo trip;
   late MockReasonRepo reasons;
@@ -71,7 +80,7 @@ void main() {
         .thenAnswer((_) async => Ok(buildRide('accepted')));
 
     await tester.pumpWidget(wrap(trip, reasons));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(find.text('Arrived at Pickup'), findsOneWidget);
     expect(find.text('Alex Morgan'), findsOneWidget);
@@ -83,10 +92,13 @@ void main() {
         .thenAnswer((_) async => Ok(buildRide('arrived')));
 
     await tester.pumpWidget(wrap(trip, reasons));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(find.text('Start Trip'), findsOneWidget);
-    expect(find.textContaining('free waiting'), findsOneWidget);
+    // The waiting sheet still states the charging terms beside the clock —
+    // a driver who cannot see the rate cannot explain the meter.
+    expect(find.textContaining('Free waiting'), findsOneWidget);
+    expect(find.textContaining('£0.30 per minute'), findsOneWidget);
   });
 
   testWidgets('offers Finish Trip while under way', (tester) async {
@@ -94,7 +106,7 @@ void main() {
         .thenAnswer((_) async => Ok(buildRide('in_progress')));
 
     await tester.pumpWidget(wrap(trip, reasons));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(find.text('Finish Trip'), findsOneWidget);
   });
@@ -104,7 +116,7 @@ void main() {
         .thenAnswer((_) async => Ok(buildRide('accepted')));
 
     await tester.pumpWidget(wrap(trip, reasons));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(find.textContaining('R-1042'), findsOneWidget);
   });
@@ -114,9 +126,9 @@ void main() {
         .thenAnswer((_) async => Ok(buildRide('accepted')));
 
     await tester.pumpWidget(wrap(trip, reasons));
-    await tester.pumpAndSettle();
+    await settle(tester);
     await tester.tap(find.byIcon(Icons.close));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(find.text('Vehicle issue'), findsOneWidget);
     expect(find.text("Rider didn't show up"), findsOneWidget);
@@ -128,11 +140,13 @@ void main() {
         .thenAnswer((_) async => Ok(buildRide('arrived')));
 
     await tester.pumpWidget(wrap(trip, reasons));
-    await tester.pumpAndSettle();
+    await settle(tester);
     await tester.tap(find.byIcon(Icons.close));
-    await tester.pumpAndSettle();
+    await settle(tester);
     await tester.tap(find.text("Rider didn't show up"));
-    await tester.pumpAndSettle();
+    await settle(tester);
+    await tester.tap(find.text('Cancel Ride'));
+    await settle(tester);
 
     // The driver sees the amount before the charge, not after.
     expect(find.textContaining('£59.00'), findsOneWidget);
@@ -147,13 +161,15 @@ void main() {
             fields: {'seconds_remaining': 120})));
 
     await tester.pumpWidget(wrap(trip, reasons));
-    await tester.pumpAndSettle();
+    await settle(tester);
     await tester.tap(find.byIcon(Icons.close));
-    await tester.pumpAndSettle();
+    await settle(tester);
     await tester.tap(find.text("Rider didn't show up"));
-    await tester.pumpAndSettle();
+    await settle(tester);
+    await tester.tap(find.text('Cancel Ride'));
+    await settle(tester);
     await tester.tap(find.text('Cancel ride'));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(find.textContaining('2 min'), findsOneWidget);
   });

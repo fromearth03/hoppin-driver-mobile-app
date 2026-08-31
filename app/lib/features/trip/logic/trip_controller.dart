@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/auth/token_store.dart';
 import '../../../core/result.dart';
+import '../data/cancel_reason_repository.dart';
 import '../data/models/ride.dart';
 import '../data/models/waiting_policy.dart';
 import '../data/trip_repository.dart';
@@ -15,13 +16,26 @@ class TripState {
   final bool isBusy;
   final ApiException? error;
 
-  const TripState({this.ride, this.policy, this.isBusy = false, this.error});
+  /// The widest free-cancellation window any driver reason offers, in
+  /// seconds. Read from `free_cancel_seconds` on `/cancellation-reasons`
+  /// rather than assumed: it is admin configuration, and `gracedPenalty`
+  /// waives the fee against exactly this number.
+  final int? freeCancelSeconds;
+
+  const TripState({
+    this.ride,
+    this.policy,
+    this.isBusy = false,
+    this.error,
+    this.freeCancelSeconds,
+  });
 
   TripState copyWith({
     Ride? ride,
     WaitingPolicy? policy,
     bool? isBusy,
     ApiException? error,
+    int? freeCancelSeconds,
     bool clearError = false,
     bool clearPolicy = false,
   }) =>
@@ -30,9 +44,29 @@ class TripState {
         policy: clearPolicy ? null : (policy ?? this.policy),
         isBusy: isBusy ?? this.isBusy,
         error: clearError ? null : (error ?? this.error),
+        freeCancelSeconds: freeCancelSeconds ?? this.freeCancelSeconds,
       );
 
   TripPhase get phase => ride?.phase ?? TripPhase.headingToPickup;
+
+  /// Seconds left before a driver cancellation starts carrying a charge.
+  ///
+  /// The service anchors a `driver_cancel` grace window to `accepted_at`
+  /// (`gracedPenalty` compares `time.Since(anchor)` against
+  /// `free_cancel_seconds`), so both halves must be known — null means we
+  /// cannot say, and the UI shows nothing rather than a guess. Null once the
+  /// window has closed, so a countdown never sits at 00:00 implying free.
+  int? get freeCancelSecondsRemaining {
+    final accepted = ride?.acceptedAt;
+    final window = freeCancelSeconds;
+    if (accepted == null || window == null || window <= 0) return null;
+    final left = accepted
+        .toUtc()
+        .add(Duration(seconds: window))
+        .difference(DateTime.now().toUtc())
+        .inSeconds;
+    return left > 0 ? left : null;
+  }
 }
 
 /// Slower than the offer poll: a trip in progress changes on the driver's own
@@ -61,11 +95,40 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
       ok: (ride) async => TripState(
         ride: await _withRider(ride),
         policy: await _policyFor(ride),
+        freeCancelSeconds: await _freeCancelWindow(ride),
       ),
       err: (e) async => TripState(error: e),
     );
     if (!(loaded.ride?.isFinished ?? true)) _startPolling();
     return loaded;
+  }
+
+  /// The grace window a driver cancellation gets before it costs them.
+  ///
+  /// Reasons are admin-configured and each carries its own
+  /// `free_cancel_seconds`, and the driver has not picked one yet when this
+  /// countdown is on screen. The NARROWEST window is therefore the only
+  /// honest one: showing the widest would leave the clock still running while
+  /// a driver who picks a shorter-windowed reason is already being charged.
+  /// Under-promising costs them nothing; over-promising costs them money.
+  ///
+  /// A reason with no window configured is excluded rather than treated as
+  /// zero — null there means "no grace configured for this reason", which is
+  /// not the same as "the grace has run out".
+  ///
+  /// Best-effort: a failed lookup means no countdown, never a broken trip
+  /// screen. The driver can still cancel; they just do it without the clock.
+  Future<int?> _freeCancelWindow(Ride ride) async {
+    if (ride.isFinished) return null;
+    final result = await ref.read(cancelReasonRepositoryProvider).forDriver();
+    final reasons = result.valueOrNull;
+    if (reasons == null) return null;
+    final windows = reasons
+        .map((r) => r.freeCancelSeconds)
+        .whereType<int>()
+        .where((s) => s > 0);
+    if (windows.isEmpty) return null;
+    return windows.reduce((a, b) => a < b ? a : b);
   }
 
   TripState get _current => state.value ?? const TripState();
@@ -162,8 +225,12 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
       ok: (ride) async {
         final policy = await _policyFor(ride);
         if (_disposed) return;
+        // The rider is carried across the transition rather than re-read.
+        // `/rides/:id/rider-context` 409s RIDE_NOT_ACTIVE the instant a ride
+        // completes, so asking again after Finish Trip loses the name the
+        // summary screen is about to ask the driver to rate.
         _emit(_current.copyWith(
-          ride: ride,
+          ride: ride.withRider(_current.ride?.rider),
           isBusy: false,
           policy: policy,
           clearPolicy: policy == null,

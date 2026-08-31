@@ -9,6 +9,7 @@ import '../../../core/api/api_exception.dart';
 import '../../../shared/widgets/app_error_state.dart';
 import '../data/models/onboarding_status.dart';
 import '../logic/onboarding_controller.dart';
+import 'widgets/wizard_scaffold.dart';
 
 /// One step of the application, and where the driver goes to finish it.
 class _Step {
@@ -18,6 +19,16 @@ class _Step {
   const _Step(this.label, this.done, [this.route]);
 }
 
+/// Step 4 of 4: the approval gate.
+///
+/// The design's fourth screen is a "Thank You — The Driver has been added."
+/// confirmation. That is the admin panel's flow, where an operator really has
+/// just added a driver. A self-registering driver has done no such thing:
+/// GET /drivers/me/onboarding comes back pending_approval until a human
+/// approves them, and until then they cannot go online. A tick and a thank
+/// you would tell them they are finished when they are not, so the step keeps
+/// the design's frame — same header pill, same 1-2-3-4 rail with 4 lit — and
+/// puts the real status inside it.
 class OnboardingScreen extends ConsumerWidget {
   const OnboardingScreen({super.key});
 
@@ -25,66 +36,66 @@ class OnboardingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(onboardingControllerProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Your application')),
-      body: state.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => AppErrorState(
-          error: e is ApiException
-              ? e
-              : ApiException('INTERNAL', e.toString(), 0),
+    return state.when(
+      loading: () => const _Frame(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 64),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      ),
+      error: (e, _) => _Frame(
+        child: AppErrorState(
+          error:
+              e is ApiException ? e : ApiException('INTERNAL', e.toString(), 0),
           onRetry: () =>
               ref.read(onboardingControllerProvider.notifier).refresh(),
         ),
-        data: (data) {
-          final onboarding = data.onboarding;
-          if (onboarding == null) {
-            return AppErrorState(
+      ),
+      data: (data) {
+        final onboarding = data.onboarding;
+        if (onboarding == null) {
+          return _Frame(
+            child: AppErrorState(
               error: data.error ??
                   ApiException('INTERNAL', 'no application found', 0),
               onRetry: () =>
                   ref.read(onboardingControllerProvider.notifier).refresh(),
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: () =>
-                ref.read(onboardingControllerProvider.notifier).refresh(),
-            // A fixed checklist, not a feed: a lazy list would leave the
-            // later steps out of the tree entirely on a short viewport.
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _statusCard(onboarding),
-                  const SizedBox(height: 16),
-                  ..._rejections(onboarding),
-                  ..._steps(onboarding).map(
-                    (step) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        step.done
-                            ? Icons.check_circle
-                            : Icons.radio_button_unchecked,
-                        color:
-                            step.done ? AppColors.positive : AppColors.border,
-                      ),
-                      title: Text(step.label, style: AppText.body),
-                      trailing: step.done || step.route == null
-                          ? null
-                          : const Icon(Icons.chevron_right),
-                      onTap: step.done || step.route == null
-                          ? null
-                          : () => context.push(step.route!),
-                    ),
-                  ),
-                ],
-              ),
             ),
           );
-        },
-      ),
+        }
+        return _Frame(
+          onRefresh: () =>
+              ref.read(onboardingControllerProvider.notifier).refresh(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _statusCard(onboarding),
+              const SizedBox(height: 16),
+              ..._rejections(onboarding),
+              ..._steps(onboarding).map(
+                (step) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    step.done
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    color: step.done ? AppColors.positive : AppColors.border,
+                  ),
+                  title: Text(step.label, style: AppText.body),
+                  trailing: step.done || step.route == null
+                      ? null
+                      : const Icon(Icons.chevron_right),
+                  onTap: step.done || step.route == null
+                      ? null
+                      : () => context.push(step.route!),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -94,29 +105,62 @@ class OnboardingScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(_title(o.status), style: AppText.heading),
-          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                height: 44,
+                width: 44,
+                decoration: BoxDecoration(
+                  color: _accent(o.status).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(_icon(o.status), color: _accent(o.status), size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Text(_title(o.status), style: AppText.title)),
+            ],
+          ),
+          const SizedBox(height: 14),
           // The server's own wording, verbatim, so the app and support never
           // tell the driver different stories.
           Text(o.message, style: AppText.bodySecondary),
-          const SizedBox(height: 16),
-          LinearProgressIndicator(
-            value: steps.completed / steps.total,
-            backgroundColor: AppColors.border,
+          const SizedBox(height: 18),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: steps.completed / steps.total,
+              minHeight: 8,
+              backgroundColor: AppColors.border,
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text('${steps.completed} of ${steps.total} steps done',
               style: AppText.caption),
         ],
       ),
     );
   }
+
+  static Color _accent(OnboardingStatus status) => switch (status) {
+        OnboardingStatus.active => AppColors.positive,
+        OnboardingStatus.restricted => AppColors.warning,
+        OnboardingStatus.suspended => AppColors.negative,
+        OnboardingStatus.pendingApproval => AppColors.warning,
+      };
+
+  static IconData _icon(OnboardingStatus status) => switch (status) {
+        OnboardingStatus.active => Icons.check_circle_outline,
+        OnboardingStatus.restricted => Icons.error_outline,
+        OnboardingStatus.suspended => Icons.block_outlined,
+        OnboardingStatus.pendingApproval => Icons.hourglass_empty,
+      };
 
   static String _title(OnboardingStatus status) => switch (status) {
         OnboardingStatus.active => "You're approved",
@@ -135,7 +179,7 @@ class OnboardingScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.negative),
         ),
         child: Column(
@@ -177,5 +221,53 @@ class OnboardingScreen extends ConsumerWidget {
       _Step('Documents', s.documents, Routes.documents),
       _Step('Payout details', s.payout, Routes.payouts),
     ];
+  }
+}
+
+/// The wizard chrome step 4 shares with steps 1-3, with the pull-to-refresh
+/// the review screen needs wrapped inside it. Not [WizardScaffold] directly:
+/// this step scrolls a refreshable list rather than a form, and the driver
+/// has no "Save & Continue" left to press — an admin has the next move.
+class _Frame extends StatelessWidget {
+  final Widget child;
+  final Future<void> Function()? onRefresh;
+
+  const _Frame({required this.child, this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    // A fixed checklist, not a feed: a lazy list would leave the later steps
+    // out of the tree entirely on a short viewport.
+    Widget body = SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const WizardSteps(current: kWizardSteps),
+          const SizedBox(height: 28),
+          child,
+          const SizedBox(height: 24),
+          const WizardFooterNote(),
+        ],
+      ),
+    );
+    if (onRefresh != null) {
+      body = RefreshIndicator(onRefresh: onRefresh!, child: body);
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const WizardHeader(title: 'Your application'),
+            Expanded(child: body),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -8,7 +8,13 @@ import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../data/onboarding_repository.dart';
 import '../logic/onboarding_controller.dart';
+import 'widgets/wizard_scaffold.dart';
 
+/// The DVLA licence and home address — the other half of step 2.
+///
+/// The design pack has no screen of its own for this; it folds licences and
+/// certificates into one "Licenses & Certificates" step. This keeps that
+/// step's chrome so the driver does not feel dropped out of the wizard.
 class LicenseScreen extends ConsumerStatefulWidget {
   const LicenseScreen({super.key});
 
@@ -56,62 +62,55 @@ class _LicenseScreenState extends ConsumerState<LicenseScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Driving licence')),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'As printed on your DVLA licence.',
-                    style: AppText.bodySecondary,
-                  ),
-                  const SizedBox(height: 24),
-                  AppTextField(
-                    key: const Key('license_number'),
-                    label: 'Licence number',
-                    controller: _license,
-                    enabled: !_busy,
-                    textCapitalization: TextCapitalization.characters,
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Enter your licence number'
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    key: const Key('address'),
-                    label: 'Home address',
-                    controller: _address,
-                    enabled: !_busy,
-                    textCapitalization: TextCapitalization.words,
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Enter your home address'
-                        : null,
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 16),
-                    Text(_error!,
-                        style:
-                            AppText.body.copyWith(color: AppColors.negative)),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _busy ? null : _submit,
-                    child: _busy
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
-                        : const Text('Save'),
-                  ),
-                ],
+  Widget build(BuildContext context) => WizardScaffold(
+        title: 'Driving Licence',
+        step: 2,
+        card: true,
+        onBack: _busy ? null : () => context.pop(),
+        actions: WizardActions(
+          busy: _busy,
+          onBack: _busy ? null : () => context.pop(),
+          onContinue: _busy ? null : _submit,
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Licence Details', style: AppText.title),
+              const SizedBox(height: 6),
+              const Text(
+                'As printed on your DVLA licence.',
+                style: AppText.bodySecondary,
               ),
-            ),
+              const SizedBox(height: 22),
+              AppTextField(
+                key: const Key('license_number'),
+                label: 'Licence number',
+                controller: _license,
+                enabled: !_busy,
+                textCapitalization: TextCapitalization.characters,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Enter your licence number'
+                    : null,
+              ),
+              const SizedBox(height: 22),
+              AppTextField(
+                key: const Key('address'),
+                label: 'Home address',
+                controller: _address,
+                enabled: !_busy,
+                textCapitalization: TextCapitalization.words,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Enter your home address'
+                    : null,
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 16),
+                Text(_error!,
+                    style: AppText.body.copyWith(color: AppColors.negative)),
+              ],
+            ],
           ),
         ),
       );

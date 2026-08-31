@@ -35,32 +35,32 @@ class BalanceCards extends StatelessWidget {
       // measure itself, so the height is taken from the taller child.
       child: IntrinsicHeight(
         child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: _tile(
-              amount: wallet.availableBalance.format(),
-              caption: owes ? 'You Owe' : 'Company Owes You',
-              colour: owes ? AppColors.negative : AppColors.positive,
-              action: 'View Details',
-              onTap: onViewStatement,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _tile(
+                amount: wallet.availableBalance.format(),
+                caption: owes ? 'You Owe' : 'Company Owes You',
+                colour: owes ? AppColors.negative : AppColors.positive,
+                action: 'View Details',
+                onTap: onViewStatement,
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _tile(
-              amount: wallet.pendingBalance.format(),
-              caption: 'Pending',
-              colour: AppColors.textPrimary,
-              // Pending money has nothing to open: it is the same ledger,
-              // not yet settled. A second button to the same page would be
-              // a duplicate, so the tile is a figure and a caption.
-              action: null,
-              onTap: null,
+            const SizedBox(width: 16),
+            Expanded(
+              child: _tile(
+                amount: wallet.pendingBalance.format(),
+                caption: 'Pending',
+                colour: AppColors.textPrimary,
+                // Pending money has nothing to open: it is the same ledger,
+                // not yet settled. A second button to the same page would be
+                // a duplicate, so the tile is a figure and a caption.
+                action: null,
+                onTap: null,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -83,9 +83,13 @@ class BalanceCards extends StatelessWidget {
                   style: AppText.title.copyWith(fontSize: 26, color: colour)),
             ),
             const SizedBox(height: 6),
-            Text(caption,
-                textAlign: TextAlign.center,
-                style: AppText.body.copyWith(fontSize: 14, color: colour)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(caption,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  style: AppText.body.copyWith(fontSize: 14, color: colour)),
+            ),
             if (action != null) ...[
               const SizedBox(height: 14),
               GestureDetector(

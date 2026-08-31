@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/result.dart';
 import 'models/ledger_entry.dart';
+import 'models/ledger_summary.dart';
 
 class LedgerRepository {
   final ApiClient _api;
@@ -20,9 +21,17 @@ class LedgerRepository {
     );
   }
 
-  Future<Result<Map<String, dynamic>>> summary(String period) =>
-      _api.get<Map<String, dynamic>>('/drivers/me/ledger/summary',
-          query: {'period': period});
+  /// The period breakdown. `period` is only ever 'week' or 'month' — the
+  /// handler falls back to 'week' for anything else, so the caller does not
+  /// get to invent one.
+  Future<Result<LedgerSummary>> summary(String period) async {
+    final r = await _api.get<Map<String, dynamic>>('/drivers/me/ledger/summary',
+        query: {'period': period});
+    return r.when(
+      ok: (json) => Ok(LedgerSummary.fromJson(json)),
+      err: (e) => Err(e),
+    );
+  }
 }
 
 final ledgerRepositoryProvider = Provider<LedgerRepository>(

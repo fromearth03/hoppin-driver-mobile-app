@@ -40,12 +40,13 @@ class LastUpdatedBar extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              at == null
-                  ? 'Last updated: —'
-                  : 'Last updated: ${_stamp(at)}',
-              style: AppText.body,
+              at == null ? 'Last updated: —' : 'Last updated: ${_stamp(at)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.body.copyWith(fontSize: 14),
             ),
           ),
+          const SizedBox(width: 8),
           Container(
             width: 8,
             height: 8,
@@ -54,10 +55,12 @@ class LastUpdatedBar extends StatelessWidget {
               color: fresh ? AppColors.positive : AppColors.warning,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Text(
             fresh ? 'Up to date' : _staleness(age),
+            maxLines: 1,
             style: AppText.body.copyWith(
+              fontSize: 14,
               color: fresh ? AppColors.positive : AppColors.warning,
             ),
           ),

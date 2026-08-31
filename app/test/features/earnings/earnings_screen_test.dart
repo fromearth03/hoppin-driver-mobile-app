@@ -74,7 +74,7 @@ void main() {
     // Twice: once in the initial all-periods load, once for the reload the
     // selection triggered.
     verify(() => repo.summary('month')).called(2);
-    expect(find.text('This Month Breakdown'), findsOneWidget);
+    expect(find.text("This Month's Breakdown"), findsOneWidget);
   });
 
   testWidgets('shows the deductions between gross and net', (tester) async {

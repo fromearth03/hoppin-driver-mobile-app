@@ -8,6 +8,7 @@ PendingOffer buildOffer({
   int farePence = 2015,
   int? etaSeconds = 240,
   int? durationSeconds = 900,
+  double? miles = 4.7,
   String? category = 'standard',
 }) =>
     PendingOffer(
@@ -18,6 +19,7 @@ PendingOffer buildOffer({
       dropoffLabel: 'Railway Station',
       rideCategory: category,
       estimatedDurationSeconds: durationSeconds,
+      estimatedMiles: miles,
       pickupEtaSeconds: etaSeconds,
       expiresInSec: 60,
       receivedAt: DateTime.now(),
@@ -26,10 +28,38 @@ PendingOffer buildOffer({
 Widget wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 void main() {
-  testWidgets('leads with the fare', (tester) async {
+  testWidgets('leads with the fare, under its label', (tester) async {
     await tester.pumpWidget(wrap(OfferCard(offer: buildOffer())));
 
+    expect(find.text('Estimated Fare'), findsOneWidget);
     expect(find.text('£20.15'), findsOneWidget);
+  });
+
+  testWidgets('shows distance and duration as the two stats', (tester) async {
+    await tester.pumpWidget(wrap(OfferCard(offer: buildOffer())));
+
+    expect(find.text('Distance'), findsOneWidget);
+    // Miles, not the design's kilometres: trip history and the earnings
+    // statement are both in miles.
+    expect(find.text('4.7 miles'), findsOneWidget);
+    expect(find.text('Duration'), findsOneWidget);
+    expect(find.text('15 min'), findsOneWidget);
+  });
+
+  testWidgets('falls back to a dash when the service sends no distance',
+      (tester) async {
+    await tester.pumpWidget(wrap(OfferCard(offer: buildOffer(miles: null))));
+
+    // The stat keeps its slot so Distance and Duration stay on one baseline.
+    expect(find.text('Distance'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+  });
+
+  testWidgets('labels the two stops', (tester) async {
+    await tester.pumpWidget(wrap(OfferCard(offer: buildOffer())));
+
+    expect(find.text('Pickup'), findsOneWidget);
+    expect(find.text('Dropoff'), findsOneWidget);
   });
 
   testWidgets('shows both labels', (tester) async {
@@ -66,14 +96,23 @@ void main() {
     // No avatar, no star rating — the Equality Act position, enforced at
     // the widget level as well as in the model.
     expect(find.byType(CircleAvatar), findsNothing);
+    expect(find.byType(Image), findsNothing);
     expect(find.byIcon(Icons.star), findsNothing);
+    expect(find.byIcon(Icons.star_border), findsNothing);
     expect(find.byIcon(Icons.person), findsNothing);
+    expect(find.byIcon(Icons.person_outline), findsNothing);
+    // The design also put a free-text rider "Comment" box under the map.
+    // Nothing on the offer carries one, and a box the rider writes into is
+    // exactly the channel the identity rule exists to close.
+    expect(find.textContaining('Comment'), findsNothing);
+    expect(find.byType(TextField), findsNothing);
   });
 
-  testWidgets('accept states the amount being accepted', (tester) async {
+  testWidgets('offers the two actions the design names', (tester) async {
     await tester.pumpWidget(wrap(OfferCard(offer: buildOffer())));
 
-    expect(find.text('Accept for £20.15'), findsOneWidget);
+    expect(find.text('Accept Ride'), findsOneWidget);
+    expect(find.text('Decline Ride'), findsOneWidget);
   });
 
   testWidgets('accept and decline fire their callbacks', (tester) async {
@@ -84,8 +123,8 @@ void main() {
       onDecline: () => declined = true,
     )));
 
-    await tester.tap(find.text('Accept for £20.15'));
-    await tester.tap(find.text('Decline'));
+    await tester.tap(find.text('Accept Ride'));
+    await tester.tap(find.text('Decline Ride'));
 
     expect(accepted, isTrue);
     expect(declined, isTrue);

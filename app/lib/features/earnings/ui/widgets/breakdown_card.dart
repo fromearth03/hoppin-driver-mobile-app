@@ -32,7 +32,7 @@ class BreakdownCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          EarningsSectionTitle('${PeriodGrid.labels[period]} Breakdown'),
+          EarningsSectionTitle('${PeriodGrid.possessives[period]} Breakdown'),
           const SizedBox(height: 20),
           if (s == null)
             const Text('No breakdown for this period yet.',
@@ -67,14 +67,20 @@ class BreakdownCard extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: emphasised
-                  ? AppText.heading.copyWith(fontSize: 17)
-                  : AppText.body.copyWith(fontSize: 16),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: emphasised
+                    ? AppText.heading.copyWith(fontSize: 17)
+                    : AppText.body.copyWith(fontSize: 16),
+              ),
             ),
+            const SizedBox(width: 12),
             Text(
               deduction ? '- ${amount.format()}' : amount.format(),
+              maxLines: 1,
               style: (emphasised
                       ? AppText.heading.copyWith(fontSize: 17)
                       : AppText.body.copyWith(fontSize: 16))

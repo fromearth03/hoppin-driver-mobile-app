@@ -42,14 +42,19 @@ class _ReportCardState extends ConsumerState<ReportCard> {
     final now = DateTime.now();
     final picked = await showDateRangePicker(
       context: context,
-      // The service refuses a range over 366 days, so the picker cannot
-      // offer one that would come back as a validation error.
-      firstDate: DateTime(now.year - 3),
+      // The service refuses a range longer than 366 days, so the picker
+      // cannot offer a start further back than that from today — a wider
+      // window would only let the driver build a request guaranteed to
+      // come back as a validation error.
+      firstDate: now.subtract(const Duration(days: maxReportDays)),
       lastDate: now,
       initialDateRange: _range,
     );
     if (picked != null && mounted) setState(() => _range = picked);
   }
+
+  /// The service's own cap on a report range.
+  static const maxReportDays = 366;
 
   Future<void> _download() async {
     setState(() => _busy = true);

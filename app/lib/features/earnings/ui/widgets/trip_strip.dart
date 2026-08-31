@@ -32,7 +32,7 @@ class TripStrip extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           EarningsSectionTitle(
-            '${PeriodGrid.labels[period]} Trips',
+            '${PeriodGrid.possessives[period]} Trips',
             trailing: GestureDetector(
               onTap: onViewAll,
               child: Row(

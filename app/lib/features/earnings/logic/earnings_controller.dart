@@ -116,10 +116,12 @@ class EarningsController extends AsyncNotifier<EarningsState> {
     final page = await ref.read(tripsRepositoryProvider).page(
           filter: TripFilter.completed,
           from: summary!.from,
-          // The service's `to` is exclusive; its trips filter is inclusive
-          // of both days, so step back a day rather than pulling in the one
-          // after the period.
-          to: summary.to?.subtract(const Duration(days: 1)),
+          // The trips filter sends a plain date, which the service casts to
+          // that day's midnight and compares with `<=`. The summary's `to`
+          // is already the exclusive end — midnight of the day after the
+          // period — so it is passed through unchanged: stepping it back a
+          // day would drop the period's last day of trips.
+          to: summary.to,
           limit: 20,
         );
     return page.valueOrNull?.trips ?? const [];

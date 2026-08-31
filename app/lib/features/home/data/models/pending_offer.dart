@@ -15,6 +15,12 @@ class PendingOffer {
   final String? rideCategory;
   final int? estimatedDurationSeconds;
 
+  /// Trip length in miles, as `repository.PendingOffer.EstimatedMiles`. The
+  /// design labels this "Distance". Null when the service sends 0 — a
+  /// zero-length trip is not a real measurement, and "0.0 mi" beside a fare
+  /// reads as a bug rather than as missing data.
+  final double? estimatedMiles;
+
   /// Live OSRM ETA from the driver's position to the pickup. Null when the
   /// server has no position to compute from.
   final int? pickupEtaSeconds;
@@ -40,6 +46,7 @@ class PendingOffer {
     required this.receivedAt,
     this.rideCategory,
     this.estimatedDurationSeconds,
+    this.estimatedMiles,
     this.pickupEtaSeconds,
     this.expiresAt,
   });
@@ -69,6 +76,10 @@ class PendingOffer {
             : json['ride_category'] as String?,
         estimatedDurationSeconds:
             (json['estimated_duration_seconds'] as num?)?.toInt(),
+        estimatedMiles: switch ((json['estimated_miles'] as num?)?.toDouble()) {
+          null || 0 => null,
+          final m => m,
+        },
         pickupEtaSeconds: (json['pickup_eta_seconds'] as num?)?.toInt(),
         expiresInSec: (json['expires_in_sec'] as num?)?.toInt() ?? 60,
         expiresAt: json['expires_at'] == null

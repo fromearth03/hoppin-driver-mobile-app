@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hoppin_driver/core/money.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride.dart';
 import 'package:hoppin_driver/features/trip/data/models/waiting_policy.dart';
+import 'package:hoppin_driver/features/trip/ui/widgets/map_pills.dart';
 import 'package:hoppin_driver/features/trip/ui/widgets/rider_card.dart';
 import 'package:hoppin_driver/features/trip/ui/widgets/waiting_timer.dart';
 
@@ -45,7 +46,7 @@ void main() {
       )));
 
       await tester.tap(find.byIcon(Icons.phone));
-      await tester.tap(find.byIcon(Icons.chat_bubble_outline));
+      await tester.tap(find.byIcon(Icons.chat_bubble));
 
       expect(called, isTrue);
       expect(chatted, isTrue);
@@ -74,8 +75,13 @@ void main() {
 
       await tester.pumpWidget(wrap(WaitingTimer(policy: policy)));
 
-      expect(find.textContaining('free'), findsOneWidget);
+      // The rate is named alongside the clock, so the driver can tell a
+      // waiting passenger what the meter is about to do.
+      expect(find.textContaining('Free waiting'), findsOneWidget);
       expect(find.textContaining('£0.30'), findsOneWidget);
+      // Counting the free window down is the point — a bare elapsed count
+      // would not say when charging starts.
+      expect(find.textContaining('01:30'), findsOneWidget);
     });
 
     testWidgets('says plainly once waiting is being charged', (tester) async {
@@ -89,8 +95,64 @@ void main() {
 
       await tester.pumpWidget(wrap(WaitingTimer(policy: policy)));
 
-      expect(
-          find.textContaining('Waiting time is being charged'), findsOneWidget);
+      // Once the free window has gone the label and the rate both say so,
+      // and the clock switches to counting the charged time up.
+      expect(find.text('Charged waiting'), findsOneWidget);
+      expect(find.textContaining('Charged at £0.30 per minute'), findsOneWidget);
+      expect(find.textContaining('00:30'), findsOneWidget);
+    });
+  });
+
+  group('WaitingCancelCard', () {
+    testWidgets('counts the wait up and the free-cancel window down',
+        (tester) async {
+      await tester.pumpWidget(wrap(WaitingCancelCard(
+        arrivedAt: DateTime.now().toUtc().subtract(const Duration(minutes: 7)),
+        freeCancelRemaining: 157,
+      )));
+
+      expect(find.textContaining("You've been waiting for 07:0"), findsOneWidget);
+      // The countdown is the difference between a free cancellation and a
+      // penalty, so it is stated as a number, not as reassurance.
+      expect(find.text('Time left to cancel without impact'), findsOneWidget);
+      expect(find.text('02:37'), findsOneWidget);
+    });
+
+    testWidgets('shows no countdown when the free window is unknown',
+        (tester) async {
+      await tester.pumpWidget(wrap(WaitingCancelCard(
+        arrivedAt: DateTime.now().toUtc().subtract(const Duration(minutes: 7)),
+      )));
+
+      // A countdown we cannot substantiate would promise a driver a free
+      // cancellation the service may still charge for.
+      expect(find.text('Time left to cancel without impact'), findsNothing);
+    });
+
+    testWidgets('renders nothing before the driver has marked arrival',
+        (tester) async {
+      await tester.pumpWidget(wrap(const WaitingCancelCard()));
+
+      expect(find.textContaining("You've been waiting"), findsNothing);
+    });
+  });
+
+  group('TripDestinationPlate', () {
+    testWidgets('names where the rider is going', (tester) async {
+      await tester.pumpWidget(wrap(
+          const TripDestinationPlate(label: 'Penrith Call, United Kingdom')));
+
+      expect(find.text('Destination'), findsOneWidget);
+      expect(find.text('Penrith Call, United Kingdom'), findsOneWidget);
+    });
+
+    testWidgets('renders nothing when the payload carries no label',
+        (tester) async {
+      await tester.pumpWidget(wrap(const TripDestinationPlate()));
+
+      // `geo.dropoff.label` is nullable. A plate reading "Destination" with
+      // nothing under it is worse than no plate.
+      expect(find.text('Destination'), findsNothing);
     });
   });
 }

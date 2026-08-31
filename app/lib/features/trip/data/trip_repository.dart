@@ -61,6 +61,26 @@ class TripRepository {
   Future<Result<Map<String, dynamic>>> riderContext(String rideId) =>
       _api.get<Map<String, dynamic>>('/rides/$rideId/rider-context');
 
+  /// Rates the passenger on a completed ride.
+  ///
+  /// `score` is 1–5 and `binding:"required"` — the handler rejects 0, so a
+  /// caller must never send an unrated trip. `comments` is the only other
+  /// field `rateRideBody` carries: the design's quick-tag chips (Clean,
+  /// Polite, Quiet, Ready on Time) have nowhere to go, and the handler would
+  /// drop them silently.
+  Future<Result<void>> rate(String rideId,
+      {required int score, String? comments}) async {
+    final r = await _api.post<Map<String, dynamic>>(
+      '/rides/$rideId/rating',
+      body: {
+        'score': score,
+        if (comments != null && comments.trim().isNotEmpty)
+          'comments': comments.trim(),
+      },
+    );
+    return r.when(ok: (_) => const Ok(null), err: (e) => Err(e));
+  }
+
   Future<Result<Ride>> _rideCall(
       Future<Result<Map<String, dynamic>>> Function() call) async {
     final r = await call();

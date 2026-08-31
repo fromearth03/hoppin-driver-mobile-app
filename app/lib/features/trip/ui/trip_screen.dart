@@ -7,6 +7,7 @@ import '../../../app_router.dart';
 import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
+import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
 import '../data/models/ride.dart';
@@ -15,6 +16,7 @@ import 'widgets/cancel_sheet.dart';
 import 'widgets/map_pills.dart';
 import 'widgets/rider_card.dart';
 import 'widgets/trip_map.dart';
+import 'widgets/trip_summary.dart';
 import 'widgets/waiting_timer.dart';
 
 /// One screen for the whole job. The phase comes from the server's status,
@@ -25,30 +27,13 @@ class TripScreen extends ConsumerWidget {
 
   const TripScreen({super.key, required this.rideId});
 
-  static const _titles = {
-    TripPhase.headingToPickup: 'Heading to pickup',
-    TripPhase.waiting: 'Waiting for passenger',
-    TripPhase.inTrip: 'On the way',
-    TripPhase.completed: 'Trip complete',
-    TripPhase.cancelled: 'Trip cancelled',
-  };
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(tripControllerProvider(rideId));
     final controller = ref.read(tripControllerProvider(rideId).notifier);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[async.value?.phase] ?? 'Trip'),
-        actions: [
-          if (!(async.value?.ride?.isFinished ?? true))
-            IconButton(
-              icon: const Icon(Icons.close, color: AppColors.negative),
-              onPressed: () => _cancel(context, ref),
-            ),
-        ],
-      ),
+      backgroundColor: AppColors.background,
       body: async.when(
         loading: () => const AppLoading(),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
@@ -58,8 +43,25 @@ class TripScreen extends ConsumerWidget {
             return AppErrorState(
                 error: state.error!, onRetry: controller.refresh);
           }
+
+          // A completed trip replaces the map entirely: the driver's question
+          // is no longer "where am I going" but "what did I earn".
+          if (ride.phase == TripPhase.completed) {
+            return TripSummary(
+              ride: ride,
+              onDone: () => context.go(Routes.home),
+            );
+          }
+
           // The map is the screen. The sheet sits over it rather than
           // beside it, so the driver keeps as much road as possible.
+          //
+          // The waiting design draws a multi-stop route — A, B ("Mid point")
+          // and C — with a per-leg mileage pill on each. The service supports
+          // it (GET /rides/:id/stops, PATCH /rides/:id/stops/:seq/arrive and
+          // /depart), but this app has no stops model yet, so what follows is
+          // the single-leg pickup-to-dropoff variant. The multi-stop version
+          // of this state is pending and is a separate piece of work.
           return Stack(
             children: [
               Positioned.fill(
@@ -78,16 +80,54 @@ class TripScreen extends ConsumerWidget {
                     // them. Stale data is the right fallback; silence is not.
                     if (state.error != null) _staleBanner(),
                     const SizedBox(height: 8),
-                    TripStatusPill(phase: ride.phase),
-                    const Spacer(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: TripStatusPill(phase: ride.phase),
+                    ),
+                    const SizedBox(height: 10),
                     TripEtaPill(etaSeconds: ride.pickupEtaSeconds),
-                    const SizedBox(height: 12),
                   ],
                 ),
               ),
+              // Cancelling is a real action mid-job, but it is not the one
+              // the driver came for: it sits at the corner of the map, out of
+              // the status pill's flow so the pill keeps the full width the
+              // design gives it.
+              if (!ride.isFinished)
+                SafeArea(
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 76, right: 12),
+                      child: _mapButton(
+                        icon: Icons.close,
+                        tooltip: 'Cancel ride',
+                        onPressed: () => _cancel(context, ref, state),
+                      ),
+                    ),
+                  ),
+                ),
+              // The floating cards and the sheet share one bottom-aligned
+              // column. Aligning them separately let the sheet grow over the
+              // cards, hiding the cancel countdown behind Start Trip.
               Align(
                 alignment: Alignment.bottomCenter,
-                child: _bottomSheet(context, ref, state, ride),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // While waiting, the design floats the elapsed wait and
+                    // the free-cancellation countdown over the map.
+                    if (ride.phase == TripPhase.waiting)
+                      WaitingCancelCard(
+                        arrivedAt: ride.arrivedAt,
+                        freeCancelRemaining: state.freeCancelSecondsRemaining,
+                      ),
+                    if (ride.phase == TripPhase.inTrip)
+                      TripDestinationPlate(label: ride.geo.dropoff.label),
+                    const SizedBox(height: 12),
+                    _bottomSheet(context, ref, state, ride),
+                  ],
+                ),
               ),
             ],
           );
@@ -96,13 +136,32 @@ class TripScreen extends ConsumerWidget {
     );
   }
 
+  /// The dark round map control the design uses for the recentre and zoom
+  /// buttons. Ours carries the cancel action.
+  Widget _mapButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) =>
+      Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: IconButton(
+          icon: Icon(icon, color: Colors.white),
+          tooltip: tooltip,
+          onPressed: onPressed,
+        ),
+      );
+
   Widget _bottomSheet(
       BuildContext context, WidgetRef ref, TripState state, Ride ride) {
     final controller = ref.read(tripControllerProvider(rideId).notifier);
 
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
       child: SafeArea(
@@ -117,32 +176,78 @@ class TripScreen extends ConsumerWidget {
               height: 5,
               width: 78,
               decoration: BoxDecoration(
-                color: AppColors.border,
+                color: AppColors.textDisabled,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
-            if (ride.ref != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(ride.ref!, style: AppText.caption),
-              ),
             if (ride.rider != null)
               RiderCard(
                 rider: ride.rider!,
+                rideRef: ride.ref,
                 chatUnread: ride.chatUnread,
                 onCall: () => _call(ride.rider!.phone),
                 onChat: () => context.push('${Routes.trip}/$rideId/chat'),
               ),
-            if (ride.phase == TripPhase.waiting && state.policy != null)
-              WaitingTimer(policy: state.policy!),
+            // The design pairs a status block on the left with the action
+            // button on the right, rather than stacking them full width.
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: _action(context, ref, state, ride, controller),
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(child: _sheetStatus(state, ride)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: _action(context, ref, state, ride, controller),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// The left column of the sheet: the waiting clock while waiting, and who
+  /// is aboard once under way — the two things the design puts there.
+  Widget _sheetStatus(TripState state, Ride ride) {
+    if (ride.phase == TripPhase.waiting && state.policy != null) {
+      return WaitingTimer(policy: state.policy!);
+    }
+    if (ride.phase == TripPhase.inTrip && ride.rider != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Current Passenger', style: AppText.caption),
+          const SizedBox(height: 2),
+          Text(
+            ride.rider!.fullName,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.title.copyWith(fontWeight: FontWeight.w500),
+          ),
+        ],
+      );
+    }
+    if (ride.phase == TripPhase.headingToPickup) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Pickup', style: AppText.caption),
+          const SizedBox(height: 2),
+          Text(
+            ride.geo.pickup.label ?? 'Heading to pickup',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.heading,
+          ),
+        ],
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _action(BuildContext context, WidgetRef ref, TripState state, Ride ride,
@@ -154,26 +259,35 @@ class TripScreen extends ConsumerWidget {
       _ => ('Back to Home', null),
     };
 
+    // The design's action button is the brand orange, not the lilac the
+    // forms use — on a map it has to win against the road behind it.
+    final style = AppButtons.primary().copyWith(
+      backgroundColor: const WidgetStatePropertyAll(AppColors.accent),
+      textStyle: const WidgetStatePropertyAll(
+          TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
+    );
+
     if (action == null) {
-      return FilledButton(
+      return AppButton(
+        label: label,
+        style: style,
         onPressed: () => context.go(Routes.home),
-        child: Text(label),
       );
     }
 
-    return FilledButton(
-      onPressed: state.isBusy
-          ? null
-          : () async {
-              final result = await action();
-              if (!context.mounted) return;
-              result.when(
-                ok: (_) {},
-                err: (e) => ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text(errorCopy(e)))),
-              );
-            },
-      child: Text(label),
+    return AppButton(
+      label: label,
+      style: style,
+      busy: state.isBusy,
+      onPressed: () async {
+        final result = await action();
+        if (!context.mounted) return;
+        result.when(
+          ok: (_) {},
+          err: (e) => ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(errorCopy(e)))),
+        );
+      },
     );
   }
 
@@ -198,8 +312,12 @@ class TripScreen extends ConsumerWidget {
         ),
       );
 
-  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
-    final reasonId = await CancelSheet.show(context);
+  Future<void> _cancel(
+      BuildContext context, WidgetRef ref, TripState state) async {
+    final reasonId = await CancelSheet.show(
+      context,
+      freeCancelRemaining: state.freeCancelSecondsRemaining,
+    );
     if (reasonId == null || !context.mounted) return;
 
     final result =
