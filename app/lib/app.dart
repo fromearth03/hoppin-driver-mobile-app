@@ -28,6 +28,7 @@ import 'features/trip/ui/chat_screen.dart';
 import 'features/trip/ui/trip_screen.dart';
 import 'features/trips/ui/trips_screen.dart';
 import 'shared/nav/app_shell.dart';
+import 'shared/responsive_frame.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -148,5 +149,9 @@ class HoppinDriverApp extends ConsumerWidget {
         theme: appTheme(),
         routerConfig: ref.watch(routerProvider),
         debugShowCheckedModeBanner: false,
+        // Wraps the navigator itself, so dialogs and sheets stay inside the
+        // phone column on wide screens rather than spanning a desktop.
+        builder: (context, child) =>
+            ResponsiveFrame(child: child ?? const SizedBox.shrink()),
       );
 }

@@ -93,19 +93,39 @@ class BrandHeader extends StatelessWidget {
       );
 }
 
-/// The wordmark that closes every unauthenticated screen.
+/// The brand lockup that closes every unauthenticated screen.
+///
+/// The roundel is the real brand mark, but the wordmark is composed as text:
+/// the only wordmark SVG supplied so far reads "Hoppin' Admin" — it is the
+/// admin panel's lockup, and a driver app cannot close its screens with it.
+/// When the "Hoppin' Go" wordmark SVG arrives, swap this back to the full
+/// asset.
 class BrandFooter extends StatelessWidget {
-  /// Drawn at its natural 257x43 ratio unless a screen asks otherwise.
   final double width;
 
   const BrandFooter({super.key, this.width = 180});
 
   @override
   Widget build(BuildContext context) => Center(
-        child: SvgPicture.asset(
-          'assets/brand/hoppin_go.svg',
-          width: width,
-          semanticsLabel: 'Hoppin Go',
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(
+              'assets/brand/hoppin_mark.svg',
+              width: width * 0.16,
+              semanticsLabel: 'Hoppin Go',
+            ),
+            SizedBox(width: width * 0.05),
+            Text(
+              "Hoppin' Go",
+              style: TextStyle(
+                fontSize: width * 0.12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.5,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
         ),
       );
 }
