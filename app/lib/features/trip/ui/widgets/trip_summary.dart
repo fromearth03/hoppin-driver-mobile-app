@@ -34,6 +34,12 @@ class _TripSummaryState extends ConsumerState<TripSummary> {
   bool _sending = false;
   final _feedback = TextEditingController();
 
+  /// The design's quick-tag chips. The rating handler has no tags field, so
+  /// chosen tags are folded into `comments` at send time — the one field the
+  /// server actually reads. ("Quite" in the frame is a typo for "Quiet".)
+  static const _tags = ['Clean', 'Polite', 'Quiet', 'Ready on Time'];
+  final Set<String> _chosenTags = {};
+
   @override
   void dispose() {
     _feedback.dispose();
@@ -49,9 +55,14 @@ class _TripSummaryState extends ConsumerState<TripSummary> {
       return;
     }
     setState(() => _sending = true);
+    final comments = [
+      if (_chosenTags.isNotEmpty)
+        _tags.where(_chosenTags.contains).join(', '),
+      if (_feedback.text.trim().isNotEmpty) _feedback.text.trim(),
+    ].join('. ');
     final result = await ref
         .read(tripRepositoryProvider)
-        .rate(widget.ride.id, score: _score, comments: _feedback.text);
+        .rate(widget.ride.id, score: _score, comments: comments);
     if (!mounted) return;
     setState(() => _sending = false);
 
@@ -138,12 +149,13 @@ class _TripSummaryState extends ConsumerState<TripSummary> {
                 );
               }),
             ),
-            // The design offers quick-tag chips here — Clean, Polite, Quiet,
-            // Ready on Time. `rateRideBody` carries only `score` and
-            // `comments`; a tags field would be dropped by the binder without
-            // an error, so the driver would tap chips that reach nobody. The
-            // free-text box below IS `comments`, and is kept.
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _tags.map(_tagChip).toList(),
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: _feedback,
               maxLines: 4,
@@ -171,6 +183,33 @@ class _TripSummaryState extends ConsumerState<TripSummary> {
           ],
         ),
       );
+
+  Widget _tagChip(String tag) {
+    final chosen = _chosenTags.contains(tag);
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => setState(
+          () => chosen ? _chosenTags.remove(tag) : _chosenTags.add(tag)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        decoration: BoxDecoration(
+          color: chosen
+              ? AppColors.accent.withValues(alpha: 0.16)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: chosen ? AppColors.accent : AppColors.border,
+          ),
+        ),
+        child: Text(
+          tag,
+          style: AppText.body.copyWith(
+            color: chosen ? AppColors.textPrimary : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _TitlePill extends StatelessWidget {

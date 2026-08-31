@@ -75,6 +75,7 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
+        width: double.infinity,
         height: AppButtons.height,
         child: FilledButton(
           onPressed: busy ? null : onPressed,
@@ -106,6 +107,7 @@ class AppOutlinedButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
+        width: double.infinity,
         height: AppButtons.height,
         child: OutlinedButton(
           onPressed: busy ? null : onPressed,

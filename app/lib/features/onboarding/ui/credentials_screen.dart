@@ -213,14 +213,14 @@ class _CredentialsScreenState extends ConsumerState<CredentialsScreen> {
               // credential: POST /drivers/me/credentials takes a type, a
               // number, a share code, a temporary flag and an expiry, and
               // nothing else. Files go through the documents flow, which has
-              // its own presign + confirm pair, so this step links there
-              // rather than growing a drop zone that has nowhere to post to.
+              // its own presign + confirm pair — so the design's dashed drop
+              // zone is kept as the visual, but tapping it goes there rather
+              // than posting to an endpoint this step does not have.
               const SizedBox(height: 8),
-              OutlinedButton.icon(
+              _UploadZone(
                 key: const Key('go_to_documents'),
-                onPressed: _busy ? null : () => context.push(Routes.documents),
-                icon: const Icon(Icons.file_upload_outlined, size: 20),
-                label: const Text('Upload your documents'),
+                enabled: !_busy,
+                onTap: () => context.push(Routes.documents),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 16),
@@ -253,6 +253,89 @@ class _CredentialsScreenState extends ConsumerState<CredentialsScreen> {
       const SizedBox(height: 12),
     ];
   }
+}
+
+/// The design's dashed drop zone: cloud icon, an "Upload" pill, and the
+/// "Drop your file here or Browse Files" caption. It is a doorway to the
+/// documents flow, not an upload target of its own.
+class _UploadZone extends StatelessWidget {
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _UploadZone({super.key, required this.enabled, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: enabled ? onTap : null,
+        child: CustomPaint(
+          painter: const _DashedBorderPainter(
+            color: AppColors.buttonPrimary,
+            radius: 16,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
+            child: Column(
+              children: [
+                const Icon(Icons.cloud_upload_outlined,
+                    size: 40, color: AppColors.buttonPrimary),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.buttonPrimary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text('Upload',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(height: 10),
+                const Text('Upload your documents in the documents area',
+                    textAlign: TextAlign.center, style: AppText.caption),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+/// Dashed rounded-rect border — Flutter has no dashed [BorderSide], so the
+/// outline is painted from the rrect's path metrics.
+class _DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+
+  const _DashedBorderPainter({required this.color, required this.radius});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6;
+    final path = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        Offset.zero & size,
+        Radius.circular(radius),
+      ));
+    const dash = 7.0, gap = 5.0;
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        canvas.drawPath(
+          metric.extractPath(distance, distance + dash),
+          paint,
+        );
+        distance += dash + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorderPainter old) =>
+      old.color != color || old.radius != radius;
 }
 
 class _SavedCredentialCard extends StatelessWidget {

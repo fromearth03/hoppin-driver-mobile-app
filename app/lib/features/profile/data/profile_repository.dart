@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -29,6 +32,29 @@ class ProfileRepository {
     });
     return r.when(
       ok: (json) => Ok(DriverProfile.fromJson(json)),
+      err: (e) => Err(e),
+    );
+  }
+
+  /// `POST /me/avatar/upload`, multipart field `file`. The server stores the
+  /// image, fills `users.avatar_url` and answers `{"avatar_url": ...}` — the
+  /// caller re-reads the profile rather than trusting a client-built URL.
+  Future<Result<String>> uploadAvatar(
+    Uint8List bytes, {
+    required String filename,
+    required String contentType,
+  }) async {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: DioMediaType.parse(contentType),
+      ),
+    });
+    final r = await _api.postMultipart<Map<String, dynamic>>(
+        '/me/avatar/upload', form);
+    return r.when(
+      ok: (json) => Ok(json['avatar_url'] as String? ?? ''),
       err: (e) => Err(e),
     );
   }

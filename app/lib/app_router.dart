@@ -22,6 +22,7 @@ class Routes {
   static const signUp = '/sign-up';
   static const forgotPassword = '/forgot-password';
   static const resetPassword = '/reset-password';
+  static const expiredLink = '/expired-link';
 
   // Onboarding — a self-registered driver's route to their first trip.
   static const onboarding = '/onboarding';

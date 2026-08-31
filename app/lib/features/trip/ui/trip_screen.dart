@@ -297,10 +297,14 @@ class TripScreen extends ConsumerWidget {
       _ => ('Back to Home', null),
     };
 
-    // The design's action button is the brand orange, not the lilac the
-    // forms use — on a map it has to win against the road behind it.
+    // The design reserves the brand orange for the two moments that move the
+    // meter — Start Trip and Finish Trip. "Arrived at Pickup" is drawn in the
+    // lilac of the forms: arriving states a fact, it doesn't start a charge.
     final style = AppButtons.primary().copyWith(
-      backgroundColor: const WidgetStatePropertyAll(AppColors.accent),
+      backgroundColor: WidgetStatePropertyAll(
+          ride.phase == TripPhase.headingToPickup
+              ? AppColors.buttonPrimary
+              : AppColors.accent),
       textStyle: const WidgetStatePropertyAll(
           TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
     );

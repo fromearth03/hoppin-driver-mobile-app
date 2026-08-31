@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/logic/auth_controller.dart';
+import 'features/auth/ui/expired_link_screen.dart';
 import 'features/auth/ui/forgot_password_screen.dart';
 import 'features/auth/ui/reset_password_screen.dart';
 import 'features/auth/ui/sign_in_screen.dart';
@@ -45,6 +46,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         Routes.signUp,
         Routes.forgotPassword,
         Routes.resetPassword,
+        Routes.expiredLink,
       };
 
       // The SDK resolves any stored session during Supabase.initialize, so
@@ -79,6 +81,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: Routes.resetPassword,
           builder: (_, __) => const ResetPasswordScreen()),
+      GoRoute(
+          path: Routes.expiredLink,
+          builder: (_, __) => const ExpiredLinkScreen()),
       ShellRoute(
         builder: (context, state, child) => Consumer(
           builder: (context, ref, _) => AppShell(

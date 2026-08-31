@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../app_router.dart';
 import '../../../core/api/error_codes.dart';
@@ -14,10 +15,11 @@ import '../logic/profile_controller.dart';
 
 /// Personal information.
 ///
-/// Name and photo are verified by the operator: `PATCH /me/profile` accepts
-/// only phone and date of birth, so the name fields render read-only and the
-/// avatar carries no edit affordance. The design puts a pencil badge on the
-/// avatar and beside the email; neither has an endpoint, so neither is drawn.
+/// The name is verified by the operator, so its fields render read-only and
+/// changes go through Support. The photo is self-service — the design's
+/// pencil badge on the avatar opens a picker and the image goes to
+/// `POST /me/avatar/upload`. The design also puts a pencil beside the email;
+/// email has no write path on `PATCH /me/profile`, so that one is not drawn.
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -28,6 +30,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _phone = TextEditingController();
   bool _busy = false;
+  bool _uploading = false;
   bool _seeded = false;
   String? _error;
   String? _saved;
@@ -42,6 +45,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (_seeded || profile == null) return;
     _seeded = true;
     _phone.text = profile.phoneNumber ?? '';
+  }
+
+  /// Pick, upload, re-read. The picker caps the image client-side so a
+  /// full-resolution phone photo does not hit the server's size limit.
+  Future<void> _changePhoto() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _uploading = true;
+      _error = null;
+      _saved = null;
+    });
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    final result = await ref.read(profileRepositoryProvider).uploadAvatar(
+          bytes,
+          filename: picked.name,
+          contentType: picked.mimeType ?? 'image/jpeg',
+        );
+    if (!mounted) return;
+    setState(() => _uploading = false);
+    result.when(
+      ok: (_) {
+        ref.invalidate(profileProvider);
+        setState(() => _saved = 'Photo updated');
+      },
+      err: (e) => setState(() => _error = errorCopy(e)),
+    );
   }
 
   Future<void> _save() async {
@@ -102,16 +138,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Center(
-                        child: CircleAvatar(
-                          radius: 66,
-                          backgroundColor: AppColors.border,
-                          backgroundImage: profile?.avatarUrl == null
-                              ? null
-                              : NetworkImage(profile!.avatarUrl!),
-                          child: profile?.avatarUrl == null
-                              ? const Icon(Icons.person,
-                                  size: 60, color: AppColors.textSecondary)
-                              : null,
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 66,
+                              backgroundColor: AppColors.border,
+                              backgroundImage: profile?.avatarUrl == null
+                                  ? null
+                                  : NetworkImage(profile!.avatarUrl!),
+                              child: profile?.avatarUrl == null
+                                  ? const Icon(Icons.person,
+                                      size: 60, color: AppColors.textSecondary)
+                                  : null,
+                            ),
+                            // The design's pencil badge, bottom-right on the
+                            // avatar — the one photo edit the server backs.
+                            Positioned(
+                              right: 2,
+                              bottom: 2,
+                              child: Material(
+                                color: AppColors.buttonPrimary,
+                                shape: const CircleBorder(),
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: _uploading ? null : _changePhoto,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(9),
+                                    child: _uploading
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white),
+                                          )
+                                        : const Icon(Icons.edit,
+                                            size: 20, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 28),
@@ -144,9 +211,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               SizedBox(width: 14),
                               Expanded(
                                 child: Text(
-                                  'Your full name and profile picture are '
-                                  'verified. To update them, please contact '
-                                  'Support',
+                                  'Your full name is verified. To update it, '
+                                  'please contact Support',
                                   style: AppText.body,
                                 ),
                               ),

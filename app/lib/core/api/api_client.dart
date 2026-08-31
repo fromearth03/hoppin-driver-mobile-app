@@ -36,6 +36,11 @@ class ApiClient {
           {Map<String, dynamic>? body, Map<String, dynamic>? query}) =>
       _send<T>(() => _dio.post(path, data: body, queryParameters: query));
 
+  /// Multipart POST — the avatar endpoint takes the image as a form field
+  /// rather than a JSON body, so a [FormData] goes through untouched.
+  Future<Result<T>> postMultipart<T>(String path, FormData form) =>
+      _send<T>(() => _dio.post(path, data: form));
+
   Future<Result<T>> patch<T>(String path, {Map<String, dynamic>? body}) =>
       _send<T>(() => _dio.patch(path, data: body));
 

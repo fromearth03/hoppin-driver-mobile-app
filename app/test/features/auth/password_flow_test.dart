@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:hoppin_driver/app_router.dart';
 import 'package:hoppin_driver/core/api/api_exception.dart';
 import 'package:hoppin_driver/core/result.dart';
 import 'package:hoppin_driver/features/auth/data/auth_repository.dart';
@@ -79,12 +81,28 @@ void main() {
       expect(find.text("Passwords don't match"), findsOneWidget);
     });
 
-    testWidgets('an expired token shows the expired-link message',
+    testWidgets('an expired token routes to the expired-link screen',
         (tester) async {
       when(() => repo.updatePassword(any()))
           .thenAnswer((_) async => Err(ApiException('EXPIRED_LINK', '', 401)));
 
-      await tester.pumpWidget(wrap(repo, const ResetPasswordScreen()));
+      // A dead link navigates rather than printing inline — retyping the
+      // password cannot fix it, so the form must not invite that.
+      final router = GoRouter(
+        initialLocation: Routes.resetPassword,
+        routes: [
+          GoRoute(
+              path: Routes.resetPassword,
+              builder: (_, __) => const ResetPasswordScreen()),
+          GoRoute(
+              path: Routes.expiredLink,
+              builder: (_, __) => const ExpiredLinkScreen()),
+        ],
+      );
+      await tester.pumpWidget(ProviderScope(
+        overrides: [authRepositoryProvider.overrideWithValue(repo)],
+        child: MaterialApp.router(routerConfig: router),
+      ));
       await tester.enterText(find.byKey(const Key('password')), 'password123');
       await tester.enterText(find.byKey(const Key('confirm')), 'password123');
       await tester.ensureVisible(find.byType(FilledButton));
@@ -92,7 +110,8 @@ void main() {
       await tester.tap(find.byType(FilledButton));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('link has expired'), findsOneWidget);
+      expect(find.byType(ExpiredLinkScreen), findsOneWidget);
+      expect(find.text('Try Again'), findsOneWidget);
     });
   });
 

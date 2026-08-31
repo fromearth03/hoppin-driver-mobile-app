@@ -46,7 +46,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
     result.when(
       ok: (_) => context.go(Routes.signIn),
-      err: (e) => setState(() => _error = errorCopy(e)),
+      // A dead link gets the design's dedicated screen — an inline error
+      // under a password form suggests retyping will fix it, and it won't.
+      err: (e) => e.code == 'EXPIRED_LINK'
+          ? context.go(Routes.expiredLink)
+          : setState(() => _error = errorCopy(e)),
     );
     if (mounted) setState(() => _busy = false);
   }
