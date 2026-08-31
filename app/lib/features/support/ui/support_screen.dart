@@ -126,15 +126,15 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
             ),
             _openTicketCard(ref.watch(complaintTypesProvider).valueOrNull ??
                 const <ComplaintType>[]),
-            SettingsCard(
+            const SettingsCard(
               title: 'Contact to Support',
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                  padding: EdgeInsets.fromLTRB(20, 18, 20, 20),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: _ContactTile(
                           icon: Icons.receipt_long_outlined,
                           title: 'Open Ticket',
@@ -142,8 +142,8 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                               'Representative will respond in 24 Hours',
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      const Expanded(
+                      SizedBox(width: 14),
+                      Expanded(
                         child: _ContactTile(
                           icon: Icons.mail_outline,
                           title: 'Email',
@@ -155,9 +155,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                 ),
               ],
             ),
-            SettingsCard(
+            const SettingsCard(
               title: 'Legal',
-              children: const [
+              children: [
                 _FaqRow(
                   question: 'Terms of Services',
                   answer:

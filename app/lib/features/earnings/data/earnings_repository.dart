@@ -41,6 +41,28 @@ class EarningsRepository {
     );
   }
 
+  /// The per-trip earnings report over an inclusive date range.
+  ///
+  /// The service serves CSV and only CSV — `format` anything else is a 400 —
+  /// so the design's PDF option is not offered. Returns the raw file body;
+  /// the endpoint is bearer-authenticated, so it cannot be handed to the
+  /// browser as a bare URL.
+  Future<Result<String>> report({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final r = await _api.get<dynamic>('/drivers/me/earnings/report', query: {
+      'from': _isoDate(from),
+      'to': _isoDate(to),
+      'format': 'csv',
+    });
+    return r.when(ok: (body) => Ok('$body'), err: (e) => Err(e));
+  }
+
+  static String _isoDate(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
   Future<Result<RideEarnings>> rideEarnings(String rideId) async {
     final r = await _api.get<Map<String, dynamic>>('/rides/$rideId/earnings');
     return r.when(

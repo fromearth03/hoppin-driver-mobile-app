@@ -8,6 +8,7 @@ import '../../../shared/widgets/app_loading.dart';
 import '../logic/stats_controller.dart';
 import 'appeal_sheet.dart';
 import 'widgets/penalties_section.dart';
+import 'widgets/period_card.dart';
 import 'widgets/stat_tile.dart';
 
 class StatsScreen extends ConsumerWidget {
@@ -41,21 +42,17 @@ class StatsScreen extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 24),
               child: Column(
                 children: [
-                  // The design opens with a "This Month / 1 Aug - 31 Aug"
-                  // period picker. `/drivers/me/stats` takes no date range
-                  // and returns lifetime figures with no period marker, so
-                  // a picker here would be a control that changes nothing
-                  // and a date range we made up. The tiles are labelled as
-                  // all-time instead.
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('All time', style: AppText.caption),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: PeriodCard(
+                      period: state.period,
+                      from: stats?.from,
+                      to: stats?.to,
+                      onChanged: controller.setPeriod,
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                     child: GridView.count(
                       crossAxisCount: 2,
                       shrinkWrap: true,
@@ -93,12 +90,16 @@ class StatsScreen extends ConsumerWidget {
                         StatTile(
                           icon: Icons.close_rounded,
                           tint: AppColors.negative,
-                          label: 'Cancellations',
-                          value: '${stats?.tripsCancelled ?? 0}',
+                          label: 'Cancellation Rate',
+                          value:
+                              stats?.ratePercent(stats.cancellationRate) ?? '—',
                           // Rider cancels, admin force-cancels and watchdog
                           // timeouts are excluded server-side, so the driver
-                          // needs to know the number is theirs alone.
-                          note: 'Trips you cancelled',
+                          // needs to know the number is theirs alone. The
+                          // design's "+0.5%" trend line has no source — the
+                          // endpoint returns no previous period to compare
+                          // against — so the count sits here instead.
+                          note: '${stats?.tripsCancelled ?? 0} you cancelled',
                         ),
                       ],
                     ),

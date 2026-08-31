@@ -39,6 +39,7 @@ void main() {
     // nothing, on an endpoint that would never have persisted them.
     expect(find.text('Keep screen awake'), findsNothing);
     expect(find.text('Distance units'), findsNothing);
+    expect(find.text('Navigation'), findsNothing);
   });
 
   testWidgets('has no Language row', (tester) async {
@@ -47,6 +48,15 @@ void main() {
 
     // Single locale — a row that does nothing is worse than no row.
     expect(find.text('Language'), findsNothing);
+  });
+
+  testWidgets('offers logout and delete account, as the design does',
+      (tester) async {
+    await tester.pumpWidget(wrap(repo));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Logout'), findsOneWidget);
+    expect(find.text('Delete account'), findsOneWidget);
   });
 
   testWidgets('persists a toggle immediately', (tester) async {

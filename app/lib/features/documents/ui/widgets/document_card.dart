@@ -9,10 +9,12 @@ import '../../data/models/driver_document.dart';
 ///
 /// The design draws a bespoke line illustration per document type, the type
 /// name, and an "Expire: <date>" line. We keep that shape, substituting an
-/// outlined Material glyph per type, and add a status marker in the corner —
-/// the design's corner glyph is decorative and identical on every tile,
-/// which would leave a driver unable to tell an approved licence from a
-/// rejected one.
+/// outlined Material glyph per type.
+///
+/// The design's corner glyph is the same crossed-out eye on every tile —
+/// decorative, and it would leave a driver unable to tell an approved
+/// licence from a rejected one. It is replaced with the document's real
+/// verification status, which is the one thing this screen exists to show.
 class DocumentCard extends StatelessWidget {
   final DocumentSlot slot;
   final VoidCallback? onTap;
@@ -26,28 +28,31 @@ class DocumentCard extends StatelessWidget {
       slot.status != DocumentStatus.pending &&
       slot.status != DocumentStatus.approved;
 
+  /// The eight codes the service's catalogue serves, plus the aliases older
+  /// payloads used. An unknown code falls back to a generic page.
   static const _glyphs = {
-    'private_hire_license': Icons.badge_outlined,
-    'phv_license': Icons.badge_outlined,
-    'driving_license': Icons.badge_outlined,
-    'vehicle_insurance': Icons.directions_car_outlined,
-    'insurance': Icons.directions_car_outlined,
-    'mot': Icons.build_outlined,
-    'vehicle_registration': Icons.article_outlined,
-    'dbs_check': Icons.verified_outlined,
-    'nr3s_background_check': Icons.verified_user_outlined,
-    'medical_certificate': Icons.medical_information_outlined,
+    'dvla_license': Icons.badge_outlined,
+    'wolverhampton_taxi_badge': Icons.local_taxi_outlined,
     'right_to_work': Icons.fact_check_outlined,
+    'mot_certificate': Icons.build_outlined,
+    'insurance_policy': Icons.shield_outlined,
+    'v5c_logbook': Icons.article_outlined,
+    'caz_compliance_proof': Icons.eco_outlined,
+    'nr3s_background_check': Icons.verified_user_outlined,
+    'private_hire_license': Icons.badge_outlined,
+    'driving_license': Icons.badge_outlined,
+    'vehicle_insurance': Icons.shield_outlined,
+    'dbs_check': Icons.verified_outlined,
+    'medical_certificate': Icons.medical_information_outlined,
   };
 
-  IconData get _glyph =>
-      _glyphs[slot.type.code] ?? Icons.description_outlined;
+  IconData get _glyph => _glyphs[slot.type.code] ?? Icons.description_outlined;
 
   (String, Color, IconData) get statusChip => switch (slot.status) {
         DocumentStatus.approved => (
             'Approved',
             AppColors.positive,
-            Icons.check_circle_outline
+            Icons.check_circle
           ),
         DocumentStatus.pending => (
             'Under review',
@@ -57,17 +62,17 @@ class DocumentCard extends StatelessWidget {
         DocumentStatus.rejected => (
             'Not accepted',
             AppColors.negative,
-            Icons.error_outline
+            Icons.error
           ),
         DocumentStatus.expired => (
             'Expired',
             AppColors.negative,
-            Icons.event_busy_outlined
+            Icons.event_busy
           ),
         DocumentStatus.missing => (
             'Not uploaded',
             AppColors.textSecondary,
-            Icons.upload_file_outlined
+            Icons.upload_file
           ),
       };
 
@@ -92,7 +97,7 @@ class DocumentCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: slot.needsAction
-                    ? AppColors.negative.withValues(alpha: 0.45)
+                    ? AppColors.negative.withValues(alpha: 0.4)
                     : Colors.transparent,
               ),
             ),
@@ -102,55 +107,39 @@ class DocumentCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(_glyph, size: 38, color: AppColors.textPrimary),
+                    Icon(_glyph, size: 36, color: AppColors.textPrimary),
                     const Spacer(),
-                    Icon(statusIcon, size: 18, color: colour),
+                    Tooltip(
+                      message: label,
+                      child: Icon(statusIcon, size: 18, color: colour),
+                    ),
                   ],
                 ),
                 const Spacer(),
                 Text(
                   slot.type.label,
-                  style: AppText.heading.copyWith(fontSize: 16),
+                  style: AppText.heading.copyWith(fontSize: 15.5),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   // The design prints "Expire: January 15, 2026" on every
-                  // tile. Only a document that actually carries an expiry
-                  // gets a date; the rest state their status instead of a
-                  // date we do not have.
+                  // tile. Only a type the service marks as expiring carries
+                  // a date; the rest state their status rather than a date
+                  // we would have to invent.
                   expiry == null
                       ? label
                       : 'Expire: ${DateFormat('MMMM d, y').format(expiry.toLocal())}',
                   style: AppText.caption.copyWith(
-                    color: (document?.isExpired ?? false) ||
-                            (document?.isExpiringSoon ?? false) ||
-                            slot.needsAction
+                    color: slot.needsAction ||
+                            (document?.isExpiringSoon ?? false)
                         ? AppColors.negative
                         : AppColors.textSecondary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (document?.rejectionReason != null) ...[
-                  const SizedBox(height: 8),
-                  // Rendered in full. That single field is the difference
-                  // between a driver fixing the problem and re-uploading the
-                  // same file until they call support.
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.negative.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      document!.rejectionReason!,
-                      style: AppText.caption.copyWith(fontSize: 12),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -158,4 +147,57 @@ class DocumentCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The design's dark "Document Appeal" tile, in the last grid cell.
+///
+/// There is no document-appeal endpoint. `POST /drivers/me/compliance-appeals`
+/// is the only path, and it takes a `document_type` and a free-text reason —
+/// which is exactly a document appeal, so the tile is real and wired to it.
+class DocumentAppealCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const DocumentAppealCard({super.key, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: 'Appeal a document decision',
+        child: Material(
+          color: AppColors.textPrimary,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.gavel_outlined,
+                          size: 36, color: AppColors.surface),
+                      const Spacer(),
+                      Icon(Icons.add,
+                          size: 24,
+                          color: AppColors.surface.withValues(alpha: 0.9)),
+                    ],
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Document\nAppeal',
+                    style: AppText.heading.copyWith(
+                      fontSize: 15.5,
+                      color: AppColors.surface,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
 }

@@ -69,6 +69,18 @@ class EarningsSummary {
   final Pence penalties;
   final int tripCount;
 
+  /// The window the service actually summed, in its own words. The design
+  /// prints a date range under each period card ("11 Aug - 17 Aug"); this
+  /// is where that range comes from, rather than the app guessing at week
+  /// boundaries the service computes in Europe/London.
+  final DateTime? from;
+  final DateTime? to;
+
+  /// The service's own per-trip average. Not re-derived: `net / trips` in
+  /// the app would round differently from the integer division the service
+  /// does, and the two figures would disagree by a penny.
+  final Pence avgNetPerTrip;
+
   const EarningsSummary({
     required this.net,
     this.gross = const Pence(0),
@@ -76,6 +88,9 @@ class EarningsSummary {
     this.tax = const Pence(0),
     this.penalties = const Pence(0),
     this.tripCount = 0,
+    this.from,
+    this.to,
+    this.avgNetPerTrip = const Pence(0),
   });
 
   factory EarningsSummary.fromJson(Map<String, dynamic> json) =>
@@ -86,7 +101,13 @@ class EarningsSummary {
         tax: _p(json, 'tax_pence'),
         penalties: _p(json, 'penalties_pence'),
         tripCount: (json['trips'] as num?)?.toInt() ?? 0,
+        from: _date(json['from']),
+        to: _date(json['to']),
+        avgNetPerTrip: _p(json, 'avg_net_per_trip_pence'),
       );
+
+  static DateTime? _date(Object? v) =>
+      v is String ? DateTime.tryParse(v)?.toLocal() : null;
 
   /// The deductions between gross and net, in the order a payslip reads.
   /// Omits whatever didn't apply rather than showing a row of zeroes.

@@ -27,6 +27,8 @@ class _DocsRepo extends Mock implements DocumentsRepository {}
 ///
 /// Run with `flutter test --update-goldens test/visual/stats_docs_golden_test.dart`.
 void main() {
+  setUpAll(() => registerFallbackValue(StatsPeriod.month));
+
   Future<void> capture(
     WidgetTester tester,
     Widget child,
@@ -52,13 +54,17 @@ void main() {
     );
   }
 
-  DriverStats theStats() => const DriverStats(
+  DriverStats theStats() => DriverStats(
+        period: StatsPeriod.month,
+        from: DateTime.utc(2026, 8, 1),
+        to: DateTime.utc(2026, 8, 31),
         averageRating: 4.7,
         ratingCount: 128,
         tripsCompleted: 1247,
         tripsCancelled: 4,
-        penaltiesCount: 1,
+        penaltiesActive: 1,
         acceptanceRate: 0.96,
+        cancellationRate: 0.04,
       );
 
   PenaltyList thePenalties() => PenaltyList(
@@ -106,7 +112,8 @@ void main() {
   }) {
     final s = _StatsRepo();
     final a = _AppealsRepo();
-    when(() => s.stats()).thenAnswer((_) async => Ok(stats ?? theStats()));
+    when(() => s.stats(period: any(named: 'period')))
+        .thenAnswer((_) async => Ok(stats ?? theStats()));
     when(() => s.penalties())
         .thenAnswer((_) async => Ok(penalties ?? thePenalties()));
     when(() => a.mine()).thenAnswer((_) async => Ok(appeals ?? theAppeals()));
@@ -170,14 +177,14 @@ void main() {
       const DocumentsScreen(),
       'documents',
       overrides: docsOverrides([
-        docSlot('private_hire_license', 'Private Hire License'),
-        docSlot('vehicle_insurance', 'Vehicle Insurance'),
-        docSlot('dbs_check', 'DBS Check'),
-        docSlot('medical_certificate', 'Medical Certificate',
+        docSlot('dvla_license', 'DVLA Licence'),
+        docSlot('wolverhampton_taxi_badge', 'Wolverhampton Taxi Badge'),
+        docSlot('insurance_policy', 'Insurance Policy'),
+        docSlot('mot_certificate', 'MOT Certificate',
             status: DocumentStatus.pending),
         docSlot('right_to_work', 'Right to Work',
             status: DocumentStatus.missing),
-        docSlot('nr3s_background_check', 'Background Check',
+        docSlot('nr3s_background_check', 'NR3S Background Check',
             uploadable: false, status: DocumentStatus.pending),
       ]),
     ),
@@ -190,14 +197,63 @@ void main() {
       const DocumentsScreen(),
       'documents_rejected',
       overrides: docsOverrides([
-        docSlot('private_hire_license', 'Private Hire License',
+        docSlot('dvla_license', 'DVLA Licence',
             status: DocumentStatus.rejected,
             rejectionReason:
                 'The photo was too blurry to read the expiry date.'),
-        docSlot('vehicle_insurance', 'Vehicle Insurance',
+        docSlot('insurance_policy', 'Insurance Policy',
             status: DocumentStatus.expired,
             expiresAt: DateTime.utc(2026, 1, 15)),
       ]),
     ),
   );
+
+  // The three accordion states the Figma shows one screen each for.
+  for (final (label, name) in const [
+    ('Active (1)', 'stats_active_open'),
+    ('Under review (1)', 'stats_under_review_open'),
+    ('Resolved (2)', 'stats_resolved_open'),
+  ]) {
+    testWidgets('$name expands', (tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: statsOverrides(),
+        child: MaterialApp(theme: appTheme(), home: const StatsScreen()),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/$name.png'),
+      );
+    });
+  }
+
+  testWidgets('appeal penalty modal', (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: statsOverrides(),
+      child: MaterialApp(theme: appTheme(), home: const StatsScreen()),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Active (1)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Appeal'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/stats_appeal_modal.png'),
+    );
+  });
 }

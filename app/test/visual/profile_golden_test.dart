@@ -36,8 +36,9 @@ void main() {
     Widget child,
     String name, {
     List<Override> overrides = const [],
+    double height = 932,
   }) async {
-    tester.view.physicalSize = const Size(430, 932);
+    tester.view.physicalSize = Size(430, height);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -70,6 +71,11 @@ void main() {
         )));
     when(() => prefs.load())
         .thenAnswer((_) async => const Ok(DriverPreferences()));
+    when(() => support.complaintTypes()).thenAnswer((_) async => const Ok([
+          ComplaintType('fare_dispute', 'Fare or earnings'),
+          ComplaintType('rating', 'A passenger rating'),
+          ComplaintType('other', 'Something else'),
+        ]));
     when(() => support.tickets()).thenAnswer((_) async => Ok([
           SupportTicket(
             id: 't1',
@@ -131,10 +137,14 @@ void main() {
     (t) => capture(t, const DeleteAccountScreen(), 'delete_account'),
   );
 
+  // Taller than one artboard: the design runs FAQ, form, contact, legal and
+  // recent issues down a single scroll, so a phone-height capture would cut
+  // the lower cards off entirely.
   testWidgets(
     'help and support',
     (t) => capture(t, const SupportScreen(), 'help_and_support',
-        overrides: [supportRepositoryProvider.overrideWithValue(support)]),
+        overrides: [supportRepositoryProvider.overrideWithValue(support)],
+        height: 2100),
   );
 
   testWidgets(

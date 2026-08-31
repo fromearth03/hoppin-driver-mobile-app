@@ -93,6 +93,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           final (first, last) = _splitName(profile?.fullName ?? '');
 
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
                 child: SingleChildScrollView(
@@ -132,16 +133,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       // that can actually change a verified name or photo.
                       InkWell(
                         onTap: () => context.push(Routes.support),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
                               horizontal: 4, vertical: 8),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.error_outline,
+                              Icon(Icons.error_outline,
                                   size: 24, color: AppColors.textPrimary),
-                              const SizedBox(width: 14),
-                              const Expanded(
+                              SizedBox(width: 14),
+                              Expanded(
                                 child: Text(
                                   'Your full name and profile picture are '
                                   'verified. To update them, please contact '
@@ -149,8 +150,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   style: AppText.body,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.chevron_right,
+                              SizedBox(width: 8),
+                              Icon(Icons.chevron_right,
                                   size: 24, color: AppColors.textPrimary),
                             ],
                           ),

@@ -12,6 +12,7 @@ import '../../../shared/widgets/app_loading.dart';
 import '../data/models/ride.dart';
 import '../logic/trip_controller.dart';
 import 'widgets/cancel_sheet.dart';
+import 'widgets/map_pills.dart';
 import 'widgets/rider_card.dart';
 import 'widgets/trip_map.dart';
 import 'widgets/waiting_timer.dart';
@@ -57,13 +58,11 @@ class TripScreen extends ConsumerWidget {
             return AppErrorState(
                 error: state.error!, onRetry: controller.refresh);
           }
-          return Column(
+          // The map is the screen. The sheet sits over it rather than
+          // beside it, so the driver keeps as much road as possible.
+          return Stack(
             children: [
-              // A poll that keeps failing leaves the driver looking at a
-              // ride that may already have been cancelled underneath them.
-              // The stale data is the right fallback, but silence is not.
-              if (state.error != null) _staleBanner(),
-              Expanded(
+              Positioned.fill(
                 child: TripMap(
                   geo: ride.geo,
                   target: ride.phase == TripPhase.inTrip
@@ -71,7 +70,25 @@ class TripScreen extends ConsumerWidget {
                       : ride.geo.pickup,
                 ),
               ),
-              _bottomSheet(context, ref, state, ride),
+              SafeArea(
+                child: Column(
+                  children: [
+                    // A poll that keeps failing leaves the driver looking at
+                    // a ride that may already have been cancelled underneath
+                    // them. Stale data is the right fallback; silence is not.
+                    if (state.error != null) _staleBanner(),
+                    const SizedBox(height: 8),
+                    TripStatusPill(phase: ride.phase),
+                    const Spacer(),
+                    TripEtaPill(etaSeconds: ride.pickupEtaSeconds),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: _bottomSheet(context, ref, state, ride),
+              ),
             ],
           );
         },
@@ -84,12 +101,26 @@ class TripScreen extends ConsumerWidget {
     final controller = ref.read(tripControllerProvider(rideId).notifier);
 
     return Container(
-      decoration: const BoxDecoration(color: AppColors.surface),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // The grab handle the design draws. Decorative here - the sheet
+            // does not drag - but it reads as the bottom of the map.
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 4),
+              height: 5,
+              width: 78,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
             if (ride.ref != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),

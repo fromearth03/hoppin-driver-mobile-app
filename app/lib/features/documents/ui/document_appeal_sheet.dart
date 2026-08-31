@@ -5,46 +5,56 @@ import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_buttons.dart';
-import '../data/appeals_repository.dart';
-import '../data/models/penalty.dart';
+import '../../stats/data/appeals_repository.dart';
+import '../data/models/driver_document.dart';
 
-/// The design's "Appeal Penalty" modal.
+/// The design's "Document Appeal" flow, reached from the dark grid tile.
 ///
-/// Two departures from the Figma, both deliberate:
-///
-///  * The Subject row in the design is a chevron that opens a "Document
-///    Selection" picker. A penalty appeal is filed against the penalty the
-///    driver tapped, not against a document they choose, so the subject is
-///    shown as the penalty itself rather than as a control that would let
-///    them file against the wrong thing.
-///  * The design's footnote reads "Note: Appeals are reviewd with 48 hours."
-///    Beyond the two typos, no endpoint or contract states a review SLA, so
-///    the note says what we can stand behind instead of inventing a
-///    deadline the operations team has not agreed to.
-class AppealSheet extends ConsumerStatefulWidget {
-  final Penalty penalty;
+/// It posts to `/drivers/me/compliance-appeals`, the only appeal endpoint
+/// the service exposes. That endpoint takes a `document_type` and a reason,
+/// so the Subject row is a real picker here — unlike the penalty appeal,
+/// where there is no document to choose.
+class DocumentAppealSheet extends ConsumerStatefulWidget {
+  /// The types the driver could appeal about — the same catalogue the grid
+  /// is built from, so they can only pick a type the service recognises.
+  final List<DocumentType> types;
 
-  const AppealSheet({super.key, required this.penalty});
+  /// Preselected when the driver came from a specific document.
+  final DocumentType? initial;
+
+  const DocumentAppealSheet({super.key, required this.types, this.initial});
 
   /// Returns true when an appeal was filed.
-  static Future<bool> show(BuildContext context, Penalty penalty) async =>
+  static Future<bool> show(
+    BuildContext context, {
+    required List<DocumentType> types,
+    DocumentType? initial,
+  }) async =>
       await showModalBottomSheet<bool>(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => AppealSheet(penalty: penalty),
+        builder: (_) => DocumentAppealSheet(types: types, initial: initial),
       ) ??
       false;
 
   @override
-  ConsumerState<AppealSheet> createState() => _AppealSheetState();
+  ConsumerState<DocumentAppealSheet> createState() =>
+      _DocumentAppealSheetState();
 }
 
-class _AppealSheetState extends ConsumerState<AppealSheet> {
+class _DocumentAppealSheetState extends ConsumerState<DocumentAppealSheet> {
   final _description = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  DocumentType? _subject;
   bool _busy = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _subject = widget.initial;
+  }
 
   @override
   void dispose() {
@@ -54,12 +64,17 @@ class _AppealSheetState extends ConsumerState<AppealSheet> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_subject == null) {
+      setState(() => _error = 'Choose which document this is about.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
 
     final result = await ref.read(appealsRepositoryProvider).file(
+          documentType: _subject!.code,
           reason: _description.text.trim(),
         );
     if (!mounted) return;
@@ -71,6 +86,32 @@ class _AppealSheetState extends ConsumerState<AppealSheet> {
         _error = errorCopy(e);
       }),
     );
+  }
+
+  Future<void> _pickSubject() async {
+    final chosen = await showModalBottomSheet<DocumentType>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheet) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final type in widget.types)
+              ListTile(
+                title: Text(type.label, style: AppText.body),
+                trailing: type.code == _subject?.code
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () => Navigator.of(sheet).pop(type),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (chosen != null) setState(() => _subject = chosen);
   }
 
   @override
@@ -97,7 +138,7 @@ class _AppealSheetState extends ConsumerState<AppealSheet> {
                   child: Row(
                     children: [
                       const Expanded(
-                        child: Text('Appeal Penalty', style: AppText.title),
+                        child: Text('Document Appeal', style: AppText.title),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close,
@@ -115,7 +156,34 @@ class _AppealSheetState extends ConsumerState<AppealSheet> {
                     children: [
                       const Text('Subject', style: AppText.heading),
                       const SizedBox(height: 8),
-                      _subject(),
+                      InkWell(
+                        onTap: _busy ? null : _pickSubject,
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 16),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _subject?.label ?? 'Document Selection',
+                                  style: _subject == null
+                                      ? AppText.body.copyWith(
+                                          color: AppColors.textDisabled)
+                                      : AppText.body,
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right,
+                                  color: AppColors.textSecondary),
+                            ],
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       const Text('Description', style: AppText.heading),
                       const SizedBox(height: 8),
@@ -142,8 +210,10 @@ class _AppealSheetState extends ConsumerState<AppealSheet> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // No SLA is stated anywhere in the contract, so this
-                      // says what happens rather than when.
+                      // The design reads "Note: Appeals are reviewd with 48
+                      // hours." Beyond the two typos, nothing in the service
+                      // states a review SLA, so this promises what we can
+                      // keep rather than a deadline nobody has agreed to.
                       const Text(
                         'Note: A reviewer reads every appeal and you will get '
                         'their decision and reasons here.',
@@ -162,8 +232,9 @@ class _AppealSheetState extends ConsumerState<AppealSheet> {
                             child: AppButton(
                               label: 'Back',
                               style: AppButtons.outlined().copyWith(
-                                backgroundColor: const WidgetStatePropertyAll(
-                                    AppColors.background),
+                                backgroundColor:
+                                    const WidgetStatePropertyAll(
+                                        AppColors.background),
                               ),
                               onPressed: _busy
                                   ? null
@@ -190,25 +261,6 @@ class _AppealSheetState extends ConsumerState<AppealSheet> {
       ),
     );
   }
-
-  /// What is being appealed, stated rather than chosen.
-  Widget _subject() => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(widget.penalty.displayTitle, style: AppText.body),
-            ),
-            Text(widget.penalty.amount.format(),
-                style: AppText.body.copyWith(color: AppColors.negative)),
-          ],
-        ),
-      );
 
   OutlineInputBorder _outline([Color c = AppColors.border, double w = 1]) =>
       OutlineInputBorder(
