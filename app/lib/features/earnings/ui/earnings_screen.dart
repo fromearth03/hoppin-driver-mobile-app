@@ -66,7 +66,8 @@ class EarningsScreen extends ConsumerWidget {
             // absent from the tree, not merely scrolled off.
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 24),
+              padding:
+                  const EdgeInsets.only(bottom: AppShell.bottomClearance),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

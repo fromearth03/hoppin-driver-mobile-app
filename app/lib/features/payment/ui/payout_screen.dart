@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../shared/nav/app_shell.dart';
 
 import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
@@ -109,7 +110,8 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
               );
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 8, bottom: 32),
+      padding: const EdgeInsets.only(
+          top: 8, bottom: AppShell.bottomClearance),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

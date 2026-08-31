@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../shared/nav/app_shell.dart';
 
 import '../../../app_router.dart';
 import '../../../core/theme/colors.dart';
@@ -34,7 +35,8 @@ class SettingsScreen extends ConsumerWidget {
         // A fixed set of rows, not a feed: a lazy list would leave the
         // later rows out of the tree entirely on a short viewport.
         data: (prefs) => SingleChildScrollView(
-          padding: const EdgeInsets.only(top: 8, bottom: 32),
+          padding: const EdgeInsets.only(
+              top: 8, bottom: AppShell.bottomClearance),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

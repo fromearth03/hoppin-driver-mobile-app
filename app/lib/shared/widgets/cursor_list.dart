@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/typography.dart';
+import '../nav/app_shell.dart';
 
 /// A list backed by cursor pagination.
 ///
@@ -32,7 +33,9 @@ class CursorList<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final list = ListView.builder(
-      padding: const EdgeInsets.only(bottom: 24),
+      // Both users of this list live inside the shell, whose floating pill
+      // would otherwise trap the last row beneath it.
+      padding: const EdgeInsets.only(bottom: AppShell.bottomClearance),
       // header + items + footer
       itemCount: (header == null ? 0 : 1) + items.length + 1,
       itemBuilder: (context, index) {

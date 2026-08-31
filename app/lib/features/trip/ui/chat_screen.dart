@@ -58,7 +58,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Message rider')),
-      body: Column(
+      // SafeArea picks up the shell's extendBody inset, keeping the
+      // composer above the floating tab pill rather than beneath it.
+      body: SafeArea(
+          child: Column(
         children: [
           Expanded(
             child: async.when(
@@ -83,7 +86,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           if (_replyingTo != null) _replyBanner(),
           _composer(),
         ],
-      ),
+      )),
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../shared/nav/app_shell.dart';
 
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
@@ -39,7 +40,8 @@ class StatsScreen extends ConsumerWidget {
             // section is the one a driver opens this screen to read.
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 24),
+              padding:
+                  const EdgeInsets.only(bottom: AppShell.bottomClearance),
               child: Column(
                 children: [
                   Padding(

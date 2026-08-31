@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../shared/nav/app_shell.dart';
 
 import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
@@ -116,7 +117,8 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
       // Fixed sections, not a feed: a lazy list would leave the tickets
       // section out of the tree entirely behind the FAQ.
       body: SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 8, bottom: 32),
+        padding: const EdgeInsets.only(
+            top: 8, bottom: AppShell.bottomClearance),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

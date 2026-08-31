@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../shared/nav/app_shell.dart';
 
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
@@ -28,7 +29,8 @@ class TripDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(trip.ref ?? 'Trip')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(
+            16, 16, 16, AppShell.bottomClearance),
         children: [
           _header(),
           const SizedBox(height: 16),

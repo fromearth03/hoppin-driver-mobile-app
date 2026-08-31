@@ -35,6 +35,13 @@ class AppShell extends StatelessWidget {
 
   static void openDrawer() => scaffoldKey.currentState?.openDrawer();
 
+  /// The strip the floating pill covers. The shell extends the body under
+  /// the bar, so any scrollable that sets its own padding must end its
+  /// content this far up — otherwise the last row is permanently trapped
+  /// beneath the pill. (Scrollables with no explicit padding inherit the
+  /// same inset from MediaQuery and need nothing.)
+  static const bottomClearance = 108.0;
+
   static const _tabs = [
     _Tab(Icons.home_outlined, Icons.home, 'Home'),
     // The design's £-in-a-circle. `currency_pound` alone is the glyph without

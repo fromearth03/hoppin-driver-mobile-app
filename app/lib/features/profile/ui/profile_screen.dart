@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../shared/nav/app_shell.dart';
 
 import '../../../app_router.dart';
 import '../../../core/api/error_codes.dart';
@@ -236,7 +237,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                padding: const EdgeInsets.fromLTRB(
+                    16, 0, 16, AppShell.bottomClearance),
                 child: AppButton(
                   label: 'Save',
                   busy: _busy,
