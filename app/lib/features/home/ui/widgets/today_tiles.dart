@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/colors.dart';
-import '../../../../core/theme/typography.dart';
 import '../../data/models/driver_today.dart';
 
 /// Earnings, trips and time online for the day so far.
 ///
 /// A driver working a shift otherwise has nothing on Home telling them how it
 /// is going — the Earnings tab answers the week, not the last four hours.
+///
+/// The design labels the middle column "Earnings" twice; it plainly means
+/// trips, which is what the value under it is.
 class TodayTiles extends StatelessWidget {
   final DriverToday today;
 
@@ -16,37 +18,69 @@ class TodayTiles extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _tile('Today', today.earnings.format()),
-            _divider(),
-            // Plural only when it should be: "1 trips" reads as a bug.
-            _tile('Trips', '${today.tripCount}'),
-            _divider(),
-            _tile('Online', today.onlineLabel),
+            const Text(
+              "Today's Summary",
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: AppColors.border),
+            const SizedBox(height: 20),
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                      child: _tile('Earnings', today.earnings.format())),
+                  _divider(),
+                  Expanded(child: _tile('Trips', '${today.tripCount}')),
+                  _divider(),
+                  Expanded(child: _tile('Online Time', today.onlineLabel)),
+                ],
+              ),
+            ),
           ],
         ),
       );
 
-  Widget _divider() => Container(
+  Widget _divider() => const VerticalDivider(
         width: 1,
-        height: 36,
+        thickness: 1,
         color: AppColors.border,
       );
 
   Widget _tile(String label, String value) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value, style: AppText.heading),
-          const SizedBox(height: 4),
-          Text(label, style: AppText.caption),
+          Text(
+            label,
+            style: const TextStyle(
+                fontSize: 15, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
         ],
       );
 }

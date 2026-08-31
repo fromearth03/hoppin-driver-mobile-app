@@ -14,6 +14,7 @@ import '../logic/home_controller.dart';
 import 'widgets/active_trip_banner.dart';
 import 'widgets/blocker_list.dart';
 import 'widgets/offer_card.dart';
+import 'widgets/offline_hero.dart';
 import 'widgets/online_toggle.dart';
 import 'widgets/today_tiles.dart';
 
@@ -83,6 +84,16 @@ class HomeScreen extends ConsumerWidget {
                     onResume: () => context.push(
                         '${Routes.trip}/${state.today!.activeRideId}'),
                   ),
+                // The offline hero leads: it is the reason to go online and
+                // the button that does it. Suppressed once an offer is on
+                // screen, which outranks everything.
+                if (!state.isOnline && state.offer == null)
+                  OfflineHero(
+                    onGoOnline: (state.status?.isBlocked ?? false) ||
+                            state.isBusy
+                        ? null
+                        : () => controller.toggleOnline(),
+                  ),
                 if (state.today != null) TodayTiles(today: state.today!),
                 if (state.status != null)
                   BlockerList(
@@ -95,6 +106,8 @@ class HomeScreen extends ConsumerWidget {
                     onContactSupport: () => context.go(Routes.support),
                     onOpenOnboarding: () => context.push(Routes.onboarding),
                   ),
+                if (!state.isOnline && state.offer == null)
+                  const MoreRidesCard(),
                 if (state.offer != null)
                   OfferCard(
                     offer: state.offer!,
@@ -114,7 +127,7 @@ class HomeScreen extends ConsumerWidget {
                     onDecline: controller.declineOffer,
                   )
                 else
-                  _waitingState(state),
+                  NoBookingsCard(isOnline: state.isOnline),
               ],
             ),
           );
@@ -144,30 +157,4 @@ class HomeScreen extends ConsumerWidget {
         ),
       );
 
-  Widget _waitingState(HomeState state) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 80),
-        child: Column(
-          children: [
-            Icon(
-              state.isOnline ? Icons.radar : Icons.power_settings_new,
-              size: 72,
-              color:
-                  state.isOnline ? AppColors.positive : AppColors.textDisabled,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              state.isOnline ? 'Looking for offers…' : "You're offline",
-              style: AppText.heading,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              state.isOnline
-                  ? "We'll let you know as soon as a ride comes in."
-                  : 'Go online to start receiving ride offers.',
-              style: AppText.bodySecondary,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
 }

@@ -8,6 +8,7 @@ import 'package:hoppin_driver/features/auth/data/auth_repository.dart';
 import 'package:hoppin_driver/features/auth/logic/auth_controller.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hoppin_driver/core/api/api_client.dart';
 
 class _MockRepo extends Mock implements AuthRepository {}
 
@@ -24,11 +25,14 @@ Session testSession() => Session(
     );
 
 void main() {
+  setUpAll(() => registerFallbackValue(_FakeApi()));
   late _MockRepo repo;
   late StreamController<AuthState> events;
 
   setUp(() {
     repo = _MockRepo();
+    // Sign-in claims the single live session the service allows.
+    when(() => repo.claimSession(any())).thenAnswer((_) async {});
     events = StreamController<AuthState>.broadcast();
     when(() => repo.authStateChanges).thenAnswer((_) => events.stream);
   });
@@ -129,3 +133,5 @@ void main() {
     expect(calls, 1);
   });
 }
+
+class _FakeApi extends Fake implements ApiClient {}

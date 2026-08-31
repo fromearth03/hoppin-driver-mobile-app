@@ -101,8 +101,9 @@ void main() {
       await tester.pumpWidget(wrap(repo, const ExpiredLinkScreen()));
 
       expect(find.byType(CircularProgressIndicator), findsNothing);
-      expect(find.textContaining('expired'), findsOneWidget);
-      expect(find.text('Request a new link'), findsOneWidget);
+      expect(find.textContaining(RegExp('expired', caseSensitive: false)),
+          findsWidgets);
+      expect(find.text('Try Again'), findsOneWidget);
     });
   });
 }

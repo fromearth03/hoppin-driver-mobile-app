@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/theme/colors.dart';
 
@@ -94,22 +95,17 @@ class BrandHeader extends StatelessWidget {
 
 /// The wordmark that closes every unauthenticated screen.
 class BrandFooter extends StatelessWidget {
-  const BrandFooter({super.key});
+  /// Drawn at its natural 257x43 ratio unless a screen asks otherwise.
+  final double width;
+
+  const BrandFooter({super.key, this.width = 180});
 
   @override
-  Widget build(BuildContext context) => const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.location_on, color: AppColors.accent, size: 30),
-          SizedBox(width: 6),
-          Text(
-            'Hoppin’ Go',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
+  Widget build(BuildContext context) => Center(
+        child: SvgPicture.asset(
+          'assets/brand/hoppin_go.svg',
+          width: width,
+          semanticsLabel: 'Hoppin Go',
+        ),
       );
 }

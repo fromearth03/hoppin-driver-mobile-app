@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/auth/token_store.dart';
 import '../../../core/result.dart';
@@ -94,6 +95,20 @@ class AuthRepository {
       // A token we cannot read is not a driver claim we can trust.
       return null;
     }
+  }
+
+  /// Claims the single live session the backend allows per account.
+  ///
+  /// The service keeps one `active_session_id` per user and answers every
+  /// other session with 401 SESSION_REPLACED. Without this call the row
+  /// still names whichever session claimed it last — an old build, another
+  /// tab — so a freshly signed-in driver is refused on every request and
+  /// the app looks like it cannot reach the backend at all.
+  ///
+  /// Best-effort: a failure here must not strand a driver who has just
+  /// authenticated successfully.
+  Future<void> claimSession(ApiClient api) async {
+    await api.post<dynamic>('/me/session');
   }
 
   Future<Result<void>> requestPasswordReset(String email) async {

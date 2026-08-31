@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/api_client.dart';
 import '../../../core/result.dart';
 import '../data/auth_repository.dart';
 
@@ -29,21 +32,36 @@ class AuthController extends Notifier<AuthStatus> {
     });
     ref.onDispose(subscription.cancel);
 
-    return repo.currentSession != null
-        ? AuthStatus.signedIn
-        : AuthStatus.signedOut;
+    final signedIn = repo.currentSession != null;
+    // A driver whose session was restored from storage never passes through
+    // signIn, so they would never claim the session row and every request
+    // would 401 SESSION_REPLACED. Claim it here too.
+    //
+    // Read the client up front: deferring the read would reach for a
+    // container that may already be gone by the time the future runs.
+    if (signedIn) {
+      final api = ref.read(apiClientProvider);
+      unawaited(repo.claimSession(api));
+    }
+    return signedIn ? AuthStatus.signedIn : AuthStatus.signedOut;
   }
 
   Future<Result<void>> signIn(String email, String password) async {
     final result =
         await ref.read(authRepositoryProvider).signIn(email, password);
-    return result.when(
-      ok: (_) {
+    return await result.when(
+      ok: (_) async {
         state = AuthStatus.signedIn;
+        // Claim the one session the service allows for this account before
+        // anything else calls it, or every request 401s SESSION_REPLACED
+        // against whichever session held the row before.
+        await ref
+            .read(authRepositoryProvider)
+            .claimSession(ref.read(apiClientProvider));
         ref.read(onSignedInProvider)();
         return const Ok(null);
       },
-      err: (e) {
+      err: (e) async {
         state = AuthStatus.signedOut;
         return Err(e);
       },

@@ -33,6 +33,18 @@ class AppButtons {
         ),
       );
 
+  /// The deep indigo fill. Same weight as [primary], but in the brand's own
+  /// colour — the design uses it where the button is the only thing on the
+  /// screen and has no panel above it to defer to.
+  static ButtonStyle deep() => FilledButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_radius),
+        ),
+      );
+
   /// The soft pink the design gives to "go back" — present, unmistakably
   /// secondary, and never confusable with the primary action.
   static ButtonStyle muted() => FilledButton.styleFrom(

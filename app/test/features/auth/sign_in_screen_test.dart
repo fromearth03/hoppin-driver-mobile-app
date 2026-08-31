@@ -7,6 +7,7 @@ import 'package:hoppin_driver/features/auth/data/auth_repository.dart';
 import 'package:hoppin_driver/features/auth/ui/sign_in_screen.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hoppin_driver/core/api/api_client.dart';
 
 class _MockRepo extends Mock implements AuthRepository {}
 
@@ -28,10 +29,13 @@ Widget wrap(AuthRepository repo) => ProviderScope(
     );
 
 void main() {
+  setUpAll(() => registerFallbackValue(_FakeApi()));
   late _MockRepo repo;
 
   setUp(() {
     repo = _MockRepo();
+    // Sign-in claims the single live session the service allows.
+    when(() => repo.claimSession(any())).thenAnswer((_) async {});
     when(() => repo.currentSession).thenReturn(null);
     when(() => repo.authStateChanges)
         .thenAnswer((_) => const Stream<AuthState>.empty());
@@ -113,3 +117,5 @@ void main() {
     expect(field.obscureText, isTrue);
   });
 }
+
+class _FakeApi extends Fake implements ApiClient {}
