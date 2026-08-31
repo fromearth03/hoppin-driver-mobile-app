@@ -6,19 +6,28 @@ import '../../../core/api/api_exception.dart';
 import '../../../core/result.dart';
 import '../data/driver_status_repository.dart';
 import '../data/models/driver_status.dart';
+import '../data/models/driver_today.dart';
 import '../data/models/pending_offer.dart';
 import '../data/offer_repository.dart';
 
 class HomeState {
   final DriverStatus? status;
+  final DriverToday? today;
   final PendingOffer? offer;
   final bool isBusy;
   final ApiException? error;
 
-  const HomeState({this.status, this.offer, this.isBusy = false, this.error});
+  const HomeState({
+    this.status,
+    this.today,
+    this.offer,
+    this.isBusy = false,
+    this.error,
+  });
 
   HomeState copyWith({
     DriverStatus? status,
+    DriverToday? today,
     PendingOffer? offer,
     bool? isBusy,
     ApiException? error,
@@ -27,6 +36,7 @@ class HomeState {
   }) =>
       HomeState(
         status: status ?? this.status,
+        today: today ?? this.today,
         offer: clearOffer ? null : (offer ?? this.offer),
         isBusy: isBusy ?? this.isBusy,
         error: clearError ? null : (error ?? this.error),
@@ -77,10 +87,17 @@ class HomeController extends AsyncNotifier<HomeState> {
       stopPolling();
     });
     final result = await _statusRepo.status();
-    return result.when(
-      ok: (status) => HomeState(status: status),
-      err: (e) => HomeState(error: e),
+    return await result.when(
+      ok: (status) async => HomeState(status: status, today: await _today()),
+      err: (e) async => HomeState(error: e),
     );
+  }
+
+  /// The day-so-far tiles. Best-effort: losing them is not worth denying the
+  /// driver the toggle and the offer card, which are what Home is for.
+  Future<DriverToday?> _today() async {
+    final result = await _statusRepo.today();
+    return result.valueOrNull;
   }
 
   HomeState get _current => state.value ?? const HomeState();
@@ -95,10 +112,15 @@ class HomeController extends AsyncNotifier<HomeState> {
 
   Future<void> refresh() async {
     final result = await _statusRepo.status();
-    result.when(
-      ok: (status) =>
-          _emit(_current.copyWith(status: status, clearError: true)),
-      err: (e) => _emit(_current.copyWith(error: e)),
+    if (_disposed) return;
+    await result.when(
+      ok: (status) async {
+        final today = await _today();
+        if (_disposed) return;
+        _emit(_current.copyWith(
+            status: status, today: today, clearError: true));
+      },
+      err: (e) async => _emit(_current.copyWith(error: e)),
     );
   }
 

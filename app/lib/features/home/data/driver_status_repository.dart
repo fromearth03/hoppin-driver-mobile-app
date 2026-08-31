@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/result.dart';
 import 'models/driver_status.dart';
+import 'models/driver_today.dart';
 
 class DriverStatusRepository {
   final ApiClient _api;
@@ -12,6 +13,16 @@ class DriverStatusRepository {
     final r = await _api.get<Map<String, dynamic>>('/drivers/me/status');
     return r.when(
       ok: (json) => Ok(DriverStatus.fromJson(json)),
+      err: (e) => Err(e),
+    );
+  }
+
+  /// The day so far: earnings, trips, online time, and any ride still in
+  /// progress.
+  Future<Result<DriverToday>> today() async {
+    final r = await _api.get<Map<String, dynamic>>('/drivers/me/today');
+    return r.when(
+      ok: (json) => Ok(DriverToday.fromJson(json)),
       err: (e) => Err(e),
     );
   }

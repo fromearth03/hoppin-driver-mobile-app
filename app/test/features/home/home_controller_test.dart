@@ -5,6 +5,7 @@ import 'package:hoppin_driver/core/money.dart';
 import 'package:hoppin_driver/core/result.dart';
 import 'package:hoppin_driver/features/home/data/driver_status_repository.dart';
 import 'package:hoppin_driver/features/home/data/models/driver_status.dart';
+import 'package:hoppin_driver/features/home/data/models/driver_today.dart';
 import 'package:hoppin_driver/features/home/data/models/pending_offer.dart';
 import 'package:hoppin_driver/features/home/data/offer_repository.dart';
 import 'package:hoppin_driver/features/home/logic/home_controller.dart';
@@ -47,6 +48,11 @@ void main() {
     status = _MockStatusRepo();
     offers = _MockOfferRepo();
     when(() => offers.offers()).thenAnswer((_) async => const Ok([]));
+    // Home now shows the day-so-far tiles. These tests are not about them,
+    // so answer with the quiet case.
+    when(() => status.today())
+        .thenAnswer((_) async => const Ok(DriverToday()));
+
   });
 
   ProviderContainer container() {

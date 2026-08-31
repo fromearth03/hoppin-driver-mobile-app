@@ -11,9 +11,11 @@ import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
 import '../data/models/driver_status.dart';
 import '../logic/home_controller.dart';
+import 'widgets/active_trip_banner.dart';
 import 'widgets/blocker_list.dart';
 import 'widgets/offer_card.dart';
 import 'widgets/online_toggle.dart';
+import 'widgets/today_tiles.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -73,6 +75,15 @@ class HomeScreen extends ConsumerWidget {
             child: ListView(
               children: [
                 if (state.status?.presence == Presence.stale) _staleBanner(),
+                // Above everything: a driver with a passenger in the car
+                // needs the way back to Arrive/Start/Complete before they
+                // need anything else on this screen.
+                if (state.today?.hasActiveRide ?? false)
+                  ActiveTripBanner(
+                    onResume: () => context.push(
+                        '${Routes.trip}/${state.today!.activeRideId}'),
+                  ),
+                if (state.today != null) TodayTiles(today: state.today!),
                 if (state.status != null)
                   BlockerList(
                     status: state.status!,
