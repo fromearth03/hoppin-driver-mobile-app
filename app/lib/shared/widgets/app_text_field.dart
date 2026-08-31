@@ -69,10 +69,7 @@ class _AppTextFieldState extends State<AppTextField> {
       decoration: InputDecoration(
         hintText: widget.hint ?? (widget.floatingLabel ? widget.label : null),
         hintStyle: AppText.body.copyWith(color: AppColors.textDisabled),
-        labelText: widget.floatingLabel ? widget.label : null,
-        labelStyle: AppText.body.copyWith(color: AppColors.textPrimary),
-        floatingLabelBehavior:
-            widget.floatingLabel ? FloatingLabelBehavior.always : null,
+        labelText: null,
         prefixIcon: widget.icon == null
             ? null
             : Padding(
@@ -90,17 +87,46 @@ class _AppTextFieldState extends State<AppTextField> {
                 onPressed: () => setState(() => _hidden = !_hidden),
               )
             : null,
-        filled: true,
+        // A filled field paints over the outline, which kills the notch the
+        // label sits in. The signed-out screens need that notch, so they get
+        // a white background from the border instead of a fill.
+        filled: !widget.floatingLabel,
         fillColor: AppColors.surface,
+        isDense: false,
         contentPadding: EdgeInsets.symmetric(
-            horizontal: 16, vertical: widget.floatingLabel ? 22 : 14),
+            horizontal: 16, vertical: widget.floatingLabel ? 26 : 14),
         border: _outline(),
         enabledBorder: _outline(),
         focusedBorder: _outline(AppColors.primary, 2),
       ),
     );
 
-    if (widget.floatingLabel) return field;
+    if (widget.floatingLabel) {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          field,
+          // Sits on the top border, painted in the page ground so the line
+          // appears to break around it.
+          Positioned(
+            left: 30,
+            top: -8,
+            child: Container(
+              color: AppColors.background,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Text(
+                widget.label,
+                style: AppText.body.copyWith(
+                  color: widget.enabled
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

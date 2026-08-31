@@ -17,6 +17,10 @@ class AppColors {
   /// The muted lilac the design uses for a primary button. Notably softer
   /// than [primary] — it reads as an action, not as chrome.
   static const buttonPrimary = Color(0xFF9585C0);
+
+  /// The soft pink the design gives a "go back" action. Visible, but never
+  /// mistakable for the primary button beside it.
+  static const buttonMuted = Color(0xFFF6D9DC);
   static const accent = Color(0xFFF07A21); // orange, primary actions
 
   static const background = Color(0xFFF5F5F7); // app ground

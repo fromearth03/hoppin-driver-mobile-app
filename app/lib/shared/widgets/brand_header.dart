@@ -11,21 +11,26 @@ class BrandHeader extends StatelessWidget {
   final String? subtitle;
   final VoidCallback? onBack;
 
-  /// Roughly 38% of a phone screen in the design. Passed in because the
-  /// signup form is taller and needs the panel to give up some room.
-  final double height;
+  /// The share of the viewport the panel takes. The design gives it ~40% of
+  /// a 932pt artboard above the form; expressed as a fraction so a shorter
+  /// screen shrinks the panel instead of pushing the form out of sight.
+  final double heightFactor;
+
+  /// Floor for the fraction, so the title never crushes on a small device.
+  static const _minHeight = 260.0;
 
   const BrandHeader({
     super.key,
     required this.title,
     this.subtitle,
     this.onBack,
-    this.height = 355,
+    this.heightFactor = 0.42,
   });
 
   @override
   Widget build(BuildContext context) => Container(
-        height: height,
+        height: (MediaQuery.sizeOf(context).height * heightFactor)
+            .clamp(_minHeight, 420.0),
         width: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -34,7 +39,7 @@ class BrandHeader extends StatelessWidget {
             colors: [AppColors.primaryLight, AppColors.primaryDark],
           ),
           borderRadius: BorderRadius.only(
-            bottomRight: Radius.circular(72),
+            bottomRight: Radius.circular(96),
           ),
         ),
         child: SafeArea(

@@ -51,8 +51,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: AppColors.background,
-        body: SingleChildScrollView(
-          child: Column(
+        // One screen, not a scrolling page: the design fits a phone, and the
+        // scroll view only exists so a keyboard cannot overflow the form.
+        body: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const BrandHeader(
@@ -60,7 +65,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 subtitle: 'Login using your credentials',
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(26, 56, 26, 32),
+                padding: const EdgeInsets.fromLTRB(26, 40, 26, 24),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -117,7 +122,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                             style: AppText.body
                                 .copyWith(color: AppColors.negative)),
                       ],
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 32),
                       SizedBox(
                         height: 62,
                         child: FilledButton(
@@ -146,13 +151,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                             _busy ? null : () => context.go(Routes.signUp),
                         child: const Text('New driver? Create an account'),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 28),
                       const BrandFooter(),
                     ],
                   ),
                 ),
               ),
             ],
+          ),
+            ),
           ),
         ),
       );

@@ -28,10 +28,12 @@ void main() {
 
       await tester.pumpWidget(wrap(repo, const ForgotPasswordScreen()));
       await tester.enterText(find.byKey(const Key('email')), 'd@hoppin.tech');
-      await tester.tap(find.text('Send reset link'));
+      await tester.ensureVisible(find.byType(OutlinedButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(OutlinedButton));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('If that email is registered'), findsOneWidget);
+      expect(find.textContaining('If an account exists for that address'), findsOneWidget);
     });
 
     testWidgets('surfaces rate limiting', (tester) async {
@@ -40,7 +42,9 @@ void main() {
 
       await tester.pumpWidget(wrap(repo, const ForgotPasswordScreen()));
       await tester.enterText(find.byKey(const Key('email')), 'd@hoppin.tech');
-      await tester.tap(find.text('Send reset link'));
+      await tester.ensureVisible(find.byType(OutlinedButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(OutlinedButton));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Too many attempts'), findsOneWidget);
@@ -53,7 +57,9 @@ void main() {
 
       await tester.enterText(find.byKey(const Key('password')), 'short');
       await tester.enterText(find.byKey(const Key('confirm')), 'short');
-      await tester.tap(find.text('Reset password'));
+      await tester.ensureVisible(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(FilledButton));
       await tester.pumpAndSettle();
 
       expect(find.text('Use at least 8 characters'), findsOneWidget);
@@ -65,7 +71,9 @@ void main() {
 
       await tester.enterText(find.byKey(const Key('password')), 'password123');
       await tester.enterText(find.byKey(const Key('confirm')), 'password124');
-      await tester.tap(find.text('Reset password'));
+      await tester.ensureVisible(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(FilledButton));
       await tester.pumpAndSettle();
 
       expect(find.text("Passwords don't match"), findsOneWidget);
@@ -79,7 +87,9 @@ void main() {
       await tester.pumpWidget(wrap(repo, const ResetPasswordScreen()));
       await tester.enterText(find.byKey(const Key('password')), 'password123');
       await tester.enterText(find.byKey(const Key('confirm')), 'password123');
-      await tester.tap(find.text('Reset password'));
+      await tester.ensureVisible(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(FilledButton));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('link has expired'), findsOneWidget);

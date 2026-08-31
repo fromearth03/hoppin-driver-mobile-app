@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app_router.dart';
 import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
+import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/app_text_field.dart';
+import '../../../shared/widgets/brand_header.dart';
 import '../data/auth_repository.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -33,8 +37,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _busy = true);
-    final result =
-        await ref.read(authRepositoryProvider).requestPasswordReset(_email.text);
+    final result = await ref
+        .read(authRepositoryProvider)
+        .requestPasswordReset(_email.text);
     if (!mounted) return;
 
     result.when(
@@ -46,54 +51,72 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Forgot password')),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text('Reset your password', style: AppText.title),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Enter your email and we'll send you a link to set a new password.",
-                    style: AppText.bodySecondary,
-                  ),
-                  const SizedBox(height: 24),
-                  AppTextField(
-                    key: const Key('email'),
-                    label: 'Email',
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    enabled: !_busy && !_sent,
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Enter your email'
-                        : null,
-                  ),
-                  if (_sent) ...[
-                    const SizedBox(height: 16),
-                    // Deliberately does not confirm whether the address is
-                    // registered — that would let anyone enumerate accounts.
-                    Text(
-                      'If that email is registered, a reset link is on its way.',
-                      style: AppText.body.copyWith(color: AppColors.positive),
-                    ),
-                  ],
-                  if (_error != null) ...[
-                    const SizedBox(height: 16),
-                    Text(_error!,
-                        style: AppText.body.copyWith(color: AppColors.negative)),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: (_busy || _sent) ? null : _submit,
-                    child: const Text('Send reset link'),
-                  ),
-                ],
+        backgroundColor: AppColors.background,
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              BrandHeader(
+                title: 'Forgot Password',
+                subtitle: 'Securely recover access to your account.',
+                onBack: () => context.pop(),
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(26, 56, 26, 32),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppTextField(
+                        key: const Key('email'),
+                        label: 'Email',
+                        controller: _email,
+                        floatingLabel: true,
+                        icon: Icons.mail_outline,
+                        hint: 'abc@hoppins.com',
+                        keyboardType: TextInputType.emailAddress,
+                        enabled: !_busy && !_sent,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Enter your email'
+                            : null,
+                      ),
+                      if (_sent) ...[
+                        const SizedBox(height: 20),
+                        // Deliberately says "if an account exists": confirming
+                        // which addresses are registered would let anyone
+                        // enumerate the platform's drivers.
+                        Text(
+                          'If an account exists for that address, a reset '
+                          'link is on its way.',
+                          style: AppText.body
+                              .copyWith(color: AppColors.positive),
+                        ),
+                      ],
+                      if (_error != null) ...[
+                        const SizedBox(height: 20),
+                        Text(_error!,
+                            style: AppText.body
+                                .copyWith(color: AppColors.negative)),
+                      ],
+                      const SizedBox(height: 28),
+                      AppOutlinedButton(
+                        label: 'Reset Password',
+                        busy: _busy,
+                        onPressed: _sent ? null : _submit,
+                      ),
+                      const SizedBox(height: 20),
+                      AppButton(
+                        label: 'Back to Sign In',
+                        style: AppButtons.muted(),
+                        onPressed:
+                            _busy ? null : () => context.go(Routes.signIn),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );

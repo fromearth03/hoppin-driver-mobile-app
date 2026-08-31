@@ -6,7 +6,9 @@ import '../../../app_router.dart';
 import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
+import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/app_text_field.dart';
+import '../../../shared/widgets/brand_header.dart';
 import '../data/auth_repository.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
@@ -51,50 +53,68 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('New password')),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text('Set a new password', style: AppText.title),
-                  const SizedBox(height: 24),
-                  AppTextField(
-                    key: const Key('password'),
-                    label: 'New password',
-                    controller: _password,
-                    obscure: true,
-                    enabled: !_busy,
-                    validator: (v) => (v == null || v.length < 8)
-                        ? 'Use at least 8 characters'
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    key: const Key('confirm'),
-                    label: 'Confirm password',
-                    controller: _confirm,
-                    obscure: true,
-                    enabled: !_busy,
-                    validator: (v) =>
-                        v != _password.text ? "Passwords don't match" : null,
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 16),
-                    Text(_error!,
-                        style: AppText.body.copyWith(color: AppColors.negative)),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _busy ? null : _submit,
-                    child: const Text('Reset password'),
-                  ),
-                ],
+        backgroundColor: AppColors.background,
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const BrandHeader(
+                title: 'Reset Password',
+                subtitle:
+                    'Enter your new password (must be at least 8 characters)',
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(26, 56, 26, 32),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppTextField(
+                        key: const Key('password'),
+                        label: 'Set New Password',
+                        controller: _password,
+                        floatingLabel: true,
+                        icon: Icons.lock_outline,
+                        hint: 'Enter your New Password',
+                        obscure: true,
+                        revealable: true,
+                        enabled: !_busy,
+                        validator: (v) => (v == null || v.length < 8)
+                            ? 'Use at least 8 characters'
+                            : null,
+                      ),
+                      const SizedBox(height: 20),
+                      AppTextField(
+                        key: const Key('confirm'),
+                        label: 'Confirm New Password',
+                        controller: _confirm,
+                        floatingLabel: true,
+                        icon: Icons.lock_outline,
+                        hint: 'Confirm your New Password',
+                        obscure: true,
+                        revealable: true,
+                        enabled: !_busy,
+                        validator: (v) =>
+                            v != _password.text ? "Passwords don't match" : null,
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 20),
+                        Text(_error!,
+                            style: AppText.body
+                                .copyWith(color: AppColors.negative)),
+                      ],
+                      const SizedBox(height: 28),
+                      AppButton(
+                        label: 'Reset Password',
+                        busy: _busy,
+                        onPressed: _submit,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
