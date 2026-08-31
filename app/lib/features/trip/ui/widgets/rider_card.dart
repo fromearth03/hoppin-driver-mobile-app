@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../../shared/widgets/authed_avatar.dart';
 import '../../data/models/ride.dart';
 
 /// Who the driver is collecting, with the two ways to reach them.
@@ -38,15 +39,7 @@ class RiderCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: AppColors.border,
-              backgroundImage:
-                  rider.avatarUrl == null ? null : NetworkImage(rider.avatarUrl!),
-              child: rider.avatarUrl == null
-                  ? const Icon(Icons.person, color: AppColors.textSecondary)
-                  : null,
-            ),
+            AuthedAvatar(url: rider.avatarUrl, radius: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

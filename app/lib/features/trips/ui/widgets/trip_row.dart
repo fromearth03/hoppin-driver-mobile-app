@@ -94,10 +94,16 @@ class TripRow extends StatelessWidget {
                     const Spacer(),
                     // A penalty is the one thing on a row a driver will
                     // dispute, so it is never hidden behind the detail view.
+                    // The attribution is the flexible party: it ellipsizes
+                    // before the time, reference or amount lose a pixel.
                     if (trip.cancelledByLabel != null)
-                      Text(
-                        trip.cancelledByLabel!,
-                        style: AppText.caption.copyWith(fontSize: 14),
+                      Flexible(
+                        child: Text(
+                          trip.cancelledByLabel!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.caption.copyWith(fontSize: 14),
+                        ),
                       ),
                     if (!trip.penalty.isZero) ...[
                       const SizedBox(width: 10),

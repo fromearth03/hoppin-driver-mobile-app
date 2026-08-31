@@ -9,6 +9,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/authed_avatar.dart';
 import '../data/models/driver_profile.dart';
 import '../data/profile_repository.dart';
 import '../logic/profile_controller.dart';
@@ -140,16 +141,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       Center(
                         child: Stack(
                           children: [
-                            CircleAvatar(
+                            AuthedAvatar(
+                              url: profile?.avatarUrl,
                               radius: 66,
-                              backgroundColor: AppColors.border,
-                              backgroundImage: profile?.avatarUrl == null
-                                  ? null
-                                  : NetworkImage(profile!.avatarUrl!),
-                              child: profile?.avatarUrl == null
-                                  ? const Icon(Icons.person,
-                                      size: 60, color: AppColors.textSecondary)
-                                  : null,
+                              fallback: const Icon(Icons.person,
+                                  size: 60, color: AppColors.textSecondary),
                             ),
                             // The design's pencil badge, bottom-right on the
                             // avatar — the one photo edit the server backs.

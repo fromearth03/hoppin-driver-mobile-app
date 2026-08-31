@@ -196,7 +196,12 @@ class TripsScreen extends ConsumerWidget {
 
   static String _shortDate(DateTime d) => DateFormat('d MMM').format(d);
 
-  Widget _filterBar(TripFilter active, TripsController controller) => Padding(
+  Widget _filterBar(TripFilter active, TripsController controller) =>
+      // Scrolls sideways rather than overflowing: three chips fit a phone,
+      // but a narrow window (or a longer translation someday) must degrade
+      // to a scroll, not a RenderFlex error.
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: _filters.entries

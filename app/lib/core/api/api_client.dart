@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,6 +41,26 @@ class ApiClient {
   /// rather than a JSON body, so a [FormData] goes through untouched.
   Future<Result<T>> postMultipart<T>(String path, FormData form) =>
       _send<T>(() => _dio.post(path, data: form));
+
+  /// Fetches raw bytes with the auth header attached. Stored images live in
+  /// a private bucket behind `/images/...`, which refuses an unauthenticated
+  /// request — and neither `NetworkImage` nor a browser `<img>` can carry a
+  /// Bearer token, so image bytes have to come through here. [url] may be
+  /// absolute (the API returns full URLs for avatars).
+  Future<Result<Uint8List>> getBytes(String url) async {
+    try {
+      final response = await _dio.get<List<int>>(url,
+          options: Options(responseType: ResponseType.bytes));
+      final status = response.statusCode ?? 500;
+      if (status >= 200 && status < 300 && response.data != null) {
+        return Ok(Uint8List.fromList(response.data!));
+      }
+      return Err(ApiException(
+          status >= 500 ? 'INTERNAL' : 'NOT_FOUND', 'image fetch failed', status));
+    } on DioException catch (e) {
+      return Err(ApiException('INTERNAL', e.message ?? 'network error', 0));
+    }
+  }
 
   Future<Result<T>> patch<T>(String path, {Map<String, dynamic>? body}) =>
       _send<T>(() => _dio.patch(path, data: body));

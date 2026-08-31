@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoppin_driver/core/money.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride.dart';
@@ -7,7 +8,10 @@ import 'package:hoppin_driver/features/trip/ui/widgets/map_pills.dart';
 import 'package:hoppin_driver/features/trip/ui/widgets/rider_card.dart';
 import 'package:hoppin_driver/features/trip/ui/widgets/waiting_timer.dart';
 
-Widget wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
+// AuthedAvatar inside RiderCard reads a provider, so the harness needs a
+// ProviderScope even though nothing is overridden.
+Widget wrap(Widget child) =>
+    ProviderScope(child: MaterialApp(home: Scaffold(body: child)));
 
 void main() {
   group('RiderCard', () {

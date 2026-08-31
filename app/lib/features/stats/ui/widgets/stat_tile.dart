@@ -68,7 +68,9 @@ class StatTile extends StatelessWidget {
                       fontSize: 13.5,
                       color: AppColors.textPrimary,
                     ),
-                    maxLines: 1,
+                    // "Acceptance Rate" does not fit a half-width tile on one
+                    // line at phone widths; wrapping beats "Acceptance R…".
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),

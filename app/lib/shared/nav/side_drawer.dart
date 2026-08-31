@@ -7,6 +7,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/typography.dart';
 import '../../features/profile/data/models/driver_profile.dart';
 import '../../features/profile/logic/profile_controller.dart';
+import '../widgets/authed_avatar.dart';
 
 /// The side navigation from the design: a rounded white panel that stops
 /// short of the right edge, a tappable profile header above a hairline, a
@@ -178,13 +179,11 @@ class _ProfileHeader extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(31, 30, 20, 30),
         child: Row(
           children: [
-            CircleAvatar(
+            AuthedAvatar(
+              url: avatarUrl,
               radius: 26,
               backgroundColor: AppColors.background,
-              foregroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
-                  ? NetworkImage(avatarUrl)
-                  : null,
-              child: const Icon(Icons.person,
+              fallback: const Icon(Icons.person,
                   size: 30, color: AppColors.textDisabled),
             ),
             const SizedBox(width: 16),

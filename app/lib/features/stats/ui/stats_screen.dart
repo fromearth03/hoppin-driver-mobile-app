@@ -59,7 +59,9 @@ class StatsScreen extends ConsumerWidget {
                       physics: const NeverScrollableScrollPhysics(),
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      childAspectRatio: 1.72,
+                      // Tall enough for a two-line label ("Acceptance
+                      // Rate") plus the note row beneath the value.
+                      childAspectRatio: 1.55,
                       children: [
                         StatTile(
                           icon: Icons.directions_car_filled_outlined,
