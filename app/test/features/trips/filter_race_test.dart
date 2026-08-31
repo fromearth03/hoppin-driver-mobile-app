@@ -75,6 +75,10 @@ void main() {
     });
     when(() => repo.summary('month'))
         .thenAnswer((_) async => const Ok(EarningsSummary(net: Pence(3000))));
+    // The screen now loads every period at once, so a switch does not blank
+    // the other cards; the race this test guards still runs on 'week'.
+    when(() => repo.summary('all'))
+        .thenAnswer((_) async => const Ok(EarningsSummary(net: Pence(9000))));
 
     final c = ProviderContainer(
         overrides: [earningsRepositoryProvider.overrideWithValue(repo)]);
