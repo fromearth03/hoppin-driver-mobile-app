@@ -145,7 +145,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.text("Rider didn't show up"));
     await settle(tester);
-    await tester.tap(find.text('Cancel Ride'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Cancel Ride').last);
     await settle(tester);
 
     // The driver sees the amount before the charge, not after.
@@ -166,7 +166,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.text("Rider didn't show up"));
     await settle(tester);
-    await tester.tap(find.text('Cancel Ride'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Cancel Ride').last);
     await settle(tester);
     await tester.tap(find.text('Cancel ride'));
     await settle(tester);

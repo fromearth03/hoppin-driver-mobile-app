@@ -119,7 +119,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Container(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),

@@ -55,6 +55,44 @@ void main() {
       expect(ride.geo.pickup.label, 'City Centre');
     });
 
+    test('reads the turn-by-turn steps the service routed', () {
+      final ride = Ride.fromJson({
+        'id': 'r1',
+        'status': 'in_progress',
+        'geo': {
+          'pickup': {'lat': 52.58, 'lng': -2.12},
+          'dropoff': {'lat': 52.59, 'lng': -2.13},
+          'steps': [
+            {
+              'instruction': 'Turn left onto Waterloo Road',
+              'distance_meters': 2414.0,
+              'maneuver': 'turn-left',
+            },
+          ],
+        },
+      });
+
+      expect(ride.geo.steps, hasLength(1));
+      expect(ride.geo.steps.first.instruction, 'Turn left onto Waterloo Road');
+      expect(ride.geo.steps.first.distanceLabel, '1.5 mi');
+    });
+
+    test('a ride with no steps reads as an empty list, never a throw', () {
+      // The service sends `steps: null` on a finished trip and whenever the
+      // OSRM call failed — both are normal, and neither may break the screen.
+      final ride = Ride.fromJson({
+        'id': 'r1',
+        'status': 'completed',
+        'geo': {
+          'pickup': {'lat': 52.58, 'lng': -2.12},
+          'dropoff': {'lat': 52.59, 'lng': -2.13},
+          'steps': null,
+        },
+      });
+
+      expect(ride.geo.steps, isEmpty);
+    });
+
     test('ignores waypoints entirely — the app is single-stop', () {
       final ride = Ride.fromJson({
         'id': 'r1',

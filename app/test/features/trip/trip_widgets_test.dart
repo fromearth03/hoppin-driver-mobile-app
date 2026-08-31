@@ -70,7 +70,11 @@ void main() {
         freeWaitSeconds: 180,
         perMinutePence: const Pence(30),
         noShowFeePence: const Pence(5900),
-        billableFrom: DateTime.now().toUtc().add(const Duration(seconds: 90)),
+        // A whole second of slack: the widget truncates with inSeconds, so
+        // an exact 90 renders as 01:29 once a few milliseconds have passed
+        // between building the policy and pumping the frame.
+        billableFrom:
+            DateTime.now().toUtc().add(const Duration(seconds: 91)),
       );
 
       await tester.pumpWidget(wrap(WaitingTimer(policy: policy)));
@@ -114,7 +118,7 @@ void main() {
       expect(find.textContaining("You've been waiting for 07:0"), findsOneWidget);
       // The countdown is the difference between a free cancellation and a
       // penalty, so it is stated as a number, not as reassurance.
-      expect(find.text('Time left to cancel without impact'), findsOneWidget);
+      expect(find.text('Time left to cancel fee-free'), findsOneWidget);
       expect(find.text('02:37'), findsOneWidget);
     });
 
@@ -126,7 +130,7 @@ void main() {
 
       // A countdown we cannot substantiate would promise a driver a free
       // cancellation the service may still charge for.
-      expect(find.text('Time left to cancel without impact'), findsNothing);
+      expect(find.text('Time left to cancel fee-free'), findsNothing);
     });
 
     testWidgets('renders nothing before the driver has marked arrival',
@@ -134,6 +138,50 @@ void main() {
       await tester.pumpWidget(wrap(const WaitingCancelCard()));
 
       expect(find.textContaining("You've been waiting"), findsNothing);
+    });
+  });
+
+  group('TripNavBanner', () {
+    testWidgets('prints the manoeuvre and its distance', (tester) async {
+      await tester.pumpWidget(wrap(const TripNavBanner(steps: [
+        NavStep(
+            instruction: 'Take left',
+            distanceMeters: 2414,
+            maneuver: 'turn-left'),
+      ])));
+
+      // 2414 m is 1.5 mi — road signs here are imperial.
+      expect(find.text('Take left · 1.5 mi'), findsOneWidget);
+      expect(find.byIcon(Icons.turn_left), findsOneWidget);
+    });
+
+    testWidgets('drops the distance when the step starts here', (tester) async {
+      await tester.pumpWidget(wrap(const TripNavBanner(steps: [
+        NavStep(instruction: 'Head north', maneuver: 'depart'),
+      ])));
+
+      // "in 0 ft" is noise, not navigation.
+      expect(find.text('Head north'), findsOneWidget);
+    });
+
+    testWidgets('renders nothing when the service sent no steps',
+        (tester) async {
+      await tester.pumpWidget(wrap(const TripNavBanner()));
+
+      // `geo.steps` is null on a finished trip and whenever OSRM was
+      // unavailable; the banner must cost no height then.
+      expect(find.byIcon(Icons.straight), findsNothing);
+    });
+
+    testWidgets('falls back to continue rather than guessing a turn',
+        (tester) async {
+      await tester.pumpWidget(wrap(const TripNavBanner(steps: [
+        NavStep(instruction: 'Keep going', maneuver: 'something-new'),
+      ])));
+
+      // An unrecognised manoeuvre must never render an arrow that sends the
+      // driver the wrong way.
+      expect(find.byIcon(Icons.straight), findsOneWidget);
     });
   });
 

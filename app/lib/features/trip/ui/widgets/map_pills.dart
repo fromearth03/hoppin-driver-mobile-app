@@ -106,15 +106,76 @@ class _Pill extends StatelessWidget {
       );
 }
 
+/// The design's turn-by-turn banner: "↱ Take left after 1.5 mi".
+///
+/// Backed by `geo.steps` on `GET /rides/:id`, which `rider_ride_detail.go`
+/// fills from an OSRM `steps=true` call while the ride is accepted, arriving
+/// or started. Both the instruction and the distance are the service's own —
+/// nothing here is derived, because a manoeuvre the app invented would send a
+/// driver down the wrong road.
+///
+/// Renders nothing when the list is empty, which is the normal state on a
+/// finished trip and whenever OSRM was unavailable.
+class TripNavBanner extends StatelessWidget {
+  final List<NavStep> steps;
+
+  const TripNavBanner({super.key, this.steps = const []});
+
+  /// OSRM's manoeuvre vocabulary mapped to the arrows we have. Anything
+  /// unrecognised falls back to "continue" rather than guessing a turn.
+  static IconData iconFor(String maneuver) {
+    final m = maneuver.toLowerCase();
+    if (m.contains('left')) return Icons.turn_left;
+    if (m.contains('right')) return Icons.turn_right;
+    if (m.contains('uturn')) return Icons.u_turn_left;
+    if (m.contains('arrive')) return Icons.place_outlined;
+    if (m.contains('roundabout') || m.contains('rotary')) {
+      return Icons.roundabout_left;
+    }
+    if (m.contains('merge')) return Icons.merge;
+    return Icons.straight;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (steps.isEmpty) return const SizedBox.shrink();
+    final step = steps.first;
+    if (step.instruction.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: _Pill(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(iconFor(step.maneuver), color: Colors.white, size: 24),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                // The distance is only worth printing when the service gave
+                // us one; "in 0 ft" is noise on a step that starts here.
+                step.distanceMeters > 0
+                    ? '${step.instruction} · ${step.distanceLabel}'
+                    : step.instruction,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// The wide "Destination — <address>" plate the Start Ride design floats just
 /// above the sheet, so the driver can read where they are taking the rider
 /// without opening anything.
-///
-/// The design's turn-by-turn instruction pill ("Take left after 1.5 mi") is
-/// deliberately absent. `internal/handler/nav_steps.go` defines the step type
-/// but nothing calls it, and every OSRM request the service makes sets
-/// `steps=false`, so there is no manoeuvre to render. Inventing one would send
-/// a driver down the wrong road.
 class TripDestinationPlate extends StatelessWidget {
   final String? label;
 
@@ -221,8 +282,12 @@ class WaitingCancelCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
+                      // The design labels this "Time left to cancel without
+                      // impact". The window waives the FEE only — the
+                      // cancellation still reaches `driver_stats` and moves
+                      // `cancellation_rate`. Named for what it actually buys.
                       const Expanded(
-                        child: Text('Time left to cancel without impact',
+                        child: Text('Time left to cancel fee-free',
                             style: AppText.body),
                       ),
                       Text(

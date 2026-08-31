@@ -74,22 +74,41 @@ class OnboardingScreen extends ConsumerWidget {
               _statusCard(onboarding),
               const SizedBox(height: 16),
               ..._rejections(onboarding),
-              ..._steps(onboarding).map(
-                (step) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    step.done
-                        ? Icons.check_circle
-                        : Icons.radio_button_unchecked,
-                    color: step.done ? AppColors.positive : AppColors.border,
+              // A Material of its own: a ListTile paints its ink on the
+              // nearest Material, and the card behind it is a plain
+              // DecoratedBox, which would swallow both the fill and the
+              // splash.
+              Material(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ..._steps(onboarding).map(
+                        (step) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            step.done
+                                ? Icons.check_circle
+                                : Icons.radio_button_unchecked,
+                            color: step.done
+                                ? AppColors.positive
+                                : AppColors.border,
+                          ),
+                          title: Text(step.label, style: AppText.body),
+                          trailing: step.done || step.route == null
+                              ? null
+                              : const Icon(Icons.chevron_right),
+                          onTap: step.done || step.route == null
+                              ? null
+                              : () => context.push(step.route!),
+                        ),
+                      ),
+                    ],
                   ),
-                  title: Text(step.label, style: AppText.body),
-                  trailing: step.done || step.route == null
-                      ? null
-                      : const Icon(Icons.chevron_right),
-                  onTap: step.done || step.route == null
-                      ? null
-                      : () => context.push(step.route!),
                 ),
               ),
             ],

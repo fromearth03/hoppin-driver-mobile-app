@@ -17,6 +17,38 @@ class GeoPoint {
       );
 }
 
+/// One turn-by-turn instruction from `geo.steps` on `GET /rides/:id`.
+///
+/// The service fills this only while the ride is accepted, arriving or
+/// started (`rider_ride_detail.go` gates the OSRM `steps=true` call on those
+/// statuses), so a finished trip's polls do not pay for a routing call. It is
+/// `null` rather than `[]` whenever OSRM was slow or unavailable.
+class NavStep {
+  final String instruction;
+  final double distanceMeters;
+  final String maneuver;
+
+  const NavStep({
+    required this.instruction,
+    this.distanceMeters = 0,
+    this.maneuver = '',
+  });
+
+  factory NavStep.fromJson(Map<String, dynamic> json) => NavStep(
+        instruction: (json['instruction'] as String?) ?? '',
+        distanceMeters: (json['distance_meters'] as num?)?.toDouble() ?? 0,
+        maneuver: (json['maneuver'] as String?) ?? '',
+      );
+
+  /// "1.5 mi" / "300 ft" — the units the design prints. Miles because this
+  /// is a UK product and road signs are imperial.
+  String get distanceLabel {
+    final miles = distanceMeters / 1609.344;
+    if (miles >= 0.1) return '${miles.toStringAsFixed(1)} mi';
+    return '${(distanceMeters * 3.28084).round()} ft';
+  }
+}
+
 /// Pickup, dropoff and the road-following polyline.
 ///
 /// The payload also carries `waypoints`; this model deliberately has no
@@ -26,11 +58,13 @@ class RideGeo {
   final GeoPoint pickup;
   final GeoPoint dropoff;
   final List<GeoPoint> route;
+  final List<NavStep> steps;
 
   const RideGeo({
     required this.pickup,
     required this.dropoff,
     this.route = const [],
+    this.steps = const [],
   });
 
   factory RideGeo.fromJson(Map<String, dynamic> json) => RideGeo(
@@ -40,6 +74,11 @@ class RideGeo {
             Map<String, dynamic>.from(json['dropoff'] as Map)),
         route: ((json['route'] as List?) ?? const [])
             .map((e) => GeoPoint.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList(),
+        // Null when OSRM had nothing for us — an empty list is the right
+        // reading, and the banner then renders nothing at all.
+        steps: ((json['steps'] as List?) ?? const [])
+            .map((e) => NavStep.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList(),
       );
 }

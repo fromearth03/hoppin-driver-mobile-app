@@ -144,10 +144,14 @@ class _CredentialsScreenState extends ConsumerState<CredentialsScreen> {
                     borderSide: const BorderSide(color: AppColors.border),
                   ),
                 ),
+                isExpanded: true,
                 items: [
                   for (final entry in _credentialTypes.entries)
                     DropdownMenuItem(
-                        value: entry.key, child: Text(entry.value)),
+                      value: entry.key,
+                      child: Text(entry.value,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
                 ],
                 onChanged:
                     _busy ? null : (v) => setState(() => _type = v ?? _type),

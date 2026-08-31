@@ -77,6 +77,6 @@ void main() {
     await container.read(homeControllerProvider.notifier).onPushWake();
     await tester.pumpAndSettle();
 
-    expect(find.text('Accept for £20.15', skipOffstage: false), findsOneWidget);
+    expect(find.text('Accept Ride', skipOffstage: false), findsOneWidget);
   });
 }

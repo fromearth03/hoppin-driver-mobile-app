@@ -85,20 +85,26 @@ class TripScreen extends ConsumerWidget {
                       child: TripStatusPill(phase: ride.phase),
                     ),
                     const SizedBox(height: 10),
+                    // The turn-by-turn banner the design stacks directly
+                    // under the status pill. Empty on a finished trip and
+                    // whenever OSRM had nothing, so it costs no height then.
+                    TripNavBanner(steps: ride.geo.steps),
+                    if (ride.geo.steps.isNotEmpty) const SizedBox(height: 10),
                     TripEtaPill(etaSeconds: ride.pickupEtaSeconds),
                   ],
                 ),
               ),
               // Cancelling is a real action mid-job, but it is not the one
-              // the driver came for: it sits at the corner of the map, out of
-              // the status pill's flow so the pill keeps the full width the
-              // design gives it.
+              // the driver came for. It takes the map's right edge — where
+              // the design puts its recentre and zoom controls — rather than
+              // the header, so the status pill and the nav banner both keep
+              // the full width the design gives them.
               if (!ride.isFinished)
                 SafeArea(
                   child: Align(
-                    alignment: Alignment.topRight,
+                    alignment: Alignment.centerRight,
                     child: Padding(
-                      padding: const EdgeInsets.only(top: 76, right: 12),
+                      padding: const EdgeInsets.only(right: 12),
                       child: _mapButton(
                         icon: Icons.close,
                         tooltip: 'Cancel ride',

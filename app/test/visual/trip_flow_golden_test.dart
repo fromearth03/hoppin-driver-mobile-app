@@ -70,6 +70,12 @@ void main() {
           pickup: GeoPoint(lat: 53.49, lng: -2.24, label: 'Cheetham Hill'),
           dropoff:
               GeoPoint(lat: 53.52, lng: -2.20, label: 'Penrith Call, United Kingdom'),
+          steps: [
+            NavStep(
+                instruction: 'Take left',
+                distanceMeters: 2414,
+                maneuver: 'turn-left'),
+          ],
         ),
       );
 

@@ -239,21 +239,24 @@ class WizardScaffold extends StatelessWidget {
           WizardSteps(current: step),
           const SizedBox(height: 28),
           if (card)
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  child,
-                  if (actions != null) ...[
-                    const SizedBox(height: 28),
-                    actions!,
+            // A Material, not a decorated box: the card holds list tiles and
+            // switches, which paint their fill and ink on the nearest
+            // Material — a plain box would swallow both.
+            Material(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    child,
+                    if (actions != null) ...[
+                      const SizedBox(height: 28),
+                      actions!,
+                    ],
                   ],
-                ],
+                ),
               ),
             )
           else ...[

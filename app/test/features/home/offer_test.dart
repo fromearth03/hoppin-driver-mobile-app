@@ -46,6 +46,34 @@ void main() {
       expect(o.expiresInSec, 60);
     });
 
+    test('reads estimated_miles, the distance the design asks for', () {
+      final o = PendingOffer.fromJson({
+        'id': 'o',
+        'ride_id': 'r',
+        'fare_pence': 1000,
+        'pickup_label': 'A',
+        'dropoff_label': 'B',
+        'estimated_miles': 4.7,
+        'expires_in_sec': 60,
+      });
+      expect(o.estimatedMiles, 4.7);
+    });
+
+    test('treats a zero distance as absent rather than as 0.0 miles', () {
+      // The service defaults the column to 0 when it has no route. Rendering
+      // "0.0 miles" beside a real fare reads as a bug, not as missing data.
+      final o = PendingOffer.fromJson({
+        'id': 'o',
+        'ride_id': 'r',
+        'fare_pence': 1000,
+        'pickup_label': 'A',
+        'dropoff_label': 'B',
+        'estimated_miles': 0,
+        'expires_in_sec': 60,
+      });
+      expect(o.estimatedMiles, isNull);
+    });
+
     test('prefers fare_pence over the deprecated float fare', () {
       final o = PendingOffer.fromJson({
         'id': 'o',

@@ -98,7 +98,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('£20.15'), findsOneWidget);
-    expect(find.text('Accept for £20.15'), findsOneWidget);
+    expect(find.text('Accept Ride'), findsOneWidget);
   });
 
   testWidgets('warns when the GPS position has gone stale', (tester) async {

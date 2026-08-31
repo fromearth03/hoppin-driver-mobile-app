@@ -171,14 +171,23 @@ class _CancelSheetState extends ConsumerState<CancelSheet> {
                     ? null
                     : () => setState(() => _confirming = true),
               ),
+              // The design's footer reads "Canceling now won't effect your
+              // raiting". That is not what the free window does. Per
+              // `gracedPenalty`, `free_cancel_seconds` waives the cancellation
+              // FEE — nothing more. The cancellation still lands in
+              // `driver_stats`, where `CancellationRate` is driver-at-fault
+              // cancellations over accepted trips and `CompletionRate` counts
+              // completions over the same. Promising an untouched rating would
+              // talk a driver into a cancellation that does count against them.
               if (_isFree) ...[
                 const SizedBox(height: 10),
                 const SizedBox(
                   width: double.infinity,
                   child: Text(
-                    "Cancelling now won't affect your rating",
+                    'No cancellation fee if you cancel now. '
+                    'It still counts towards your cancellation rate.',
                     textAlign: TextAlign.center,
-                    style: AppText.heading,
+                    style: AppText.caption,
                   ),
                 ),
               ],
