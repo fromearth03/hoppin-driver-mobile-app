@@ -17,6 +17,11 @@ import 'features/profile/ui/delete_account_screen.dart';
 import 'features/profile/ui/profile_screen.dart';
 import 'features/profile/ui/settings_screen.dart';
 import 'features/statement/ui/statement_screen.dart';
+import 'features/onboarding/ui/credentials_screen.dart';
+import 'features/onboarding/ui/license_screen.dart';
+import 'features/onboarding/ui/onboarding_screen.dart';
+import 'features/onboarding/ui/sign_up_screen.dart';
+import 'features/onboarding/ui/vehicle_screen.dart';
 import 'features/stats/ui/stats_screen.dart';
 import 'features/support/ui/support_screen.dart';
 import 'features/trip/ui/chat_screen.dart';
@@ -36,6 +41,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final path = state.uri.path;
       const authRoutes = {
         Routes.signIn,
+        Routes.signUp,
         Routes.forgotPassword,
         Routes.resetPassword,
       };
@@ -51,6 +57,21 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: Routes.signIn, builder: (_, __) => const SignInScreen()),
+      GoRoute(path: Routes.signUp, builder: (_, __) => const SignUpScreen()),
+      // Outside the shell: a driver still under review has no bottom nav to
+      // sit in, and every tab behind it would refuse them anyway.
+      GoRoute(
+          path: Routes.onboarding,
+          builder: (_, __) => const OnboardingScreen()),
+      GoRoute(
+          path: Routes.onboardingLicense,
+          builder: (_, __) => const LicenseScreen()),
+      GoRoute(
+          path: Routes.onboardingVehicle,
+          builder: (_, __) => const VehicleScreen()),
+      GoRoute(
+          path: Routes.onboardingCredentials,
+          builder: (_, __) => const CredentialsScreen()),
       GoRoute(
           path: Routes.forgotPassword,
           builder: (_, __) => const ForgotPasswordScreen()),

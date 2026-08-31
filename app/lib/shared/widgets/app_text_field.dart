@@ -11,6 +11,7 @@ class AppTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final bool enabled;
   final String? hint;
+  final TextCapitalization textCapitalization;
 
   const AppTextField({
     super.key,
@@ -21,6 +22,7 @@ class AppTextField extends StatelessWidget {
     this.validator,
     this.enabled = true,
     this.hint,
+    this.textCapitalization = TextCapitalization.none,
   });
 
   @override
@@ -33,6 +35,7 @@ class AppTextField extends StatelessWidget {
             controller: controller,
             obscureText: obscure,
             keyboardType: keyboardType,
+            textCapitalization: textCapitalization,
             validator: validator,
             enabled: enabled,
             style: AppText.body,
