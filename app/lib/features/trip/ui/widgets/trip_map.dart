@@ -18,7 +18,12 @@ class TripMap extends StatelessWidget {
   /// once the rider is aboard.
   final GeoPoint? target;
 
-  const TripMap({super.key, required this.geo, this.target});
+  /// False for a finished trip: where the driver is NOW is unrelated to a
+  /// journey from last Tuesday, and the blue dot would imply otherwise.
+  final bool showMyLocation;
+
+  const TripMap(
+      {super.key, required this.geo, this.target, this.showMyLocation = true});
 
   static const _padding = 0.005;
 
@@ -56,8 +61,8 @@ class TripMap extends StatelessWidget {
         target: LatLng(centre.lat, centre.lng),
         zoom: 14,
       ),
-      myLocationEnabled: true,
-      myLocationButtonEnabled: true,
+      myLocationEnabled: showMyLocation,
+      myLocationButtonEnabled: showMyLocation,
       zoomControlsEnabled: false,
       markers: {
         Marker(

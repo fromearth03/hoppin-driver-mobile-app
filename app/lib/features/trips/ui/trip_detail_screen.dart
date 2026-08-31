@@ -8,6 +8,7 @@ import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
 import '../../earnings/data/models/ride_earnings.dart';
+import '../../trip/ui/widgets/trip_map.dart';
 import '../data/models/driver_trip.dart';
 import '../logic/trip_detail_controller.dart';
 
@@ -41,16 +42,37 @@ class TripDetailScreen extends ConsumerWidget {
             error: (e, _) => const SizedBox.shrink(),
             data: (state) {
               final earnings = state.earnings;
-              if (earnings == null) {
-                return state.error == null
-                    ? const SizedBox.shrink()
-                    : AppErrorState(
-                        error: state.error!,
-                        onRetry: () => ref.invalidate(
-                            tripDetailControllerProvider(trip.id)),
-                      );
-              }
-              return _breakdown(earnings);
+              final geo = state.geo;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // The route as driven — the same persisted polyline the
+                  // fare was priced against. Read-only: this is a record,
+                  // not a navigator.
+                  if (geo != null &&
+                      (geo.pickup.lat != 0 || geo.pickup.lng != 0)) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: SizedBox(
+                        height: 200,
+                        child: IgnorePointer(
+                          child:
+                              TripMap(geo: geo, showMyLocation: false),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (earnings != null)
+                    _breakdown(earnings)
+                  else if (state.error != null)
+                    AppErrorState(
+                      error: state.error!,
+                      onRetry: () => ref.invalidate(
+                          tripDetailControllerProvider(trip.id)),
+                    ),
+                ],
+              );
             },
           ),
         ],
@@ -112,7 +134,9 @@ class TripDetailScreen extends ConsumerWidget {
         _stop(Icons.trip_origin, trip.pickupLabel),
         const SizedBox(height: 8),
         _stop(Icons.place_outlined, trip.dropoffLabel),
-        if (trip.distanceMiles != null) ...[
+        // A 0.0 from the service means the distance never persisted, not a
+        // zero-length journey — so the line is dropped, never "0.0 miles".
+        if ((trip.distanceMiles ?? 0) > 0) ...[
           const SizedBox(height: 12),
           Text('${trip.distanceMiles!.toStringAsFixed(1)} miles',
               style: AppText.caption),

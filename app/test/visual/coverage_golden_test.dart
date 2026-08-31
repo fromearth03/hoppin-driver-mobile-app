@@ -10,8 +10,10 @@ import 'package:hoppin_driver/features/home/data/models/driver_status.dart';
 import 'package:hoppin_driver/features/home/data/models/driver_today.dart';
 import 'package:hoppin_driver/features/home/data/offer_repository.dart';
 import 'package:hoppin_driver/features/home/ui/home_screen.dart';
+import 'package:hoppin_driver/core/api/api_exception.dart';
 import 'package:hoppin_driver/features/trip/data/chat_repository.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride_message.dart';
+import 'package:hoppin_driver/features/trip/data/trip_repository.dart';
 import 'package:hoppin_driver/features/trip/ui/chat_screen.dart';
 import 'package:hoppin_driver/features/trips/data/models/driver_trip.dart';
 import 'package:hoppin_driver/features/trips/data/trips_repository.dart';
@@ -28,6 +30,8 @@ class _MockTripsRepo extends Mock implements TripsRepository {}
 class _MockEarningsRepo extends Mock implements EarningsRepository {}
 
 class _MockChatRepo extends Mock implements ChatRepository {}
+
+class _MockTripRepo extends Mock implements TripRepository {}
 
 /// Goldens for the screens the fidelity audit found uncovered: the offline
 /// home, trip history, one past trip, and the ride chat.
@@ -124,6 +128,11 @@ void main() {
 
   testWidgets('trip detail with a settled breakdown', (tester) async {
     final earnings = _MockEarningsRepo();
+    final tripRepo = _MockTripRepo();
+    // Geo read fails: the golden pins the moneyed layout; the map block is
+    // a platform view that cannot render in a widget test anyway.
+    when(() => tripRepo.ride('r1')).thenAnswer(
+        (_) async => Err(ApiException('RIDE_NOT_FOUND', '', 404)));
     when(() => earnings.rideEarnings('r1'))
         .thenAnswer((_) async => Ok(RideEarnings.fromJson(const {
               'base_pence': 250,
@@ -150,6 +159,7 @@ void main() {
     await capture(tester, TripDetailScreen(trip: trip), 'trip_detail',
         overrides: [
           earningsRepositoryProvider.overrideWithValue(earnings),
+          tripRepositoryProvider.overrideWithValue(tripRepo),
         ]);
   });
 
