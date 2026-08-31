@@ -10,6 +10,7 @@ import 'package:hoppin_driver/features/home/data/models/pending_offer.dart';
 import 'package:hoppin_driver/features/home/data/offer_repository.dart';
 import 'package:hoppin_driver/features/home/logic/home_controller.dart';
 import 'package:hoppin_driver/features/home/ui/home_screen.dart';
+import 'package:hoppin_driver/features/home/ui/widgets/online_toggle.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockStatusRepo extends Mock implements DriverStatusRepository {}
@@ -70,7 +71,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Vehicle Insurance'), findsOneWidget);
-    final toggle = tester.widget<Switch>(find.byType(Switch));
+    final toggle = tester.widget<OnlineToggle>(find.byType(OnlineToggle));
     expect(toggle.onChanged, isNull);
   });
 

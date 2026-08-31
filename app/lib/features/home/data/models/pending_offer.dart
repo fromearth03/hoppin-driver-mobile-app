@@ -25,6 +25,13 @@ class PendingOffer {
   /// server has no position to compute from.
   final int? pickupEtaSeconds;
 
+  /// Where the trip starts and ends, for the design's route-preview map.
+  /// Null when the service sent (0,0) — the handler convention repo-wide is
+  /// that a zero coordinate means absent, not a point off the Gulf of
+  /// Guinea.
+  final ({double lat, double lng})? pickup;
+  final ({double lat, double lng})? dropoff;
+
   final int expiresInSec;
 
   /// When this app received the offer. The countdown runs from here when the
@@ -48,8 +55,18 @@ class PendingOffer {
     this.estimatedDurationSeconds,
     this.estimatedMiles,
     this.pickupEtaSeconds,
+    this.pickup,
+    this.dropoff,
     this.expiresAt,
   });
+
+  static ({double lat, double lng})? _point(
+      Map<String, dynamic> json, String latKey, String lngKey) {
+    final lat = (json[latKey] as num?)?.toDouble() ?? 0;
+    final lng = (json[lngKey] as num?)?.toDouble() ?? 0;
+    if (lat == 0 && lng == 0) return null;
+    return (lat: lat, lng: lng);
+  }
 
   factory PendingOffer.fromJson(Map<String, dynamic> json,
           {DateTime? receivedAt}) =>
@@ -81,6 +98,8 @@ class PendingOffer {
           final m => m,
         },
         pickupEtaSeconds: (json['pickup_eta_seconds'] as num?)?.toInt(),
+        pickup: _point(json, 'pickup_lat', 'pickup_lng'),
+        dropoff: _point(json, 'dropoff_lat', 'dropoff_lng'),
         expiresInSec: (json['expires_in_sec'] as num?)?.toInt() ?? 60,
         expiresAt: json['expires_at'] == null
             ? null

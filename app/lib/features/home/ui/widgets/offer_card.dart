@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
@@ -19,9 +20,10 @@ import '../../data/models/pending_offer.dart';
 /// protected characteristic. The fare panel therefore takes the full width
 /// the design splits between it and the identity card.
 ///
-/// The design also embeds a route map between the timeline and the actions.
-/// The offer payload carries pickup/dropoff lat-lng but the app ships no map
-/// tile source, so the block is omitted rather than faked with a picture.
+/// The design's route-preview map sits between the timeline and the
+/// actions: both ends pinned, framed to fit. No polyline — the priced OSRM
+/// route belongs to the ride and is only readable after acceptance, and a
+/// straight line pretending to be the route would be a lie about the roads.
 class OfferCard extends StatefulWidget {
   final PendingOffer offer;
   final VoidCallback? onAccept;
@@ -84,6 +86,10 @@ class _OfferCardState extends State<OfferCard> {
           _farePanel(offer),
           const SizedBox(height: 16),
           _timelinePanel(offer),
+          if (offer.pickup != null && offer.dropoff != null) ...[
+            const SizedBox(height: 16),
+            _mapPanel(offer),
+          ],
           const SizedBox(height: 16),
           _actions(remaining, expired),
         ],
@@ -216,6 +222,68 @@ class _OfferCardState extends State<OfferCard> {
           ),
         ],
       );
+
+  /// Both ends of the trip on a real map, framed to fit. Decorative in the
+  /// sense that the decision numbers are above it — so it swallows touches,
+  /// keeping the scroll and the two buttons responsive.
+  Widget _mapPanel(PendingOffer offer) {
+    final pickup = LatLng(offer.pickup!.lat, offer.pickup!.lng);
+    final dropoff = LatLng(offer.dropoff!.lat, offer.dropoff!.lng);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        height: 170,
+        child: IgnorePointer(
+          child: GoogleMap(
+            initialCameraPosition: CameraPosition(target: pickup, zoom: 12),
+            zoomControlsEnabled: false,
+            myLocationButtonEnabled: false,
+            compassEnabled: false,
+            mapToolbarEnabled: false,
+            markers: {
+              Marker(
+                markerId: const MarkerId('pickup'),
+                position: pickup,
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueAzure),
+              ),
+              Marker(
+                markerId: const MarkerId('dropoff'),
+                position: dropoff,
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueRed),
+              ),
+            },
+            onMapCreated: (controller) {
+              // southwest must be south AND west of northeast, per axis —
+              // a pickup north-west of the dropoff violates a naive swap.
+              controller.moveCamera(CameraUpdate.newLatLngBounds(
+                LatLngBounds(
+                  southwest: LatLng(
+                    pickup.latitude < dropoff.latitude
+                        ? pickup.latitude
+                        : dropoff.latitude,
+                    pickup.longitude < dropoff.longitude
+                        ? pickup.longitude
+                        : dropoff.longitude,
+                  ),
+                  northeast: LatLng(
+                    pickup.latitude > dropoff.latitude
+                        ? pickup.latitude
+                        : dropoff.latitude,
+                    pickup.longitude > dropoff.longitude
+                        ? pickup.longitude
+                        : dropoff.longitude,
+                  ),
+                ),
+                56,
+              ));
+            },
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _panel({required Widget child}) => Container(
         padding: const EdgeInsets.all(20),

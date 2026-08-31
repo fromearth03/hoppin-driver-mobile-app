@@ -10,6 +10,7 @@ import 'package:hoppin_driver/features/home/data/models/driver_today.dart';
 import 'package:hoppin_driver/features/home/data/offer_repository.dart';
 import 'package:hoppin_driver/features/home/ui/home_screen.dart';
 import 'package:hoppin_driver/features/home/ui/widgets/active_trip_banner.dart';
+import 'package:hoppin_driver/features/home/ui/widgets/online_toggle.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockStatusRepo extends Mock implements DriverStatusRepository {}
@@ -86,6 +87,6 @@ void main() {
     await tester.pumpAndSettle();
 
     // The toggle is what Home is for; losing the tiles must not cost it.
-    expect(find.byType(Switch), findsOneWidget);
+    expect(find.byType(OnlineToggle), findsOneWidget);
   });
 }
