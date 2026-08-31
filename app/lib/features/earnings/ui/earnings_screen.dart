@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
 import '../logic/earnings_controller.dart';
 import 'widgets/payout_row.dart';
+import '../data/models/driver_promotion.dart';
 
 class EarningsScreen extends ConsumerWidget {
   const EarningsScreen({super.key});
@@ -50,6 +51,13 @@ class EarningsScreen extends ConsumerWidget {
                 _periodBar(state.period, controller),
                 _totalCard(state),
                 _balanceTile(context, state),
+                if (state.promotions.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+                    child: Text('Bonuses available', style: AppText.heading),
+                  ),
+                  ...state.promotions.map(_promotionCard),
+                ],
                 if ((state.wallet?.recentPayouts ?? []).isNotEmpty) ...[
                   const Padding(
                     padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
@@ -126,6 +134,46 @@ class EarningsScreen extends ConsumerWidget {
           ],
         ),
       );
+
+  /// A live bonus campaign. Only campaigns that pay the driver reach here —
+  /// the endpoint also carries rider-discount promos, and listing one on an
+  /// earnings screen would promise money that is not coming.
+  Widget _promotionCard(DriverPromotion promo) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(promo.title, style: AppText.body),
+                  if (promo.description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(promo.description, style: AppText.caption),
+                  ],
+                  if (promo.expiresAt != null) ...[
+                    const SizedBox(height: 4),
+                    Text('Ends ${_shortDate(promo.expiresAt!)}',
+                        style: AppText.caption),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text('+${promo.bonus!.format()}',
+                style: AppText.body.copyWith(color: AppColors.positive)),
+          ],
+        ),
+      );
+
+  static String _shortDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
 
   /// The balance links to the Statement, which is the one place every
   /// individual credit and charge is itemised in the server's own words.

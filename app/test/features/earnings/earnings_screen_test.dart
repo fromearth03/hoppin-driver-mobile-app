@@ -25,6 +25,9 @@ void main() {
         const Ok(EarningsSummary(net: Pence(24000), tripCount: 12)));
     when(() => repo.wallet()).thenAnswer((_) async => const Ok(Wallet(
         availableBalance: Pence(21050), pendingBalance: Pence(4200))));
+    // Bonus campaigns are their own concern; these tests are about money
+    // already earned.
+    when(() => repo.promotions()).thenAnswer((_) async => const Ok([]));
   });
 
   testWidgets('shows the period total', (tester) async {

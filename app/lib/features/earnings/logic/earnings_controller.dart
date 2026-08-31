@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../data/earnings_repository.dart';
+import '../data/models/driver_promotion.dart';
 import '../data/models/ride_earnings.dart';
 import '../data/models/wallet.dart';
 
@@ -9,12 +10,14 @@ class EarningsState {
   final String period;
   final EarningsSummary? summary;
   final Wallet? wallet;
+  final List<DriverPromotion> promotions;
   final ApiException? error;
 
   const EarningsState({
     this.period = 'today',
     this.summary,
     this.wallet,
+    this.promotions = const [],
     this.error,
   });
 }
@@ -49,11 +52,15 @@ class EarningsController extends AsyncNotifier<EarningsState> {
     final repo = ref.read(earningsRepositoryProvider);
     final summary = await repo.summary(period);
     final wallet = await repo.wallet();
+    final promotions = await repo.promotions();
 
     return EarningsState(
       period: period,
       summary: summary.valueOrNull,
       wallet: wallet.valueOrNull,
+      // Bonuses are a bonus. Failing to load them must not turn the earnings
+      // screen into an error page over money the driver has already earned.
+      promotions: promotions.valueOrNull ?? const [],
       error: summary.errorOrNull ?? wallet.errorOrNull,
     );
   }

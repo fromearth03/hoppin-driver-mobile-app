@@ -66,6 +66,7 @@ void main() {
     final repo = MockEarningsRepo();
     when(() => repo.wallet()).thenAnswer((_) async => const Ok(
         Wallet(availableBalance: Pence(0), pendingBalance: Pence(0))));
+    when(() => repo.promotions()).thenAnswer((_) async => const Ok([]));
     when(() => repo.summary('today'))
         .thenAnswer((_) async => const Ok(EarningsSummary(net: Pence(100))));
     when(() => repo.summary('week')).thenAnswer((_) async {

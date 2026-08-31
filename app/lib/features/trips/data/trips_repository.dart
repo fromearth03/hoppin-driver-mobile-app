@@ -14,6 +14,8 @@ class TripsRepository {
     TripFilter filter = TripFilter.all,
     String? cursor,
     String? cancelledBy,
+    DateTime? from,
+    DateTime? to,
     int limit = 50,
   }) async {
     final r = await _api.get<Map<String, dynamic>>('/drivers/me/trips', query: {
@@ -22,12 +24,20 @@ class TripsRepository {
       if (filter == TripFilter.cancelled) 'status': 'cancelled',
       if (cursor != null) 'cursor': cursor,
       if (cancelledBy != null) 'cancelled_by': cancelledBy,
+      // Plain ISO dates: the range is inclusive of both days server-side.
+      if (from != null) 'from': _isoDate(from),
+      if (to != null) 'to': _isoDate(to),
     });
     return r.when(
       ok: (json) => Ok(TripsPage.fromJson(json)),
       err: (e) => Err(e),
     );
   }
+
+  static String _isoDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
 }
 
 final tripsRepositoryProvider = Provider<TripsRepository>(

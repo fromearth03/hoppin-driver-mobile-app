@@ -51,6 +51,7 @@ class TripsScreen extends ConsumerWidget {
       body: Column(
         children: [
           _filterBar(filter, controller),
+          _dateBar(context, async.value, controller),
           Expanded(
             child: async.when(
               loading: () => const AppLoading(),
@@ -102,6 +103,63 @@ class TripsScreen extends ConsumerWidget {
       ),
     );
   }
+
+  /// The chosen range, or an invitation to pick one. A whole second row of
+  /// chrome would be wasted on a driver who never filters by date, so this
+  /// stays one line until they use it.
+  Widget _dateBar(
+    BuildContext context,
+    TripsState? state,
+    TripsController controller,
+  ) {
+    final from = state?.from;
+    final to = state?.to;
+    final label = switch ((from, to)) {
+      (null, null) => 'Any date',
+      (final f?, null) => 'From ${_shortDate(f)}',
+      (null, final t?) => 'Until ${_shortDate(t)}',
+      (final f?, final t?) => '${_shortDate(f)} - ${_shortDate(t)}',
+    };
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        children: [
+          ActionChip(
+            key: const Key('date_range'),
+            avatar: const Icon(Icons.date_range, size: 18),
+            label: Text(label),
+            onPressed: () async {
+              final now = DateTime.now();
+              final picked = await showDateRangePicker(
+                context: context,
+                // A driver cannot have driven in the future, and the
+                // platform predates this.
+                firstDate: DateTime(2024),
+                lastDate: now,
+                initialDateRange: from != null && to != null
+                    ? DateTimeRange(start: from, end: to)
+                    : null,
+              );
+              if (picked != null) {
+                await controller.setDateRange(picked.start, picked.end);
+              }
+            },
+          ),
+          if (state?.hasDateRange ?? false) ...[
+            const SizedBox(width: 8),
+            TextButton(
+              key: const Key('clear_date_range'),
+              onPressed: () => controller.setDateRange(null, null),
+              child: const Text('Clear'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _shortDate(DateTime d) => DateFormat('d MMM').format(d);
 
   Widget _filterBar(TripFilter active, TripsController controller) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
