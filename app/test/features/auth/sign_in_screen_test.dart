@@ -52,7 +52,9 @@ void main() {
     await tester.pumpWidget(wrap(repo));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Sign In'));
+    await tester.ensureVisible(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(FilledButton));
     await tester.pumpAndSettle();
 
     expect(find.text('Enter your email'), findsOneWidget);
@@ -69,7 +71,9 @@ void main() {
 
     await tester.enterText(find.byKey(const Key('email')), 'd@hoppin.tech');
     await tester.enterText(find.byKey(const Key('password')), 'wrong');
-    await tester.tap(find.text('Sign In'));
+    await tester.ensureVisible(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(FilledButton));
     await tester.pumpAndSettle();
 
     expect(find.text('That email or password is incorrect.'), findsOneWidget);
@@ -89,7 +93,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('email')), 'd@hoppin.tech');
     await tester.enterText(find.byKey(const Key('password')), 'pw');
-    await tester.tap(find.text('Sign In'));
+    await tester.ensureVisible(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(FilledButton));
     await tester.pump();
 
     final button = tester.widget<FilledButton>(find.byType(FilledButton).first);

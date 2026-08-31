@@ -10,6 +10,13 @@ class AppColors {
 
   static const primary = Color(0xFF2E0B78); // deep indigo
   static const primaryDark = Color(0xFF1E0550);
+
+  /// The lighter violet the brand gradient starts from, top of the panel.
+  static const primaryLight = Color(0xFF4310AE);
+
+  /// The muted lilac the design uses for a primary button. Notably softer
+  /// than [primary] — it reads as an action, not as chrome.
+  static const buttonPrimary = Color(0xFF9585C0);
   static const accent = Color(0xFFF07A21); // orange, primary actions
 
   static const background = Color(0xFFF5F5F7); // app ground

@@ -7,6 +7,7 @@ import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_text_field.dart';
+import '../../../shared/widgets/brand_header.dart';
 import '../logic/auth_controller.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
@@ -49,77 +50,109 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 48),
-                  const Text('Welcome back', style: AppText.display),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Sign in to start driving.',
-                    style: AppText.bodySecondary,
-                  ),
-                  const SizedBox(height: 32),
-                  AppTextField(
-                    key: const Key('email'),
-                    label: 'Email',
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    enabled: !_busy,
-                    hint: 'you@example.com',
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Enter your email'
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    key: const Key('password'),
-                    label: 'Password',
-                    controller: _password,
-                    obscure: true,
-                    enabled: !_busy,
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Enter your password' : null,
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => context.push(Routes.forgotPassword),
-                      child: const Text('Forgot password?'),
-                    ),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 8),
-                    Text(_error!,
-                        style:
-                            AppText.body.copyWith(color: AppColors.negative)),
-                  ],
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: _busy ? null : _submit,
-                    child: _busy
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
-                        : const Text('Sign In'),
-                  ),
-                  TextButton(
-                    key: const Key('go_to_sign_up'),
-                    onPressed: _busy ? null : () => context.go(Routes.signUp),
-                    child: const Text('New driver? Create an account'),
-                  ),
-                ],
+        backgroundColor: AppColors.background,
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const BrandHeader(
+                title: 'Login',
+                subtitle: 'Login using your credentials',
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(26, 56, 26, 32),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppTextField(
+                        key: const Key('email'),
+                        label: 'Email',
+                        controller: _email,
+                        floatingLabel: true,
+                        icon: Icons.mail_outline,
+                        keyboardType: TextInputType.emailAddress,
+                        enabled: !_busy,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Enter your email'
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+                      // Above the password field, as the design has it: the
+                      // driver reaches for this the moment the password is
+                      // the problem, not after they have tried and failed.
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: _busy
+                              ? null
+                              : () => context.push(Routes.forgotPassword),
+                          child: Text(
+                            'Forgot Password',
+                            style: AppText.body.copyWith(
+                              decoration: TextDecoration.underline,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      AppTextField(
+                        key: const Key('password'),
+                        label: 'Password',
+                        controller: _password,
+                        floatingLabel: true,
+                        icon: Icons.lock_outline,
+                        obscure: true,
+                        revealable: true,
+                        enabled: !_busy,
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'Enter your password'
+                            : null,
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 16),
+                        Text(_error!,
+                            style: AppText.body
+                                .copyWith(color: AppColors.negative)),
+                      ],
+                      const SizedBox(height: 40),
+                      SizedBox(
+                        height: 62,
+                        child: FilledButton(
+                          onPressed: _busy ? null : _submit,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.buttonPrimary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: _busy
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : const Text('Login',
+                                  style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      TextButton(
+                        key: const Key('go_to_sign_up'),
+                        onPressed:
+                            _busy ? null : () => context.go(Routes.signUp),
+                        child: const Text('New driver? Create an account'),
+                      ),
+                      const SizedBox(height: 32),
+                      const BrandFooter(),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
