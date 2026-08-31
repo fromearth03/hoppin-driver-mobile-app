@@ -15,3 +15,5 @@ app/android/gradle.properties
 app/android/app/google-services.json
 app/ios/Runner/GoogleService-Info.plist
 app/ios/Flutter/Secrets.xcconfig
+sweep/
+.playwright-mcp/
