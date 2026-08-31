@@ -29,7 +29,12 @@ class BalanceCards extends StatelessWidget {
     final owes = wallet.owes;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-      child: Row(
+      // The two tiles hold different amounts of content — only the settled
+      // one carries a button — and the design draws them the same height.
+      // Inside a vertically unbounded scroll view a stretched Row cannot
+      // measure itself, so the height is taken from the taller child.
+      child: IntrinsicHeight(
+        child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
@@ -55,6 +60,7 @@ class BalanceCards extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -91,18 +97,23 @@ class BalanceCards extends StatelessWidget {
                     color: colour,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(action,
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white)),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward,
-                          size: 16, color: Colors.white),
-                    ],
+                  // The tile is half the screen wide; the label and its
+                  // arrow scale down together rather than clipping.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(action,
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white)),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward,
+                            size: 16, color: Colors.white),
+                      ],
+                    ),
                   ),
                 ),
               ),

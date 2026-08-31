@@ -42,33 +42,49 @@ class PayoutRow extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
+                flex: 5,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_reference, style: AppText.heading.copyWith(fontSize: 16)),
+                    Text(_reference,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.heading.copyWith(fontSize: 16)),
                     const SizedBox(height: 2),
                     Text(
                       payout.transferredAt == null
                           ? _statusLabel
                           : DateFormat('EEEE, d MMM yyyy')
                               .format(payout.transferredAt!.toLocal()),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppText.caption,
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                payout.amount.format(),
-                style: AppText.heading.copyWith(
-                  fontSize: 16,
-                  color: _failed ? AppColors.negative : AppColors.textPrimary,
+              Expanded(
+                flex: 3,
+                child: Text(
+                  payout.amount.format(),
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  style: AppText.heading.copyWith(
+                    fontSize: 16,
+                    color: _failed ? AppColors.negative : AppColors.textPrimary,
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                _statusLabel,
-                style: AppText.body.copyWith(fontSize: 14, color: colour),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  _statusLabel,
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  style: AppText.body.copyWith(fontSize: 14, color: colour),
+                ),
               ),
             ],
           ),

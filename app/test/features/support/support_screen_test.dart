@@ -9,6 +9,7 @@ import 'package:mocktail/mocktail.dart';
 
 class _MockSupportRepo extends Mock implements SupportRepository {}
 
+// ignore: library_private_types_in_public_api
 Widget wrap(_MockSupportRepo repo) => ProviderScope(
       overrides: [supportRepositoryProvider.overrideWithValue(repo)],
       child: const MaterialApp(home: SupportScreen()),

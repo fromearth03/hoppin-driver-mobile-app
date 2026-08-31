@@ -35,17 +35,22 @@ class PeriodGrid extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         child: Column(
           children: [
-            Row(children: [
-              Expanded(child: _cell('today')),
-              const SizedBox(width: 16),
-              Expanded(child: _cell('week')),
-            ]),
+            _row('today', 'week'),
             const SizedBox(height: 16),
-            Row(children: [
-              Expanded(child: _cell('month')),
-              const SizedBox(width: 16),
-              Expanded(child: _cell('all')),
-            ]),
+            _row('month', 'all'),
+          ],
+        ),
+      );
+
+  /// Two cards side by side at the same height. A period whose date range
+  /// wraps to two lines would otherwise leave its neighbour short.
+  Widget _row(String left, String right) => IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _cell(left)),
+            const SizedBox(width: 16),
+            Expanded(child: _cell(right)),
           ],
         ),
       );

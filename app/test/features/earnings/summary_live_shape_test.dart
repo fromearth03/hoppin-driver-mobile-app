@@ -40,6 +40,27 @@ void main() {
         s.net.pence);
   });
 
+  test('keeps the window and the average the service computed', () {
+    final s = EarningsSummary.fromJson(liveSummary());
+
+    // The period cards print a date range under each total. It comes from
+    // the service's own bounds — the app must not guess at week boundaries
+    // the service computes in Europe/London.
+    expect(s.from, isNotNull);
+    expect(s.to, isNotNull);
+    expect(s.from!.isBefore(s.to!), isTrue);
+    // Never re-derived: integer division in the app would round differently
+    // and disagree with the service by a penny.
+    expect(s.avgNetPerTrip.pence, 1167);
+  });
+
+  test('a summary with no window still parses', () {
+    final s = EarningsSummary.fromJson({'net_pence': 100, 'trips': 1});
+
+    expect(s.from, isNull);
+    expect(s.to, isNull);
+  });
+
   test('a driver with no trips reads zero, not a crash', () {
     final s = EarningsSummary.fromJson({
       'period': 'today',

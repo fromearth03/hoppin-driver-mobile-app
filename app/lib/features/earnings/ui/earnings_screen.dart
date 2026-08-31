@@ -33,6 +33,10 @@ class EarningsScreen extends ConsumerWidget {
         backgroundColor: AppColors.background,
         surfaceTintColor: AppColors.background,
         elevation: 0,
+        // The design has no bar — just the two controls sitting on the grey
+        // ground — so the toolbar is sized to the icons rather than left to
+        // Material's default, which squeezes them when there is no title.
+        toolbarHeight: 64,
         // Opens AppShell's drawer, not this Scaffold's — this one has none.
         leading: IconButton(
           icon: const Icon(Icons.menu, color: AppColors.textPrimary),

@@ -201,14 +201,21 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                   initialValue: _category,
                   hint: Text('Select an issue category',
                       style: AppText.body
-                          .copyWith(color: AppColors.textDisabled)),
+                          .copyWith(color: AppColors.textDisabled),
+                      overflow: TextOverflow.ellipsis),
                   icon: const Icon(Icons.keyboard_arrow_down,
                       color: AppColors.textSecondary),
                   decoration: _outlined(),
+                  // A long label must ellipsize rather than push the arrow
+                  // off the field: the reason list is server-supplied, so
+                  // its width is not ours to assume.
+                  isExpanded: true,
                   items: types
                       .map((c) => DropdownMenuItem(
                             value: c.code,
-                            child: Text(c.label, style: AppText.body),
+                            child: Text(c.label,
+                                style: AppText.body,
+                                overflow: TextOverflow.ellipsis),
                           ))
                       .toList(),
                   onChanged: (_busy || types.isEmpty)

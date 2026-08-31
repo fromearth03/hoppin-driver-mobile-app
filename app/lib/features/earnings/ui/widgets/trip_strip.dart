@@ -79,6 +79,7 @@ class TripStrip extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
+              flex: 5,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -95,14 +96,21 @@ class TripStrip extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(trip.earnings.format(),
-                    style: AppText.heading.copyWith(fontSize: 16)),
-                const SizedBox(height: 2),
-                Text(_when(trip.completedAt), style: AppText.caption),
-              ],
+            Expanded(
+              flex: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(trip.earnings.format(),
+                      maxLines: 1,
+                      style: AppText.heading.copyWith(fontSize: 16)),
+                  const SizedBox(height: 2),
+                  Text(_when(trip.completedAt),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.caption),
+                ],
+              ),
             ),
           ],
         ),

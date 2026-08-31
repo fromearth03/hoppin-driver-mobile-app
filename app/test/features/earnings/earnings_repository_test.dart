@@ -153,6 +153,26 @@ void main() {
       expect(sent.queryParameters['period'], 'week');
     });
 
+    test('asks the report endpoint for CSV over an inclusive range', () async {
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((_) async =>
+          ResponseBody.fromString('date,ride_id\n', 200, headers: {
+            Headers.contentTypeHeader: ['text/csv']
+          }));
+
+      final r = await repo.report(
+          from: DateTime(2026, 8, 1), to: DateTime(2026, 8, 18));
+
+      final sent = verify(() => adapter.fetch(captureAny(), any(), any()))
+          .captured
+          .first as RequestOptions;
+      expect(sent.queryParameters['from'], '2026-08-01');
+      expect(sent.queryParameters['to'], '2026-08-18');
+      // The service rejects any other format with a 400, so nothing else is
+      // ever asked for — the design's PDF option would be a guaranteed error.
+      expect(sent.queryParameters['format'], 'csv');
+      expect(r.valueOrNull, contains('ride_id'));
+    });
+
     test('a ride with no breakdown yet surfaces as an error, not zeros',
         () async {
       when(() => adapter.fetch(any(), any(), any())).thenAnswer((_) async =>

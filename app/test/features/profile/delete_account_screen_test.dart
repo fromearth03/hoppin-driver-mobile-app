@@ -9,6 +9,7 @@ import 'package:mocktail/mocktail.dart';
 
 class _MockDeletionRepo extends Mock implements DeletionRepository {}
 
+// ignore: library_private_types_in_public_api
 Widget wrap(_MockDeletionRepo repo) => ProviderScope(
       overrides: [deletionRepositoryProvider.overrideWithValue(repo)],
       child: const MaterialApp(home: DeleteAccountScreen()),
