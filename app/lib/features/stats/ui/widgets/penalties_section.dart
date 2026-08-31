@@ -9,7 +9,10 @@ import '../../data/models/penalty.dart';
 /// Penalties and the appeals against them, in one place — they are one
 /// story, and splitting them would leave a driver checking two screens to
 /// learn what happened to a challenge they filed.
-class PenaltiesSection extends StatelessWidget {
+///
+/// The design groups them into three expandable rows: Active, Under review
+/// and Resolved. Only one is open at a time, matching the Figma states.
+class PenaltiesSection extends StatefulWidget {
   final PenaltyList? penalties;
   final List<Appeal> appeals;
   final void Function(Penalty)? onAppeal;
@@ -22,86 +25,200 @@ class PenaltiesSection extends StatelessWidget {
   });
 
   @override
+  State<PenaltiesSection> createState() => _PenaltiesSectionState();
+}
+
+enum _Group { active, underReview, resolved }
+
+class _PenaltiesSectionState extends State<PenaltiesSection> {
+  _Group? _open;
+
+  @override
   Widget build(BuildContext context) {
-    final items = penalties?.penalties ?? const <Penalty>[];
-    final underReview = appeals.where((a) => !a.isResolved).toList();
-    final resolved = appeals.where((a) => a.isResolved).toList();
+    final active = widget.penalties?.penalties ?? const <Penalty>[];
+    final underReview = widget.appeals.where((a) => !a.isResolved).toList();
+    final resolved = widget.appeals.where((a) => a.isResolved).toList();
 
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Penalties and appeals', style: AppText.heading),
-          const SizedBox(height: 4),
+          const Text('Penalties and Appeals', style: AppText.title),
+          const SizedBox(height: 2),
           const Text('Track your account status and any penalties',
-              style: AppText.caption),
+              style: AppText.bodySecondary),
           const SizedBox(height: 12),
-          if (items.isEmpty && appeals.isEmpty)
-            const Text('No penalties on your account.',
-                style: AppText.bodySecondary)
+          if (active.isEmpty && widget.appeals.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text('No penalties on your account.',
+                  style: AppText.bodySecondary),
+            )
           else ...[
-            ...items.map(_penaltyRow),
-            // The headers count appeals; each row carries its own status
-            // chip. They say different things so the same words do not
-            // appear twice for a driver with a single open appeal.
-            if (underReview.isNotEmpty) ...[
-              const Divider(height: 24, color: AppColors.border),
-              Text('Appeals awaiting a decision (${underReview.length})',
-                  style: AppText.body),
-              ...underReview.map(_appealRow),
-            ],
-            if (resolved.isNotEmpty) ...[
-              const Divider(height: 24, color: AppColors.border),
-              Text('Appeals decided (${resolved.length})', style: AppText.body),
-              ...resolved.map(_appealRow),
-            ],
+            if (active.isNotEmpty)
+              _group(
+                group: _Group.active,
+                icon: Icons.priority_high_rounded,
+                tint: AppColors.negative,
+                title: 'Active (${active.length})',
+                subtitle: active.length == 1
+                    ? '1 penalty currently affecting your account'
+                    : '${active.length} penalties currently affecting your account',
+                children: active.map(_penaltyRow).toList(),
+              ),
+            if (underReview.isNotEmpty)
+              _group(
+                group: _Group.underReview,
+                icon: Icons.history_rounded,
+                tint: AppColors.warning,
+                title: 'Under review (${underReview.length})',
+                subtitle: underReview.length == 1
+                    ? '1 appeal is being reviewed'
+                    : '${underReview.length} appeals are being reviewed',
+                children: underReview.map(_appealRow).toList(),
+              ),
+            if (resolved.isNotEmpty)
+              _group(
+                group: _Group.resolved,
+                icon: Icons.check_rounded,
+                tint: AppColors.positive,
+                title: 'Resolved (${resolved.length})',
+                subtitle: resolved.length == 1
+                    ? '1 appeal has been resolved'
+                    : '${resolved.length} appeals have been resolved',
+                children: resolved.map(_appealRow).toList(),
+              ),
           ],
         ],
       ),
     );
   }
 
-  Widget _penaltyRow(Penalty p) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+  Widget _group({
+    required _Group group,
+    required IconData icon,
+    required Color tint,
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+  }) {
+    final open = _open == group;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 1, color: AppColors.border),
+        InkWell(
+          onTap: () => setState(() => _open = open ? null : group),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: tint.withValues(alpha: 0.13),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 19, color: tint),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: AppText.heading.copyWith(fontSize: 16)),
+                      const SizedBox(height: 1),
+                      Text(subtitle,
+                          style: AppText.caption,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                Icon(
+                  open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  color: AppColors.textDisabled,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (open)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(children: children),
+          ),
+      ],
+    );
+  }
+
+  /// The design's tinted detail card: title, date and amount, then the
+  /// appeal affordance.
+  Widget _detailCard({
+    required Color tint,
+    required String title,
+    required String meta,
+    String? footer,
+    Widget? action,
+  }) =>
+      Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: tint.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: Text(p.displayTitle, style: AppText.body)),
-                Text(p.amount.format(),
-                    style: AppText.body.copyWith(color: AppColors.negative)),
-              ],
-            ),
-            if (p.displayReason != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(p.displayReason!, style: AppText.caption),
-              ),
-            Row(
-              children: [
-                Text(DateFormat('d MMM yyyy').format(p.createdAt),
-                    style: AppText.caption),
-                const Spacer(),
-                // Appeal appears only where the server says the penalty can
-                // be appealed at all.
-                if (p.appealable && onAppeal != null)
-                  TextButton(
-                    onPressed: () => onAppeal!(p),
-                    child: const Text('Appeal'),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: AppText.heading.copyWith(fontSize: 16)),
+                      const SizedBox(height: 2),
+                      Text(meta, style: AppText.caption),
+                    ],
                   ),
+                ),
+                if (action != null) ...[const SizedBox(width: 8), action],
               ],
             ),
+            if (footer != null) ...[
+              const SizedBox(height: 10),
+              Text(footer, style: AppText.body),
+            ],
           ],
         ),
       );
+
+  Widget _penaltyRow(Penalty p) {
+    final date = DateFormat('d MMM yyyy').format(p.createdAt.toLocal());
+    return _detailCard(
+      tint: AppColors.negative,
+      title: p.displayTitle,
+      meta: '$date · Penalty: ${p.amount.format()}',
+      // The design's third line is "Appeal window: 48h left". No penalty
+      // field carries a deadline, so the reason for the penalty goes here
+      // instead — the thing the driver actually needs in order to appeal.
+      footer: p.displayReason,
+      // Appeal appears only where the server says the penalty can be
+      // appealed at all.
+      action: p.appealable && widget.onAppeal != null
+          ? _AppealButton(onPressed: () => widget.onAppeal!(p))
+          : null,
+    );
+  }
 
   Widget _appealRow(Appeal a) {
     final (label, colour) = switch (a.status) {
@@ -109,31 +226,43 @@ class PenaltiesSection extends StatelessWidget {
       AppealStatus.rejected => ('Rejected', AppColors.negative),
       AppealStatus.underReview => ('Under review', AppColors.warning),
     };
+    final decided = a.reviewedAt ?? a.createdAt;
+    final date = DateFormat('d MMM yyyy').format(decided.toLocal());
 
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colour.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(child: Text(a.reason, style: AppText.body)),
-              Text(label, style: AppText.caption.copyWith(color: colour)),
-            ],
-          ),
-          // The reviewer's own words. An appeal answered with a bare status
-          // is what this field exists to prevent.
-          if (a.reviewNote != null) ...[
-            const SizedBox(height: 6),
-            Text(a.reviewNote!, style: AppText.caption),
-          ],
-        ],
-      ),
+    return _detailCard(
+      tint: colour,
+      title: a.reason.isEmpty ? 'Appeal' : a.reason,
+      meta: a.documentType == null
+          ? '$date · $label'
+          : '$date · ${a.documentType} · $label',
+      // The reviewer's own words. An appeal answered with a bare status is
+      // what this field exists to prevent. The design's "Decision within
+      // 24h" line promises a turnaround nothing in the contract states, so
+      // it is not reproduced.
+      footer: a.reviewNote,
     );
   }
+}
+
+/// The design's red pill. Small and inline, not a full-width button.
+class _AppealButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _AppealButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.negative,
+          foregroundColor: AppColors.surface,
+          minimumSize: const Size(0, 36),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: const Text('Appeal'),
+      );
 }

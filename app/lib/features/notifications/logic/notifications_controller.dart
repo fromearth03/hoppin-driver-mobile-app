@@ -10,21 +10,26 @@ class NotificationsState {
   final bool isLoadingMore;
   final ApiException? error;
 
+  /// The server's count across the whole feed. Counting the loaded pages
+  /// instead would under-report the moment there is more than one page.
+  final int unreadCount;
+
   const NotificationsState({
     this.notifications = const [],
     this.nextCursor,
     this.isLoadingMore = false,
     this.error,
+    this.unreadCount = 0,
   });
 
   bool get hasMore => nextCursor != null;
-  int get unreadCount => notifications.where((n) => !n.read).length;
 
   NotificationsState copyWith({
     List<AppNotification>? notifications,
     String? nextCursor,
     bool? isLoadingMore,
     ApiException? error,
+    int? unreadCount,
     bool clearCursor = false,
   }) =>
       NotificationsState(
@@ -32,6 +37,7 @@ class NotificationsState {
         nextCursor: clearCursor ? null : (nextCursor ?? this.nextCursor),
         isLoadingMore: isLoadingMore ?? this.isLoadingMore,
         error: error ?? this.error,
+        unreadCount: unreadCount ?? this.unreadCount,
       );
 }
 
@@ -57,6 +63,7 @@ class NotificationsController extends AsyncNotifier<NotificationsState> {
       ok: (page) => NotificationsState(
         notifications: page.notifications,
         nextCursor: page.nextCursor,
+        unreadCount: page.unreadCount,
       ),
       err: (e) => NotificationsState(error: e),
     );
@@ -81,6 +88,7 @@ class NotificationsController extends AsyncNotifier<NotificationsState> {
         nextCursor: page.nextCursor,
         clearCursor: page.nextCursor == null,
         isLoadingMore: false,
+        unreadCount: page.unreadCount,
       )),
       err: (e) => _emit(_current.copyWith(isLoadingMore: false, error: e)),
     );

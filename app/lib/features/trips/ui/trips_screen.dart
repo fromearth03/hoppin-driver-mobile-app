@@ -10,6 +10,7 @@ import '../../../shared/widgets/app_loading.dart';
 import '../../../shared/widgets/cursor_list.dart';
 import '../data/models/driver_trip.dart';
 import '../logic/trips_controller.dart';
+import 'trip_detail_screen.dart';
 import 'widgets/trip_row.dart';
 
 /// The driver's own record of work done. Deliberately carries no totals —
@@ -91,7 +92,14 @@ class TripsScreen extends ConsumerWidget {
                                 dayLabelFor(trip.completedAt),
                                 style: AppText.caption),
                           ),
-                        TripRow(trip: trip),
+                        TripRow(
+                          trip: trip,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => TripDetailScreen(trip: trip),
+                            ),
+                          ),
+                        ),
                       ],
                     );
                   },
@@ -104,9 +112,8 @@ class TripsScreen extends ConsumerWidget {
     );
   }
 
-  /// The chosen range, or an invitation to pick one. A whole second row of
-  /// chrome would be wasted on a driver who never filters by date, so this
-  /// stays one line until they use it.
+  /// The range card the design puts at the top of the list. A driver
+  /// checking last month's work reaches for this before anything else.
   Widget _dateBar(
     BuildContext context,
     TripsState? state,
@@ -114,47 +121,75 @@ class TripsScreen extends ConsumerWidget {
   ) {
     final from = state?.from;
     final to = state?.to;
-    final label = switch ((from, to)) {
-      (null, null) => 'Any date',
-      (final f?, null) => 'From ${_shortDate(f)}',
+    final title = switch ((from, to)) {
+      (null, null) => 'All time',
+      (final f?, null) => 'Since ${_shortDate(f)}',
       (null, final t?) => 'Until ${_shortDate(t)}',
       (final f?, final t?) => '${_shortDate(f)} - ${_shortDate(t)}',
     };
+    final subtitle = state?.hasDateRange ?? false
+        ? '${state!.trips.length} trips'
+        : 'Tap to choose a date range';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Row(
-        children: [
-          ActionChip(
-            key: const Key('date_range'),
-            avatar: const Icon(Icons.date_range, size: 18),
-            label: Text(label),
-            onPressed: () async {
-              final now = DateTime.now();
-              final picked = await showDateRangePicker(
-                context: context,
-                // A driver cannot have driven in the future, and the
-                // platform predates this.
-                firstDate: DateTime(2024),
-                lastDate: now,
-                initialDateRange: from != null && to != null
-                    ? DateTimeRange(start: from, end: to)
-                    : null,
-              );
-              if (picked != null) {
-                await controller.setDateRange(picked.start, picked.end);
-              }
-            },
-          ),
-          if (state?.hasDateRange ?? false) ...[
-            const SizedBox(width: 8),
-            TextButton(
-              key: const Key('clear_date_range'),
-              onPressed: () => controller.setDateRange(null, null),
-              child: const Text('Clear'),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          key: const Key('date_range'),
+          borderRadius: BorderRadius.circular(16),
+          onTap: () async {
+            final now = DateTime.now();
+            final picked = await showDateRangePicker(
+              context: context,
+              // A driver cannot have driven in the future, and the platform
+              // does not predate this.
+              firstDate: DateTime(2024),
+              lastDate: now,
+              initialDateRange: from != null && to != null
+                  ? DateTimeRange(start: from, end: to)
+                  : null,
+            );
+            if (picked != null) {
+              await controller.setDateRange(picked.start, picked.end);
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_month_outlined,
+                    size: 30, color: AppColors.textPrimary),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: AppText.body.copyWith(
+                            fontSize: 19, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(subtitle,
+                          style: AppText.caption.copyWith(fontSize: 14)),
+                    ],
+                  ),
+                ),
+                if (state?.hasDateRange ?? false)
+                  IconButton(
+                    key: const Key('clear_date_range'),
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => controller.setDateRange(null, null),
+                  )
+                else
+                  const Icon(Icons.keyboard_arrow_down,
+                      color: AppColors.textSecondary),
+              ],
             ),
-          ],
-        ],
+          ),
+        ),
       ),
     );
   }

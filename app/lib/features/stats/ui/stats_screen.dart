@@ -6,6 +6,7 @@ import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
 import '../logic/stats_controller.dart';
+import 'appeal_sheet.dart';
 import 'widgets/penalties_section.dart';
 import 'widgets/stat_tile.dart';
 
@@ -40,45 +41,63 @@ class StatsScreen extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 24),
               child: Column(
                 children: [
+                  // The design opens with a "This Month / 1 Aug - 31 Aug"
+                  // period picker. `/drivers/me/stats` takes no date range
+                  // and returns lifetime figures with no period marker, so
+                  // a picker here would be a control that changes nothing
+                  // and a date range we made up. The tiles are labelled as
+                  // all-time instead.
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('All time', style: AppText.caption),
+                    ),
+                  ),
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                     child: GridView.count(
                       crossAxisCount: 2,
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      childAspectRatio: 1.5,
+                      childAspectRatio: 1.72,
                       children: [
                         StatTile(
-                          icon: Icons.directions_car_outlined,
-                          tint: AppColors.primary,
-                          label: 'Trips completed',
-                          // A count, never a currency figure.
+                          icon: Icons.directions_car_filled_outlined,
+                          tint: AppColors.primaryLight,
+                          label: 'Total Trips',
+                          // The design renders this as "£ 1247.00". It is a
+                          // trip count, not money — no currency symbol.
                           value: '${stats?.tripsCompleted ?? 0}',
                         ),
                         StatTile(
-                          icon: Icons.star_outline,
-                          tint: AppColors.warning,
+                          icon: Icons.star_outline_rounded,
+                          tint: AppColors.info,
                           label: 'Rating',
                           value:
                               stats?.averageRating?.toStringAsFixed(1) ?? '—',
+                          stars: stats?.averageRating,
                           note: (stats?.ratingCount ?? 0) > 0
                               ? '${stats!.ratingCount} reviews'
                               : 'No reviews yet',
                         ),
                         StatTile(
-                          icon: Icons.check_circle_outline,
+                          icon: Icons.check_rounded,
                           tint: AppColors.positive,
-                          label: 'Acceptance rate',
+                          label: 'Acceptance Rate',
                           value:
                               stats?.ratePercent(stats.acceptanceRate) ?? '—',
                         ),
                         StatTile(
-                          icon: Icons.cancel_outlined,
+                          icon: Icons.close_rounded,
                           tint: AppColors.negative,
                           label: 'Cancellations',
                           value: '${stats?.tripsCancelled ?? 0}',
+                          // Rider cancels, admin force-cancels and watchdog
+                          // timeouts are excluded server-side, so the driver
+                          // needs to know the number is theirs alone.
                           note: 'Trips you cancelled',
                         ),
                       ],
@@ -87,14 +106,10 @@ class StatsScreen extends ConsumerWidget {
                   PenaltiesSection(
                     penalties: state.penalties,
                     appeals: state.appeals,
-                    onAppeal: (penalty) =>
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Appealing "${penalty.displayTitle}"',
-                            ),
-                          ),
-                        ),
+                    onAppeal: (penalty) async {
+                      final filed = await AppealSheet.show(context, penalty);
+                      if (filed) await controller.refresh();
+                    },
                   ),
                 ],
               ),

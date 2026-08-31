@@ -9,10 +9,15 @@ import '../../data/models/driver_trip.dart';
 /// third of all activity and they drive the cancellation-rate stat, so
 /// hiding them would leave a driver unable to check their own record — but
 /// they should not compete with work that earned money.
+///
+/// The design puts a rider star rating on every row. `/drivers/me/trips`
+/// carries no rider rating, and the rider-context endpoint refuses a ride
+/// that has ended, so there is nothing to render there.
 class TripRow extends StatelessWidget {
   final DriverTrip trip;
+  final VoidCallback? onTap;
 
-  const TripRow({super.key, required this.trip});
+  const TripRow({super.key, required this.trip, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -21,91 +26,121 @@ class TripRow extends StatelessWidget {
         cancelled ? AppColors.textSecondary : AppColors.textPrimary;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (cancelled)
-                const Padding(
-                  padding: EdgeInsets.only(right: 6),
-                  child: Icon(Icons.block,
-                      size: 15, color: AppColors.textSecondary),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _stop(
+                  Icons.location_on,
+                  trip.pickupLabel,
+                  labelColour,
+                  strike: false,
                 ),
-              Expanded(
-                child: Text(trip.pickupLabel,
-                    style: AppText.body.copyWith(color: labelColour),
-                    overflow: TextOverflow.ellipsis),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '→ ${trip.dropoffLabel}',
-            style: AppText.body.copyWith(
-              color: labelColour,
-              decoration: cancelled ? TextDecoration.lineThrough : null,
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _stop(
+                        Icons.outlined_flag,
+                        trip.dropoffLabel,
+                        labelColour,
+                        strike: cancelled,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      // An em dash, not "£0.00": a cancelled trip did not
+                      // earn nothing, it never earned.
+                      trip.earnings.isZero
+                          ? '—'
+                          : '+${trip.earnings.format()}',
+                      style: AppText.body.copyWith(
+                        fontSize: 17,
+                        color: trip.earnings.isZero
+                            ? AppColors.textSecondary
+                            : labelColour,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Text(
+                      trip.completedAt == null
+                          ? 'Time not recorded'
+                          : DateFormat('h:mm a').format(trip.completedAt!),
+                      style: AppText.caption.copyWith(fontSize: 14),
+                    ),
+                    // The reference is what a driver quotes to support, so
+                    // it stays on the row rather than behind the detail.
+                    if (trip.ref != null) ...[
+                      const SizedBox(width: 10),
+                      Text(trip.ref!,
+                          style: AppText.caption.copyWith(fontSize: 14)),
+                    ],
+                    const Spacer(),
+                    // A penalty is the one thing on a row a driver will
+                    // dispute, so it is never hidden behind the detail view.
+                    if (trip.cancelledByLabel != null)
+                      Text(
+                        trip.cancelledByLabel!,
+                        style: AppText.caption.copyWith(fontSize: 14),
+                      ),
+                    if (!trip.penalty.isZero) ...[
+                      const SizedBox(width: 10),
+                      Text(
+                        '−${trip.penalty.format()}',
+                        style: AppText.caption.copyWith(
+                          fontSize: 14,
+                          color: AppColors.negative,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
-            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: Text(_meta(), style: AppText.caption)),
-              Text(_amount(), style: _amountStyle()),
-            ],
-          ),
-          // Who cancelled stands on its own line rather than being joined
-          // into the meta string: it is the first question a driver asks of
-          // a cancelled trip, and it must be readable as one statement.
-          if (trip.cancelledByLabel != null) ...[
-            const SizedBox(height: 4),
-            Text(trip.cancelledByLabel!, style: AppText.caption),
-          ],
-          if (trip.cancelReason != null) ...[
-            const SizedBox(height: 4),
-            Text(trip.cancelReason!, style: AppText.caption),
-          ],
-        ],
+        ),
       ),
     );
   }
 
-  String _meta() {
-    final parts = <String>[
-      if (trip.ref != null) trip.ref!,
-      if (trip.completedAt != null)
-        DateFormat('HH:mm').format(trip.completedAt!.toLocal()),
-      if (!trip.isCancelled && trip.distanceMiles != null)
-        '${trip.distanceMiles!.toStringAsFixed(1)} mi',
-    ];
-    return parts.join(' · ');
-  }
-
-  /// A cancellation that cost nothing shows an em dash. "£0.00" would read
-  /// as a charge of zero rather than no charge at all.
-  String _amount() {
-    if (trip.isCancelled) {
-      return trip.penalty.isZero
-          ? '—'
-          : trip.penalty.format().replaceFirst('£', '−£');
-    }
-    return trip.earnings.formatSigned();
-  }
-
-  TextStyle _amountStyle() => AppText.body.copyWith(
-        fontWeight: FontWeight.w600,
-        color: trip.isCancelled
-            ? (trip.penalty.isZero
-                ? AppColors.textSecondary
-                : AppColors.negative)
-            : AppColors.positive,
+  Widget _stop(
+    IconData icon,
+    String label,
+    Color colour, {
+    required bool strike,
+  }) =>
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 19, color: AppColors.textPrimary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label.isEmpty ? 'Not recorded' : label,
+              style: AppText.body.copyWith(
+                fontSize: 16,
+                color: colour,
+                decoration: strike ? TextDecoration.lineThrough : null,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       );
 }

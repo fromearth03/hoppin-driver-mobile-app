@@ -13,16 +13,24 @@ class StatsState {
   final List<Appeal> appeals;
   final ApiException? error;
 
+  /// What the picker is currently set to. Held here rather than in the
+  /// widget so a refresh re-asks for the same window.
+  final StatsPeriod period;
+
   const StatsState({
     this.stats,
     this.penalties,
     this.appeals = const [],
     this.error,
+    this.period = StatsPeriod.month,
   });
 }
 
 class StatsController extends AsyncNotifier<StatsState> {
   bool _disposed = false;
+
+  /// The design opens on "This Month".
+  StatsPeriod _period = StatsPeriod.month;
 
   @override
   Future<StatsState> build() async {
@@ -32,7 +40,7 @@ class StatsController extends AsyncNotifier<StatsState> {
 
   Future<StatsState> _fetch() async {
     final statsRepo = ref.read(statsRepositoryProvider);
-    final stats = await statsRepo.stats();
+    final stats = await statsRepo.stats(period: _period);
     final penalties = await statsRepo.penalties();
     final appeals = await ref.read(appealsRepositoryProvider).mine();
 
@@ -41,7 +49,16 @@ class StatsController extends AsyncNotifier<StatsState> {
       penalties: penalties.valueOrNull,
       appeals: appeals.valueOrNull ?? const [],
       error: stats.errorOrNull,
+      period: _period,
     );
+  }
+
+  /// Re-asks the service for a different window. Only the stats change; the
+  /// penalties and appeals lists are not period-scoped.
+  Future<void> setPeriod(StatsPeriod period) async {
+    if (period == _period) return;
+    _period = period;
+    await refresh();
   }
 
   Future<void> refresh() async {

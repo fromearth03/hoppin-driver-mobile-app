@@ -4,9 +4,34 @@ import '../../../core/api/api_client.dart';
 import '../../../core/result.dart';
 import 'models/support_ticket.dart';
 
+/// One selectable issue reason, as the server defines it.
+class ComplaintType {
+  final String code;
+  final String label;
+  const ComplaintType(this.code, this.label);
+}
+
 class SupportRepository {
   final ApiClient _api;
   SupportRepository(this._api);
+
+  /// The issue reasons the server will accept. `type_code` is validated
+  /// against a table — an unknown or retired code is a 400 — so the list is
+  /// fetched rather than hardcoded here, where it would drift.
+  Future<Result<List<ComplaintType>>> complaintTypes() async {
+    final r = await _api.get<Map<String, dynamic>>('/complaint-types');
+    return r.when(
+      ok: (json) => Ok(((json['complaint_types'] as List?) ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .map((e) => ComplaintType(
+                (e['code'] as String?) ?? '',
+                (e['label'] as String?) ?? (e['code'] as String?) ?? '',
+              ))
+          .where((c) => c.code.isNotEmpty)
+          .toList()),
+      err: (e) => Err(e),
+    );
+  }
 
   Future<Result<List<SupportTicket>>> tickets() async {
     final r = await _api.get<dynamic>('/me/support-tickets');
@@ -31,10 +56,14 @@ class SupportRepository {
   /// which is how disputes were reaching support with nothing identifying
   /// the charge. It goes into the body instead, which is stored and read by
   /// a human. Move it to a real field if the service ever grows one.
+  /// `typeCode` is the server's validated reason vocabulary, from
+  /// [complaintTypes]. `category` is a free-text column with no whitelist, so
+  /// it carries the same value for the benefit of the admin views that read it.
   Future<Result<SupportTicket>> create({
     required String subject,
     required String category,
     required String ticketBody,
+    String? typeCode,
     String? rideId,
     String? ledgerEntryId,
   }) async {
@@ -46,6 +75,7 @@ class SupportRepository {
       'subject': subject,
       'category': category,
       'body': body,
+      if (typeCode != null) 'type_code': typeCode,
       if (rideId != null) 'ride_id': rideId,
     });
     return r.when(

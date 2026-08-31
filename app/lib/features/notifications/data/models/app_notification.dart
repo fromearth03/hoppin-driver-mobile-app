@@ -40,10 +40,15 @@ class NotificationsPage {
   final String? nextCursor;
   final bool hasMore;
 
+  /// Unread across the whole feed, not just this page — the server counts it,
+  /// so the badge stays right when only the first page is loaded.
+  final int unreadCount;
+
   const NotificationsPage({
     required this.notifications,
     this.nextCursor,
     this.hasMore = false,
+    this.unreadCount = 0,
   });
 
   factory NotificationsPage.fromJson(Map<String, dynamic> json) =>
@@ -54,5 +59,6 @@ class NotificationsPage {
             .toList(),
         nextCursor: json['next_cursor'] as String?,
         hasMore: json['has_more'] as bool? ?? false,
+        unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
       );
 }
