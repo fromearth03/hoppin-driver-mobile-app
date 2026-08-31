@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/money.dart';
 import '../../../core/result.dart';
 import 'models/ride.dart';
+import 'models/ride_stop.dart';
 import 'models/waiting_policy.dart';
 
 class TripRepository {
@@ -61,6 +63,71 @@ class TripRepository {
   Future<Result<Map<String, dynamic>>> riderContext(String rideId) =>
       _api.get<Map<String, dynamic>>('/rides/$rideId/rider-context');
 
+  /// The per-leg breakdown of a multi-stop ride.
+  ///
+  /// Returns `multi_stop:false` with an empty list for an ordinary ride, so
+  /// this is safe to call on every trip and needs no guard at the call site.
+  Future<Result<RideStops>> stops(String rideId) async {
+    final r = await _api.get<Map<String, dynamic>>('/rides/$rideId/stops');
+    return r.when(
+      ok: (json) => Ok(RideStops.fromJson(json)),
+      err: (e) => Err(e),
+    );
+  }
+
+  /// Marks arrival at stop [seq], starting that stop's wait clock.
+  ///
+  /// [seq] is the leg index whose destination is the stop, taken from
+  /// [stops] — not a position in the list, which differs once the dropoff
+  /// leg is filtered out.
+  ///
+  /// The repository updates only rows with `kind = 'stop'`, so calling this
+  /// for the dropoff leg is a no-op that still answers 200.
+  Future<Result<void>> arriveAtStop(String rideId, int seq) async {
+    final r = await _api
+        .patch<Map<String, dynamic>>('/rides/$rideId/stops/$seq/arrive');
+    return r.when(ok: (_) => const Ok(null), err: (e) => Err(e));
+  }
+
+  /// Marks departure from stop [seq] and returns the wait charged there,
+  /// which is zero inside the free grace.
+  ///
+  /// The grace and the per-minute rate are columns in `multistop_config`
+  /// with no endpoint in front of them, so this returned figure is the only
+  /// waiting number the app can honestly show.
+  Future<Result<Pence>> departStop(String rideId, int seq) async {
+    final r = await _api
+        .patch<Map<String, dynamic>>('/rides/$rideId/stops/$seq/depart');
+    return r.when(
+      ok: (json) => Ok(Pence((json['waiting_pence'] as num?)?.toInt() ?? 0)),
+      err: (e) => Err(e),
+    );
+  }
+
+  /// Adds a stop to a live ride. Every leg is re-priced and the new grand
+  /// total comes back.
+  ///
+  /// The handler rejects a zero lat or lng as VALIDATION_FAILED (it treats
+  /// 0 as absent), and answers 409 RIDE_CLOSED once the ride has finished.
+  Future<Result<AddedStop>> addStop(
+    String rideId, {
+    required double lat,
+    required double lng,
+    required String label,
+  }) async {
+    final r = await _api.post<Map<String, dynamic>>(
+      '/rides/$rideId/stops',
+      body: {'lat': lat, 'lng': lng, 'label': label},
+    );
+    return r.when(
+      ok: (json) => Ok(AddedStop(
+        total: Pence((json['total_pence'] as num?)?.toInt() ?? 0),
+        stopsCount: (json['stops_count'] as num?)?.toInt() ?? 0,
+      )),
+      err: (e) => Err(e),
+    );
+  }
+
   /// Rates the passenger on a completed ride.
   ///
   /// `score` is 1–5 and `binding:"required"` — the handler rejects 0, so a
@@ -89,6 +156,15 @@ class TripRepository {
       err: (e) => Err(e),
     );
   }
+}
+
+/// What `POST /rides/:id/stops` answers with: the re-priced grand total and
+/// how many stops the ride now has.
+class AddedStop {
+  final Pence total;
+  final int stopsCount;
+
+  const AddedStop({required this.total, required this.stopsCount});
 }
 
 final tripRepositoryProvider = Provider<TripRepository>(

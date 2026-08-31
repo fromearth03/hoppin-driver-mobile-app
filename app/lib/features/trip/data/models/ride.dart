@@ -49,29 +49,40 @@ class NavStep {
   }
 }
 
-/// Pickup, dropoff and the road-following polyline.
+/// Pickup, dropoff, any intermediate stops, and the road-following polyline.
 ///
-/// The payload also carries `waypoints`; this model deliberately has no
-/// field for them. The app is single-stop by product decision, and a model
-/// that cannot hold a third point cannot accidentally draw one.
+/// `waypoints` is the ordered list of intermediate stops between pickup and
+/// dropoff — empty on an ordinary single-leg ride. The per-leg fares and the
+/// waiting clock do NOT live here; they come from `GET /rides/:id/stops`,
+/// which is the only place the money is authoritative.
 class RideGeo {
   final GeoPoint pickup;
   final GeoPoint dropoff;
+  final List<GeoPoint> waypoints;
   final List<GeoPoint> route;
   final List<NavStep> steps;
 
   const RideGeo({
     required this.pickup,
     required this.dropoff,
+    this.waypoints = const [],
     this.route = const [],
     this.steps = const [],
   });
+
+  /// Every point the map should frame, in travel order.
+  List<GeoPoint> get allPoints => [pickup, ...waypoints, dropoff];
+
+  bool get isMultiStop => waypoints.isNotEmpty;
 
   factory RideGeo.fromJson(Map<String, dynamic> json) => RideGeo(
         pickup:
             GeoPoint.fromJson(Map<String, dynamic>.from(json['pickup'] as Map)),
         dropoff: GeoPoint.fromJson(
             Map<String, dynamic>.from(json['dropoff'] as Map)),
+        waypoints: ((json['waypoints'] as List?) ?? const [])
+            .map((e) => GeoPoint.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList(),
         route: ((json['route'] as List?) ?? const [])
             .map((e) => GeoPoint.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList(),

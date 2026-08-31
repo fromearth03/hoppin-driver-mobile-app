@@ -92,6 +92,17 @@ void main() {
             createdAt: DateTime.utc(2026, 8, 29),
           ),
         ]));
+    // Anchored to today, not to a fixed calendar date. The screen groups by
+    // "Today"/"Yesterday", so a hardcoded date makes the golden fail the
+    // moment the clock rolls past midnight — the capture would only ever be
+    // valid on the day it was taken.
+    // Local components, not UTC: the screen labels days in LOCAL time, so a
+    // UTC-built date flips to "Yesterday" near midnight on any machine ahead
+    // of UTC.
+    final today = DateTime.now();
+    DateTime hourToday(int hour) =>
+        DateTime(today.year, today.month, today.day, hour);
+
     when(() => notifications.page(cursor: any(named: 'cursor')))
         .thenAnswer((_) async => Ok(NotificationsPage(notifications: [
               AppNotification(
@@ -99,7 +110,7 @@ void main() {
                 type: 'trip',
                 title: 'New Trip Request',
                 ntfBody: '2.5 mi - £14.61 - 4 min away',
-                createdAt: DateTime.utc(2026, 8, 31, 9),
+                createdAt: hourToday(9),
               ),
               AppNotification(
                 id: 'n2',
@@ -107,7 +118,7 @@ void main() {
                 title: 'Document Expiring Soon',
                 ntfBody:
                     'DBS check expiring, renew by Mar 1 to avoid any disruptions.',
-                createdAt: DateTime.utc(2026, 8, 31, 8),
+                createdAt: hourToday(8),
               ),
               AppNotification(
                 id: 'n3',
@@ -115,7 +126,7 @@ void main() {
                 title: 'Passenger Rating',
                 ntfBody: '4 Stars. "Great driver, Recommended"',
                 read: true,
-                createdAt: DateTime.utc(2026, 8, 31, 7),
+                createdAt: hourToday(7),
               ),
             ])));
   });

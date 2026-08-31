@@ -11,10 +11,12 @@ import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
 import '../data/models/ride.dart';
+import '../data/models/ride_stop.dart';
 import '../logic/trip_controller.dart';
 import 'widgets/cancel_sheet.dart';
 import 'widgets/map_pills.dart';
 import 'widgets/rider_card.dart';
+import 'widgets/stops_card.dart';
 import 'widgets/trip_map.dart';
 import 'widgets/trip_summary.dart';
 import 'widgets/waiting_timer.dart';
@@ -56,20 +58,15 @@ class TripScreen extends ConsumerWidget {
           // The map is the screen. The sheet sits over it rather than
           // beside it, so the driver keeps as much road as possible.
           //
-          // The waiting design draws a multi-stop route — A, B ("Mid point")
-          // and C — with a per-leg mileage pill on each. The service supports
-          // it (GET /rides/:id/stops, PATCH /rides/:id/stops/:seq/arrive and
-          // /depart), but this app has no stops model yet, so what follows is
-          // the single-leg pickup-to-dropoff variant. The multi-stop version
-          // of this state is pending and is a separate piece of work.
+          // The design's multi-stop route — A, a mid point and C, each with
+          // its own mileage — is the StopsCard below, which draws itself only
+          // when the ride actually has stops.
           return Stack(
             children: [
               Positioned.fill(
                 child: TripMap(
                   geo: ride.geo,
-                  target: ride.phase == TripPhase.inTrip
-                      ? ride.geo.dropoff
-                      : ride.geo.pickup,
+                  target: _mapTarget(ride, state.stops),
                 ),
               ),
               SafeArea(
@@ -105,10 +102,27 @@ class TripScreen extends ConsumerWidget {
                     alignment: Alignment.centerRight,
                     child: Padding(
                       padding: const EdgeInsets.only(right: 12),
-                      child: _mapButton(
-                        icon: Icons.close,
-                        tooltip: 'Cancel ride',
-                        onPressed: () => _cancel(context, ref, state),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _mapButton(
+                            icon: Icons.close,
+                            tooltip: 'Cancel ride',
+                            onPressed: () => _cancel(context, ref, state),
+                          ),
+                          // Adding a stop is only possible while the ride is
+                          // live; the handler answers 409 RIDE_CLOSED
+                          // otherwise. Offered from the trip proper, once
+                          // the rider is aboard and can ask for one.
+                          if (ride.phase == TripPhase.inTrip) ...[
+                            const SizedBox(height: 10),
+                            _mapButton(
+                              icon: Icons.add_location_alt_outlined,
+                              tooltip: 'Add a stop',
+                              onPressed: () => _addStop(context, ref, ride),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
@@ -128,7 +142,25 @@ class TripScreen extends ConsumerWidget {
                         arrivedAt: ride.arrivedAt,
                         freeCancelRemaining: state.freeCancelSecondsRemaining,
                       ),
-                    if (ride.phase == TripPhase.inTrip)
+                    // The leg list, with arrive/depart on each stop. Only
+                    // offered once the rider is aboard: a stop cannot be
+                    // served before the trip has started.
+                    StopsCard(
+                      stops: state.stops,
+                      busy: state.isBusy,
+                      onArrive: ride.phase == TripPhase.inTrip
+                          ? (stop) => _arriveAtStop(context, ref, stop)
+                          : null,
+                      onDepart: ride.phase == TripPhase.inTrip
+                          ? (stop) => _departStop(context, ref, stop)
+                          : null,
+                    ),
+                    if (state.stops.multiStop) const SizedBox(height: 10),
+                    // The destination plate names the final dropoff. While
+                    // stops remain it would point past them, so it waits
+                    // until the last leg.
+                    if (ride.phase == TripPhase.inTrip &&
+                        state.stops.nextStop == null)
                       TripDestinationPlate(label: ride.geo.dropoff.label),
                     const SizedBox(height: 12),
                     _bottomSheet(context, ref, state, ride),
@@ -317,6 +349,78 @@ class TripScreen extends ConsumerWidget {
           ],
         ),
       );
+
+  /// Where the map should look. While stops remain, the driver is heading
+  /// for the next stop — pointing at the final dropoff would send them past
+  /// it.
+  static GeoPoint _mapTarget(Ride ride, RideStops stops) {
+    if (ride.phase != TripPhase.inTrip) return ride.geo.pickup;
+    final next = stops.nextStop;
+    if (next != null) return next.to;
+    return ride.geo.dropoff;
+  }
+
+  Future<void> _arriveAtStop(
+      BuildContext context, WidgetRef ref, RideStop stop) async {
+    final result =
+        await ref.read(tripControllerProvider(rideId).notifier).arriveAtStop(stop.seq);
+    if (!context.mounted) return;
+    result.when(
+      ok: (_) {},
+      err: (e) => ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorCopy(e)))),
+    );
+  }
+
+  Future<void> _departStop(
+      BuildContext context, WidgetRef ref, RideStop stop) async {
+    final result =
+        await ref.read(tripControllerProvider(rideId).notifier).departStop(stop.seq);
+    if (!context.mounted) return;
+    result.when(
+      // The waiting charge is the server's answer to this call, and it is
+      // the driver's money — so it is said out loud rather than left to be
+      // noticed on the summary.
+      ok: (waiting) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(waiting.isZero
+              ? 'Departed. No waiting charge at this stop.'
+              : 'Departed. ${waiting.format()} waiting added to the fare.'),
+        ),
+      ),
+      err: (e) => ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorCopy(e)))),
+    );
+  }
+
+  /// Adds a stop at the ride's current dropoff coordinates.
+  ///
+  /// The service inserts the new stop before the dropoff and re-prices every
+  /// leg. It takes a lat/lng and rejects zeroes, and the driver has no way to
+  /// pick a point on this screen — so the coordinates come from where the
+  /// ride is already headed, and the label is what makes it meaningful.
+  Future<void> _addStop(BuildContext context, WidgetRef ref, Ride ride) async {
+    final label = await AddStopSheet.show(context);
+    if (label == null || !context.mounted) return;
+
+    final result =
+        await ref.read(tripControllerProvider(rideId).notifier).addStop(
+              lat: ride.geo.dropoff.lat,
+              lng: ride.geo.dropoff.lng,
+              label: label.isEmpty ? 'Stop' : label,
+            );
+    if (!context.mounted) return;
+
+    result.when(
+      ok: (added) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Stop added. Fare is now ${added.total.format()}.'),
+        ),
+      ),
+      err: (e) => ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorCopy(e)))),
+    );
+  }
 
   Future<void> _cancel(
       BuildContext context, WidgetRef ref, TripState state) async {

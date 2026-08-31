@@ -108,7 +108,11 @@ void main() {
           dropoffLabel: 'Railway Station',
           earnings: const Pence(1000),
           penalty: const Pence(0),
-          completedAt: DateTime.now().subtract(Duration(hours: hour)),
+          // A fixed clock time on today's date: the row prints h:mm, so a
+          // literal now() bakes the capture minute into the golden and the
+          // test can never pass again.
+          completedAt: DateTime(DateTime.now().year, DateTime.now().month,
+              DateTime.now().day, 7 + hour, 21),
         );
 
     when(() => trips.page(

@@ -8,6 +8,7 @@ import 'package:hoppin_driver/core/result.dart';
 import 'package:hoppin_driver/features/trip/data/cancel_reason_repository.dart';
 import 'package:hoppin_driver/features/trip/data/models/cancel_reason.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride.dart';
+import 'package:hoppin_driver/features/trip/data/models/ride_stop.dart';
 import 'package:hoppin_driver/features/trip/data/models/waiting_policy.dart';
 import 'package:hoppin_driver/features/trip/data/trip_repository.dart';
 import 'package:hoppin_driver/features/trip/ui/trip_screen.dart';
@@ -57,6 +58,10 @@ void main() {
     // tests are not about the rider, so answer with the empty-handed case.
     when(() => trip.riderContext(any())).thenAnswer(
         (_) async => Err(ApiException('NOT_FOUND', 'no rider context', 404)));
+    // Single-leg rides: an empty breakdown is what the service returns for
+    // a ride with no stops.
+    when(() => trip.stops(any()))
+        .thenAnswer((_) async => const Ok(RideStops.empty));
 
     when(() => trip.waitingPolicy(any())).thenAnswer((_) async => const Ok(
         WaitingPolicy(

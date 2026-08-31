@@ -7,6 +7,7 @@ import 'package:hoppin_driver/core/result.dart';
 import 'package:hoppin_driver/features/trip/data/cancel_reason_repository.dart';
 import 'package:hoppin_driver/features/trip/data/models/cancel_reason.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride.dart';
+import 'package:hoppin_driver/features/trip/data/models/ride_stop.dart';
 import 'package:hoppin_driver/features/trip/data/models/waiting_policy.dart';
 import 'package:hoppin_driver/features/trip/data/trip_repository.dart';
 import 'package:hoppin_driver/features/trip/logic/trip_controller.dart';
@@ -40,6 +41,10 @@ void main() {
     reasons = MockReasonRepo();
     when(() => repo.waitingPolicy(any()))
         .thenAnswer((_) async => Ok(buildPolicy()));
+    // Every load reads the per-leg breakdown. These tests are single-leg
+    // rides, which is exactly what an empty breakdown means.
+    when(() => repo.stops(any()))
+        .thenAnswer((_) async => const Ok(RideStops.empty));
     // The controller now enriches a live ride with rider-context. These
     // tests are not about the rider, so answer with the empty-handed case.
     when(() => repo.riderContext(any())).thenAnswer(

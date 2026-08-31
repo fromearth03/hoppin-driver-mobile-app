@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/auth/token_store.dart';
+import '../../../core/money.dart';
 import '../../../core/result.dart';
 import '../data/cancel_reason_repository.dart';
 import '../data/models/ride.dart';
+import '../data/models/ride_stop.dart';
 import '../data/models/waiting_policy.dart';
 import '../data/trip_repository.dart';
 
@@ -15,6 +17,11 @@ class TripState {
   final WaitingPolicy? policy;
   final bool isBusy;
   final ApiException? error;
+
+  /// The per-leg breakdown. [RideStops.empty] on an ordinary single-leg
+  /// ride, which is also what a failed read falls back to — the trip screen
+  /// must keep working when the stops call is the only thing that broke.
+  final RideStops stops;
 
   /// The widest free-cancellation window any driver reason offers, in
   /// seconds. Read from `free_cancel_seconds` on `/cancellation-reasons`
@@ -28,6 +35,7 @@ class TripState {
     this.isBusy = false,
     this.error,
     this.freeCancelSeconds,
+    this.stops = RideStops.empty,
   });
 
   TripState copyWith({
@@ -36,6 +44,7 @@ class TripState {
     bool? isBusy,
     ApiException? error,
     int? freeCancelSeconds,
+    RideStops? stops,
     bool clearError = false,
     bool clearPolicy = false,
   }) =>
@@ -45,6 +54,7 @@ class TripState {
         isBusy: isBusy ?? this.isBusy,
         error: clearError ? null : (error ?? this.error),
         freeCancelSeconds: freeCancelSeconds ?? this.freeCancelSeconds,
+        stops: stops ?? this.stops,
       );
 
   TripPhase get phase => ride?.phase ?? TripPhase.headingToPickup;
@@ -96,6 +106,7 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
         ride: await _withRider(ride),
         policy: await _policyFor(ride),
         freeCancelSeconds: await _freeCancelWindow(ride),
+        stops: await _stopsFor(ride),
       ),
       err: (e) async => TripState(error: e),
     );
@@ -160,6 +171,16 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
     return result.valueOrNull;
   }
 
+  /// The per-leg breakdown.
+  ///
+  /// Best-effort like the rider and the policy: a multi-stop trip whose
+  /// breakdown fails to load still has to show Arrive/Start/Finish, so a
+  /// failure degrades to the single-leg view rather than taking the screen.
+  Future<RideStops> _stopsFor(Ride ride) async {
+    final result = await _repo.stops(ride.id);
+    return result.valueOrNull ?? RideStops.empty;
+  }
+
   void _startPolling() {
     _timer?.cancel();
     _timer = Timer.periodic(ref.read(tripPollIntervalProvider), (_) {
@@ -187,9 +208,14 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
             ? ride.withRider(_current.ride!.rider)
             : await _withRider(ride);
         if (_disposed) return;
+        // Re-read on every poll: the rider can add a stop mid-trip, and the
+        // waiting clock the sheet prints is the server's, not ours.
+        final stops = await _stopsFor(ride);
+        if (_disposed) return;
         _emit(_current.copyWith(
           ride: withRider,
           policy: policy,
+          stops: stops,
           clearPolicy: !waiting,
           clearError: true,
         ));
@@ -202,6 +228,78 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
   Future<Result<Ride>> arrive() => _transition(() => _repo.arrive(arg));
   Future<Result<Ride>> start() => _transition(() => _repo.start(arg));
   Future<Result<Ride>> complete() => _transition(() => _repo.complete(arg));
+
+  /// Marks arrival at stop [seq], starting the server's wait clock.
+  ///
+  /// The breakdown is re-read rather than patched locally: `arrived_at` is
+  /// stamped with the database's `now()`, and a clock started from the
+  /// handset's idea of the time would drift against the money.
+  Future<Result<void>> arriveAtStop(int seq) =>
+      _stopAction(() => _repo.arriveAtStop(arg, seq));
+
+  /// Marks departure from stop [seq]. Returns the wait charged there, which
+  /// is zero inside the free grace.
+  Future<Result<Pence>> departStop(int seq) async {
+    final ride = _current.ride;
+    if (ride == null) {
+      return Err(ApiException('NOT_READY', 'no ride loaded', 0));
+    }
+    _emit(_current.copyWith(isBusy: true, clearError: true));
+    final result = await _repo.departStop(ride.id, seq);
+    if (_disposed) return result;
+    await _settleStopAction(result.isOk ? null : result.errorOrNull);
+    return result;
+  }
+
+  /// Adds a stop to the live ride and re-prices every leg.
+  ///
+  /// The service pushes "Stop added" to the driver whoever called it, so a
+  /// driver adding their own stop will also see a notification about it.
+  Future<Result<AddedStop>> addStop({
+    required double lat,
+    required double lng,
+    required String label,
+  }) async {
+    final ride = _current.ride;
+    if (ride == null) {
+      return Err(ApiException('NOT_READY', 'no ride loaded', 0));
+    }
+    _emit(_current.copyWith(isBusy: true, clearError: true));
+    final result =
+        await _repo.addStop(ride.id, lat: lat, lng: lng, label: label);
+    if (_disposed) return result;
+    await _settleStopAction(result.isOk ? null : result.errorOrNull);
+    return result;
+  }
+
+  Future<Result<void>> _stopAction(Future<Result<void>> Function() call) async {
+    if (_current.ride == null) {
+      return Err(ApiException('NOT_READY', 'no ride loaded', 0));
+    }
+    _emit(_current.copyWith(isBusy: true, clearError: true));
+    final result = await call();
+    if (_disposed) return result;
+    await _settleStopAction(result.isOk ? null : result.errorOrNull);
+    return result;
+  }
+
+  /// Clears the busy flag and re-reads the breakdown, so the times and the
+  /// money on screen are the server's after every stop action.
+  ///
+  /// The stops read is deliberately not gated on success: a failed depart
+  /// may still have moved the row, and a stale breakdown is the one thing
+  /// that would misreport what the driver earned.
+  Future<void> _settleStopAction(ApiException? error) async {
+    final ride = _current.ride;
+    final stops = ride == null ? RideStops.empty : await _stopsFor(ride);
+    if (_disposed) return;
+    _emit(_current.copyWith(
+      isBusy: false,
+      stops: stops,
+      error: error,
+      clearError: error == null,
+    ));
+  }
 
   Future<Result<Ride>> cancel(String reasonId) {
     // The handler requires the acting user's id. It comes from the live

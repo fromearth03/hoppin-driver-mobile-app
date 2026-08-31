@@ -18,19 +18,34 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Hoppin Go — driver app.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="hoppin_driver">
+  <meta name="apple-mobile-web-app-title" content="Hoppin Driver">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
+  <!-- Favicon: the brand roundel. SVG where supported, PNG as fallback. -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>hoppin_driver</title>
+  <title>Hoppin Driver</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    Google Maps JavaScript API — google_maps_flutter_web needs this script on
+    the page; there is no Dart-side key for web.
+
+    MAPS_API_KEY is substituted at build time by tool/build_web.sh, so no key
+    is ever committed. A web key is public by nature (it ships in the page),
+    so restrict it by HTTP referrer in the Cloud console and cap the billing
+    quota — that restriction is the only thing protecting it.
+
+    Left as the literal placeholder, the map tiles simply fail to load; the
+    rest of the app is unaffected.
+  -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=__MAPS_API_KEY__&loading=async"></script>
 </head>
 <body>
   <!--

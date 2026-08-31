@@ -4,11 +4,13 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../../core/theme/colors.dart';
 import '../../data/models/ride.dart';
 
-/// Pickup, dropoff and the route between them.
+/// Pickup, any intermediate stops, dropoff, and the route between them.
 ///
 /// The polyline is the OSRM geometry the backend persisted at dispatch — the
 /// same road route the fare was priced against. We never ask the Directions
-/// API for our own, which would draw a line the driver was not paid for.
+/// API for our own, which would draw a line the driver was not paid for. On a
+/// multi-stop ride the service stitches the legs into that one polyline, so
+/// the whole journey is already in `route`.
 class TripMap extends StatelessWidget {
   final RideGeo geo;
 
@@ -70,6 +72,17 @@ class TripMap extends StatelessWidget {
           infoWindow: InfoWindow(title: geo.dropoff.label ?? 'Dropoff'),
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
         ),
+        // Intermediate stops, numbered in travel order so the driver can
+        // match a pin to the leg list without reading labels.
+        for (final (i, stop) in geo.waypoints.indexed)
+          Marker(
+            markerId: MarkerId('stop_$i'),
+            position: LatLng(stop.lat, stop.lng),
+            infoWindow:
+                InfoWindow(title: stop.label ?? 'Stop ${i + 1}'),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueOrange),
+          ),
       },
       polylines: {
         if (geo.route.isNotEmpty)
@@ -81,9 +94,14 @@ class TripMap extends StatelessWidget {
           ),
       },
       onMapCreated: (controller) {
-        if (geo.route.length > 1) {
-          controller.animateCamera(
-              CameraUpdate.newLatLngBounds(boundsFor(geo.route), 48));
+        // Frame the route when we have one, but fall back to the stops
+        // themselves: a multi-stop ride whose polyline failed to persist
+        // would otherwise open zoomed on the pickup with the stops off
+        // screen entirely.
+        final frame = geo.route.length > 1 ? geo.route : geo.allPoints;
+        if (frame.length > 1) {
+          controller
+              .animateCamera(CameraUpdate.newLatLngBounds(boundsFor(frame), 48));
         }
       },
     );
