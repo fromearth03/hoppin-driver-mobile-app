@@ -265,9 +265,17 @@ class _UploadZone extends StatelessWidget {
   const _UploadZone({super.key, required this.enabled, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => InkWell(
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        enabled: enabled,
+        child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: enabled ? onTap : null,
+        child: Opacity(
+        // The OutlinedButton this zone replaced greyed out while a save
+        // was in flight; a zone that looks live but swallows taps reads
+        // as broken.
+        opacity: enabled ? 1 : 0.45,
         child: CustomPaint(
           painter: const _DashedBorderPainter(
             color: AppColors.buttonPrimary,
@@ -297,6 +305,8 @@ class _UploadZone extends StatelessWidget {
               ],
             ),
           ),
+        ),
+        ),
         ),
       );
 }

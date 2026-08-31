@@ -6,11 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../core/theme/colors.dart';
 
-/// Avatar bytes, fetched with the caller's token and cached per URL for the
-/// session. A failed fetch resolves to null — the avatar falls back to its
-/// placeholder rather than surfacing an error for a decoration.
+/// Avatar bytes, fetched with the caller's token. A failed fetch resolves to
+/// null — the avatar falls back to its placeholder rather than surfacing an
+/// error for a decoration. autoDispose so a failure is retried on the next
+/// mount instead of being memoized as a grey circle for the whole session,
+/// and so a long shift's rider avatars do not accumulate unbounded.
 final avatarBytesProvider =
-    FutureProvider.family<Uint8List?, String>((ref, url) async {
+    FutureProvider.autoDispose.family<Uint8List?, String>((ref, url) async {
   final result = await ref.watch(apiClientProvider).getBytes(url);
   return result.valueOrNull;
 });

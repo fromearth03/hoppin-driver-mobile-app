@@ -55,7 +55,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final signedIn = status == AuthStatus.signedIn;
       if (!signedIn && !authRoutes.contains(path)) return Routes.signIn;
-      if (signedIn && authRoutes.contains(path)) return Routes.home;
+      // Expired-link is exempt from the signed-in bounce: opening a stale
+      // recovery email leaves the SDK holding a recovery session, so the
+      // driver IS signed in at the exact moment this screen is needed.
+      if (signedIn &&
+          authRoutes.contains(path) &&
+          path != Routes.expiredLink) {
+        return Routes.home;
+      }
       return null;
     },
     routes: [

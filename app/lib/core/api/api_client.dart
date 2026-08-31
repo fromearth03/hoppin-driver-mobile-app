@@ -22,10 +22,17 @@ class ApiClient {
     _dio.options.receiveTimeout = const Duration(seconds: 20);
     // Let non-2xx through so the envelope can be parsed rather than thrown.
     _dio.options.validateStatus = (_) => true;
+    final apiOrigin = Uri.parse(baseUrl).origin;
     _dio.interceptors
         .add(InterceptorsWrapper(onRequest: (options, handler) async {
-      final token = await _tokens.read();
-      if (token != null) options.headers['Authorization'] = 'Bearer $token';
+      // The token goes only to our own API. getBytes takes absolute URLs
+      // from server data (avatar_url is a DB string, and a move to a CDN
+      // host is anticipated) — a bearer token must never follow a URL to
+      // some other host.
+      if (options.uri.origin == apiOrigin) {
+        final token = await _tokens.read();
+        if (token != null) options.headers['Authorization'] = 'Bearer $token';
+      }
       handler.next(options);
     }));
   }
@@ -49,14 +56,16 @@ class ApiClient {
   /// absolute (the API returns full URLs for avatars).
   Future<Result<Uint8List>> getBytes(String url) async {
     try {
-      final response = await _dio.get<List<int>>(url,
+      final response = await _dio.get<dynamic>(url,
           options: Options(responseType: ResponseType.bytes));
       final status = response.statusCode ?? 500;
-      if (status >= 200 && status < 300 && response.data != null) {
-        return Ok(Uint8List.fromList(response.data!));
+      final data = response.data;
+      if (status >= 200 && status < 300 && data is List<int>) {
+        // ResponseType.bytes already yields a Uint8List; the copy is only
+        // for the defensive case where an adapter hands back a plain list.
+        return Ok(data is Uint8List ? data : Uint8List.fromList(data));
       }
-      return Err(ApiException(
-          status >= 500 ? 'INTERNAL' : 'NOT_FOUND', 'image fetch failed', status));
+      return Err(parseError(response));
     } on DioException catch (e) {
       return Err(ApiException('INTERNAL', e.message ?? 'network error', 0));
     }

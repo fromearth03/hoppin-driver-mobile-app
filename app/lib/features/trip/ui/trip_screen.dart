@@ -298,13 +298,14 @@ class TripScreen extends ConsumerWidget {
     };
 
     // The design reserves the brand orange for the two moments that move the
-    // meter — Start Trip and Finish Trip. "Arrived at Pickup" is drawn in the
-    // lilac of the forms: arriving states a fact, it doesn't start a charge.
+    // meter — Start Trip and Finish Trip. Everything else here (Arrived at
+    // Pickup, Back to Home, any future phase) states a fact rather than
+    // starting a charge, and stays in the forms' lilac.
+    final chargeMoment =
+        ride.phase == TripPhase.waiting || ride.phase == TripPhase.inTrip;
     final style = AppButtons.primary().copyWith(
       backgroundColor: WidgetStatePropertyAll(
-          ride.phase == TripPhase.headingToPickup
-              ? AppColors.buttonPrimary
-              : AppColors.accent),
+          chargeMoment ? AppColors.accent : AppColors.buttonPrimary),
       textStyle: const WidgetStatePropertyAll(
           TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
     );
