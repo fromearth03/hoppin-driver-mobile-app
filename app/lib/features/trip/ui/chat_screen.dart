@@ -93,12 +93,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           onLongPress: () => setState(() => _replyingTo = m),
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            constraints: const BoxConstraints(maxWidth: 280),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            constraints: const BoxConstraints(maxWidth: 290),
             decoration: BoxDecoration(
-              color: m.isMine ? AppColors.primary : AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              // The design gives the driver's own messages the brand
+              // orange and the rider's a plain white card.
+              color: m.isMine ? AppColors.accent : AppColors.surface,
+              borderRadius: BorderRadius.circular(22),
+              border: m.isMine
+                  ? null
+                  : Border.all(color: AppColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,6 +123,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 Text(
                   m.body,
                   style: AppText.body.copyWith(
+                      fontSize: 16,
                       color: m.isMine ? Colors.white : AppColors.textPrimary),
                 ),
                 if (m.isMine)

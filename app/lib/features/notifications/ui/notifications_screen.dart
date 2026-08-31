@@ -86,11 +86,30 @@ class NotificationsScreen extends ConsumerWidget {
                     message:
                         'Updates about your trips and account will appear here.',
                   ),
-                  itemBuilder: (context, n) => _NotificationTile(
-                    notification: n,
-                    onTap: () => controller.markRead(n.id),
-                    onDismissed: () => controller.dismiss(n.id),
-                  ),
+                  itemBuilder: (context, n) {
+                    final i = visible.indexOf(n);
+                    final previous = i > 0 ? visible[i - 1] : null;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // The design heads each day's run with its date. The
+                        // header is drawn only when the day changes, so a
+                        // single day's feed carries one "Today" and no repeats.
+                        if (previous == null ||
+                            !_sameDay(previous.createdAt, n.createdAt))
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+                            child: Text(_dayLabel(n.createdAt),
+                                style: AppText.title.copyWith(fontSize: 20)),
+                          ),
+                        _NotificationTile(
+                          notification: n,
+                          onTap: () => controller.markRead(n.id),
+                          onDismissed: () => controller.dismiss(n.id),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -164,6 +183,23 @@ class _FilterBar extends StatelessWidget {
               : AppColors.border,
         ),
       );
+}
+
+bool _sameDay(DateTime a, DateTime b) {
+  final x = a.toLocal();
+  final y = b.toLocal();
+  return x.year == y.year && x.month == y.month && x.day == y.day;
+}
+
+/// "Today" and "Yesterday" read better than a date the driver has to work
+/// out; anything older gets the date itself.
+String _dayLabel(DateTime when) {
+  final now = DateTime.now();
+  if (_sameDay(when, now)) return 'Today';
+  if (_sameDay(when, now.subtract(const Duration(days: 1)))) {
+    return 'Yesterday';
+  }
+  return DateFormat('d MMMM').format(when.toLocal());
 }
 
 class _NotificationTile extends StatelessWidget {
@@ -241,8 +277,11 @@ class _NotificationTile extends StatelessWidget {
                                 style: AppText.bodySecondary),
                           ],
                           const SizedBox(height: 4),
+                          // Time only: the day is already the group header
+                          // above, so repeating the date on every row would
+                          // be noise.
                           Text(
-                            DateFormat('d MMM, HH:mm')
+                            DateFormat('HH:mm')
                                 .format(notification.createdAt.toLocal()),
                             style: AppText.caption
                                 .copyWith(color: AppColors.textDisabled),

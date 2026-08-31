@@ -131,26 +131,30 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
               children: [
                 Padding(
                   padding: EdgeInsets.fromLTRB(20, 18, 20, 20),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: _ContactTile(
-                          icon: Icons.receipt_long_outlined,
-                          title: 'Open Ticket',
-                          subtitle:
-                              'Representative will respond in 24 Hours',
+                  // The two tiles match heights, so the taller subtitle sets
+                  // the row rather than leaving a ragged bottom edge.
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _ContactTile(
+                            icon: Icons.receipt_long_outlined,
+                            title: 'Open Ticket',
+                            subtitle:
+                                'Representative will respond in 24 Hours',
+                          ),
                         ),
-                      ),
-                      SizedBox(width: 14),
-                      Expanded(
-                        child: _ContactTile(
-                          icon: Icons.mail_outline,
-                          title: 'Email',
-                          subtitle: _supportEmail,
+                        SizedBox(width: 14),
+                        Expanded(
+                          child: _ContactTile(
+                            icon: Icons.mail_outline,
+                            title: 'Email',
+                            subtitle: _supportEmail,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],

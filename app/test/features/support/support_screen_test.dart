@@ -86,6 +86,10 @@ void main() {
 
     await tester.enterText(
         find.byKey(const Key('description')), 'I was underpaid.');
+    // The form sits mid-page under the FAQ card, so the button has to be
+    // brought into view before it can be tapped.
+    await tester.ensureVisible(find.text('Submit'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Submit'));
     await tester.pumpAndSettle();
 
