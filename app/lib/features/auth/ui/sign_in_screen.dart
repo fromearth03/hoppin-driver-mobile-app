@@ -61,7 +61,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   const Text('Welcome back', style: AppText.display),
                   const SizedBox(height: 8),
                   const Text(
-                    'Login using your credentials provided by the company.',
+                    'Sign in to start driving.',
                     style: AppText.bodySecondary,
                   ),
                   const SizedBox(height: 32),
@@ -111,6 +111,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
                         : const Text('Sign In'),
+                  ),
+                  TextButton(
+                    key: const Key('go_to_sign_up'),
+                    onPressed: _busy ? null : () => context.go(Routes.signUp),
+                    child: const Text('New driver? Create an account'),
                   ),
                 ],
               ),

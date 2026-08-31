@@ -77,8 +77,12 @@ class HomeScreen extends ConsumerWidget {
                   BlockerList(
                     status: state.status!,
                     onOpenDocument: (_) => context.go(Routes.documents),
-                    onRegisterVehicle: () => context.go(Routes.documents),
+                    // There is a vehicle form now; sending them to Documents
+                    // left them hunting for a screen that was never there.
+                    onRegisterVehicle: () =>
+                        context.push(Routes.onboardingVehicle),
                     onContactSupport: () => context.go(Routes.support),
+                    onOpenOnboarding: () => context.push(Routes.onboarding),
                   ),
                 if (state.offer != null)
                   OfferCard(

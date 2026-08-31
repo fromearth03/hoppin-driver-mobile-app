@@ -15,12 +15,18 @@ class BlockerList extends StatelessWidget {
   final VoidCallback? onRegisterVehicle;
   final VoidCallback? onContactSupport;
 
+  /// Opens the application checklist. A self-registered driver waiting on
+  /// approval has no single document to fix — the checklist is the only
+  /// place their remaining steps live.
+  final VoidCallback? onOpenOnboarding;
+
   const BlockerList({
     super.key,
     required this.status,
     this.onOpenDocument,
     this.onRegisterVehicle,
     this.onContactSupport,
+    this.onOpenOnboarding,
   });
 
   /// Indexed from one: the widget returns early when nothing is blocking,
@@ -97,6 +103,7 @@ class BlockerList extends StatelessWidget {
         () => onOpenDocument?.call(documentType),
       BlockedAction.registerVehicle => onRegisterVehicle,
       BlockedAction.contactSupport => onContactSupport,
+      BlockedAction.openOnboarding => onOpenOnboarding,
       _ => null,
     };
 

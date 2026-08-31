@@ -1,7 +1,16 @@
 import 'api_exception.dart';
 
 /// What a blocked-from-online row offers the driver to do about it.
-enum BlockedAction { openDocuments, registerVehicle, contactSupport, none }
+enum BlockedAction {
+  openDocuments,
+  registerVehicle,
+  contactSupport,
+
+  /// Send the driver to their application checklist. Only useful now that a
+  /// driver can register themselves and has steps of their own to finish.
+  openOnboarding,
+  none,
+}
 
 class NotEligibleCopy {
   final String title;
@@ -81,10 +90,21 @@ const _blocked = <String, NotEligibleCopy>{
       'Add your vehicle to start driving.', BlockedAction.registerVehicle),
   'DEVICE_BLACKLISTED': NotEligibleCopy('Device blocked',
       'This device has been blocked.', BlockedAction.contactSupport),
+  // A self-registered driver sets up their own payouts, so this is theirs
+  // to finish. It used to tell them to wait on an operator who was never
+  // coming.
   'PAYOUT_NOT_READY': NotEligibleCopy(
       'Payment setup incomplete',
-      'Your operator needs to finish setting up payments.',
-      BlockedAction.contactSupport),
+      'Finish setting up how you get paid.',
+      BlockedAction.openOnboarding),
+  'NOT_ELIGIBLE': NotEligibleCopy(
+      'Waiting for approval',
+      'An admin reviews every driver before their first trip.',
+      BlockedAction.openOnboarding),
+  'not_compliant': NotEligibleCopy(
+      'Checks outstanding',
+      'Some of your details still need completing.',
+      BlockedAction.openOnboarding),
   'UNKNOWN': NotEligibleCopy("Can't go online right now",
       'Please contact support.', BlockedAction.contactSupport),
 };

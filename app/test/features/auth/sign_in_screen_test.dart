@@ -37,11 +37,14 @@ void main() {
         .thenAnswer((_) => const Stream<AuthState>.empty());
   });
 
-  testWidgets('states that credentials come from the company', (tester) async {
+  testWidgets('offers a way to register', (tester) async {
     await tester.pumpWidget(wrap(repo));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('provided by the company'), findsOneWidget);
+    // Credentials no longer come from the company - a driver can sign
+    // themselves up, and the only route in is from here.
+    expect(find.byKey(const Key('go_to_sign_up')), findsOneWidget);
+    expect(find.textContaining('provided by the company'), findsNothing);
   });
 
   testWidgets('rejects an empty email before calling the server',
