@@ -15,6 +15,7 @@ import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/app_loading.dart';
 import '../data/models/support_ticket.dart';
 import '../data/support_repository.dart';
+import 'complaints_tab.dart';
 
 final ticketsProvider = FutureProvider<List<SupportTicket>>((ref) async {
   final result = await ref.watch(supportRepositoryProvider).tickets();
@@ -128,14 +129,45 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(ticketsProvider);
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: settingsAppBar(context, 'Help & Support'),
+        body: Column(
+          children: [
+            // The design's two lanes: everyday help, and formal complaints
+            // (typed reason + the trip it happened on).
+            TabBar(
+              labelColor: AppColors.textPrimary,
+              unselectedLabelColor: AppColors.textSecondary,
+              indicatorColor: AppColors.textPrimary,
+              labelStyle:
+                  AppText.body.copyWith(fontWeight: FontWeight.w600),
+              tabs: const [
+                Tab(text: 'Support'),
+                Tab(text: 'Complaints'),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _supportTab(),
+                  const ComplaintsTab(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: settingsAppBar(context, 'Help & Support'),
-      // Fixed sections, not a feed: a lazy list would leave the tickets
-      // section out of the tree entirely behind the FAQ.
-      body: SingleChildScrollView(
+  Widget _supportTab() {
+    final async = ref.watch(ticketsProvider);
+    // Fixed sections, not a feed: a lazy list would leave the tickets
+    // section out of the tree entirely behind the FAQ.
+    return SingleChildScrollView(
         padding: const EdgeInsets.only(
             top: 8, bottom: AppShell.bottomClearance),
         child: Column(
@@ -168,26 +200,15 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                         ),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: Consumer(builder: (context, ref, _) {
-                            final email = ref
-                                    .watch(platformContactsProvider)
-                                    .valueOrNull
-                                    ?.supportEmail ??
-                                '';
-                            return _ContactTile(
-                              icon: Icons.mail_outline,
-                              title: 'Email',
-                              // The live address from /contacts — a made-up
-                              // one would bounce a plea for help into the
-                              // void.
-                              subtitle:
-                                  email.isEmpty ? 'Not available yet' : email,
-                              onTap: email.isEmpty
-                                  ? null
-                                  : () => launchUrl(
-                                      Uri(scheme: 'mailto', path: email)),
-                            );
-                          }),
+                          child: Builder(
+                            builder: (context) => _ContactTile(
+                              icon: Icons.flag_outlined,
+                              title: 'Complaints',
+                              subtitle: 'File a formal complaint about a trip',
+                              onTap: () => DefaultTabController.of(context)
+                                  .animateTo(1),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -198,27 +219,74 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
             const SettingsCard(
               title: 'Legal',
               children: [
-                _FaqRow(
-                  question: 'Terms of Services',
-                  answer:
-                      'Your agreement with your operator governs your work on '
-                      'the platform. Contact support for a copy of the terms '
-                      'that apply to you.',
-                ),
-                _FaqRow(
-                  question: 'Privacy Policy',
-                  answer:
-                      'We hold your personal details to run the service and to '
-                      'meet licensing rules. You can ask us to erase them from '
-                      'Settings, under Delete account.',
-                ),
+                // Greyed with a "Soon" tag, as designed — the documents are
+                // being written; a row that opens nothing must say so.
+                _SoonRow(label: 'Terms of Services'),
+                _SoonRow(label: 'Privacy Policy'),
+              ],
+            ),
+            // The design's Contact & Emergency card: live values from
+            // /contacts, right-aligned, each row tappable; emergency in red.
+            SettingsCard(
+              title: 'Contact & Emergency',
+              children: [
+                Consumer(builder: (context, ref, _) {
+                  final c = ref.watch(platformContactsProvider).valueOrNull;
+                  final rows = <Widget>[
+                    if ((c?.supportEmail ?? '').isNotEmpty)
+                      _ContactRow(
+                        icon: Icons.mail_outline,
+                        label: 'Email',
+                        value: c!.supportEmail,
+                        onTap: () => launchUrl(
+                            Uri(scheme: 'mailto', path: c.supportEmail)),
+                      ),
+                    if ((c?.supportPhone ?? '').isNotEmpty)
+                      _ContactRow(
+                        icon: Icons.phone_outlined,
+                        label: 'Phone',
+                        value: c!.supportPhone,
+                        onTap: () => launchUrl(
+                            Uri(scheme: 'tel', path: c.supportPhone)),
+                      ),
+                    if ((c?.whatsappNumber ?? '').isNotEmpty)
+                      _ContactRow(
+                        icon: Icons.sms_outlined,
+                        label: 'WhatsApp',
+                        value: c!.whatsappNumber,
+                        onTap: () => launchUrl(
+                          Uri.https(
+                              'wa.me',
+                              '/'
+                              '${c.whatsappNumber.replaceAll(RegExp(r'[^0-9]'), '')}'),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      ),
+                    if ((c?.emergencyPhone ?? '').isNotEmpty)
+                      _ContactRow(
+                        icon: Icons.emergency_outlined,
+                        label: 'Emergency',
+                        value: c!.emergencyPhone,
+                        valueColor: AppColors.negative,
+                        onTap: () => launchUrl(
+                            Uri(scheme: 'tel', path: c.emergencyPhone)),
+                      ),
+                  ];
+                  if (rows.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 18, 20, 22),
+                      child: Text('Contact details are not set up yet.',
+                          style: AppText.bodySecondary),
+                    );
+                  }
+                  return Column(children: rows);
+                }),
               ],
             ),
             _recentIssues(async),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _openTicketCard(List<ComplaintType> types) => SettingsCard(
@@ -330,7 +398,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                     child: Column(
                       children: tickets
-                          .map((t) => _TicketCard(
+                          .map((t) => TicketCard(
                                 ticket: t,
                                 onTap: () => context.push(
                                     '${Routes.supportTicket}/${t.id}'),
@@ -435,10 +503,10 @@ class _ContactTile extends StatelessWidget {
 
 /// A recent issue, tinted by its outcome the way the design tints them:
 /// green resolved, amber in progress, red rejected.
-class _TicketCard extends StatelessWidget {
+class TicketCard extends StatelessWidget {
   final SupportTicket ticket;
   final VoidCallback? onTap;
-  const _TicketCard({required this.ticket, this.onTap});
+  const TicketCard({required this.ticket, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -509,4 +577,80 @@ class _TicketCard extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// A legal row the design greys out with a "Soon" tag — present, honest
+/// about not opening anything yet.
+class _SoonRow extends StatelessWidget {
+  final String label;
+  const _SoonRow({required this.label});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        child: Row(
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: CircleAvatar(
+                  radius: 3, backgroundColor: AppColors.textDisabled),
+            ),
+            Expanded(
+              child: Text(label,
+                  style: AppText.body
+                      .copyWith(fontSize: 17, color: AppColors.textDisabled)),
+            ),
+            Text('Soon', style: AppText.caption),
+          ],
+        ),
+      );
+}
+
+/// One Contact & Emergency row: muted label left, the live value bold on the
+/// right, the whole row tappable into the dialler/mail/WhatsApp.
+class _ContactRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? valueColor;
+  final VoidCallback onTap;
+
+  const _ContactRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: AppColors.textPrimary),
+              const SizedBox(width: 12),
+              Text(label,
+                  style: AppText.body
+                      .copyWith(fontSize: 16, color: AppColors.textSecondary)),
+              const Spacer(),
+              Flexible(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.body.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: valueColor ?? AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 }

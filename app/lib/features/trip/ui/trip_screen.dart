@@ -15,6 +15,7 @@ import '../data/models/ride.dart';
 import '../data/models/ride_stop.dart';
 import '../logic/trip_controller.dart';
 import 'widgets/cancel_sheet.dart';
+import 'widgets/emergency_sheet.dart';
 import 'widgets/map_pills.dart';
 import 'widgets/rider_card.dart';
 import 'widgets/stops_card.dart';
@@ -106,6 +107,16 @@ class TripScreen extends ConsumerWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // Every phase: a driver in trouble must never hunt
+                          // for help. Red, first in the stack.
+                          _mapButton(
+                            icon: Icons.sos,
+                            tooltip: 'Emergency',
+                            color: AppColors.negative,
+                            onPressed: () => EmergencySheet.show(context,
+                                rideId: ride.id),
+                          ),
+                          const SizedBox(height: 10),
                           // Cancelling is a pre-trip act: wrong pickup, or a
                           // passenger who never showed. Once the ride starts
                           // there is a passenger in the car and the button
@@ -186,10 +197,11 @@ class TripScreen extends ConsumerWidget {
     required IconData icon,
     required String tooltip,
     required VoidCallback onPressed,
+    Color? color,
   }) =>
       Container(
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.45),
+          color: color ?? Colors.black.withValues(alpha: 0.45),
           borderRadius: BorderRadius.circular(12),
         ),
         child: IconButton(

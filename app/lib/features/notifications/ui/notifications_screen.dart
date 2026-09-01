@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../app_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/nav/app_shell.dart';
@@ -39,7 +42,8 @@ class NotificationsScreen extends ConsumerWidget {
             ? IconButton(
                 icon: const Icon(Icons.arrow_back,
                     color: AppColors.textPrimary, size: 26),
-                onPressed: () => Navigator.of(context).maybePop(),
+                onPressed: () =>
+              context.canPop() ? context.pop() : context.go(Routes.home),
               )
             : null,
         title: Text('Notifications', style: AppText.title.copyWith(fontSize: 24)),

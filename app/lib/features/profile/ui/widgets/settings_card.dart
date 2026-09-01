@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../app_router.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
@@ -149,7 +152,8 @@ PreferredSizeWidget settingsAppBar(BuildContext context, String title) => AppBar
           ? IconButton(
               icon: const Icon(Icons.arrow_back,
                   color: AppColors.textPrimary, size: 26),
-              onPressed: () => Navigator.of(context).maybePop(),
+              onPressed: () =>
+              context.canPop() ? context.pop() : context.go(Routes.home),
             )
           : null,
       title: Text(title, style: AppText.title.copyWith(fontSize: 24)),

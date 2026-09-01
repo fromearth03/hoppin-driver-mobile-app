@@ -118,7 +118,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back,
               color: AppColors.textPrimary, size: 26),
-          onPressed: () => Navigator.of(context).maybePop(),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go(Routes.home),
         ),
         title: Text('Personal Information',
             style: AppText.title.copyWith(fontSize: 24)),

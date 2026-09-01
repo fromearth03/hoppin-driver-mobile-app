@@ -146,18 +146,16 @@ class _ReportCardState extends ConsumerState<ReportCard> {
                 ),
               ),
               const SizedBox(width: 8),
+              // No chevron: the service produces exactly one format (it
+              // 400s anything but CSV), and an arrow on a control with one
+              // option promises a choice that does not exist. The design's
+              // PDF option needs either a backend format or a client-side
+              // renderer before this can honestly become a picker.
               _field(
                 label: 'Format',
                 child: _box(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                  child:
                       Text('CSV', style: AppText.body.copyWith(fontSize: 14)),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.keyboard_arrow_down,
-                          size: 18, color: AppColors.textSecondary),
-                    ],
-                  ),
                 ),
               ),
               const SizedBox(width: 8),

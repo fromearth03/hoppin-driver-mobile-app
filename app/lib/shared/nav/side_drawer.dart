@@ -88,7 +88,10 @@ class SideDrawer extends ConsumerWidget {
 
   static void _go(BuildContext context, String route) {
     Navigator.of(context).pop();
-    context.go(route);
+    // push, not go: these screens live one step deeper than the tab the
+    // driver was on, and the app bar's back arrow only exists when there
+    // is somewhere to pop back to.
+    context.push(route);
   }
 
   Widget _item(
