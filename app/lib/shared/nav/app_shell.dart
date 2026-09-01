@@ -64,7 +64,11 @@ class AppShell extends StatelessWidget {
           top: false,
           child: Padding(
             padding: const EdgeInsets.only(bottom: 18),
+            // heightFactor pins the Center to its child's height —
+            // bottomNavigationBar hands out loose constraints, and a bare
+            // Center expands into them, parking the pill mid-screen.
             child: Center(
+              heightFactor: 1,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(28),
                 child: BackdropFilter(
