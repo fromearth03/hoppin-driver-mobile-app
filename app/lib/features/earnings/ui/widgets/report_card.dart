@@ -122,72 +122,89 @@ class _ReportCardState extends ConsumerState<ReportCard> {
             ],
           ),
           const SizedBox(height: 18),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                flex: 5,
-                child: _field(
-                  label: 'Date',
-                  child: GestureDetector(
-                    onTap: _pickRange,
-                    child: _box(
-                      child: Text(label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.body.copyWith(fontSize: 14)),
-                    ),
+          // The design draws one row, but a fixed format box and a labelled
+          // Download button leave a 360px phone ~50px for the date — the one
+          // value the driver chose. LayoutBuilder keeps the single row where
+          // it genuinely fits and stacks the date above the actions where it
+          // does not, so nothing ellipsizes or overflows.
+          LayoutBuilder(builder: (context, constraints) {
+            final oneRow = constraints.maxWidth >= 340;
+            final date = _field(
+              label: 'Date',
+              child: GestureDetector(
+                onTap: _pickRange,
+                child: _box(
+                  child: Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.body.copyWith(fontSize: 14)),
+                ),
+              ),
+            );
+            final actions = <Widget>[
+              _field(
+                label: 'Format',
+                child: _box(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('CSV', style: AppText.body.copyWith(fontSize: 14)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.keyboard_arrow_down,
+                          size: 18, color: AppColors.textSecondary),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 3,
-                child: _field(
-                  label: 'Format',
-                  child: _box(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('CSV', style: AppText.body.copyWith(fontSize: 14)),
-                        const Icon(Icons.keyboard_arrow_down,
-                            size: 18, color: AppColors.textSecondary),
-                      ],
-                    ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 46,
+                child: FilledButton(
+                  onPressed: _busy ? null : _download,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.info,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
+                  child: _busy
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.download, size: 20),
+                            SizedBox(width: 6),
+                            Text('Download',
+                                style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 48,
-            child: FilledButton(
-              onPressed: _busy ? null : _download,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.info,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              child: _busy
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.download, size: 20),
-                        SizedBox(width: 8),
-                        Text('Download',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-            ),
-          ),
+            ];
+            if (oneRow) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [Expanded(child: date), const SizedBox(width: 8), ...actions],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                date,
+                const SizedBox(height: 10),
+                Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: actions),
+              ],
+            );
+          }),
         ],
       ),
     );

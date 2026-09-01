@@ -1,20 +1,20 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app_router.dart';
 import '../../core/theme/colors.dart';
-import '../../core/theme/typography.dart';
 import 'side_drawer.dart';
 
 /// Bottom nav + drawer wrapper. The four tabs are locked: Home, Earnings,
 /// Docs, Stats. Trips is a drawer destination, not a tab.
 ///
-/// The design draws the tab bar as a floating grey pill — centred, about
-/// three-fifths of the screen wide, lifted clear of the bottom edge — rather
-/// than a full-width Material bar, and marks the selected tab by filling its
-/// icon instead of drawing an indicator behind it. It appears identically on
-/// every screen in the pack (offline home, online home, stats), so the grey
-/// is the bar's own colour, not the offline state tinting the chrome.
+/// The design draws the tab bar as a floating frosted pill — centred,
+/// roughly three-fifths of the screen wide, lifted clear of the bottom edge,
+/// icons only, no labels. The grey is translucent over a backdrop blur so
+/// the page stays legible through it, and the selected tab is marked by
+/// filling its icon rather than drawing an indicator behind it.
 class AppShell extends StatelessWidget {
   final Widget child;
   final int currentIndex;
@@ -63,24 +63,31 @@ class AppShell extends StatelessWidget {
         bottomNavigationBar: SafeArea(
           top: false,
           child: Padding(
-            // The labelled bar in the design spans the width inset by a
-            // thumb's width each side, sitting clear of the bottom edge.
-            padding: const EdgeInsets.fromLTRB(17, 0, 17, 18),
-            child: Material(
-              color: AppColors.textSecondary,
-              borderRadius: BorderRadius.circular(24),
-              clipBehavior: Clip.antiAlias,
-              child: Row(
-                children: [
-                  for (var i = 0; i < _tabs.length; i++)
-                    Expanded(
-                      child: _TabButton(
-                        tab: _tabs[i],
-                        selected: i == currentIndex,
-                        onTap: () => context.go(Routes.tabs[i]),
+            padding: const EdgeInsets.only(bottom: 18),
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  child: Material(
+                    color: AppColors.navPill.withValues(alpha: 0.82),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (var i = 0; i < _tabs.length; i++)
+                            _TabButton(
+                              tab: _tabs[i],
+                              selected: i == currentIndex,
+                              onTap: () => context.go(Routes.tabs[i]),
+                            ),
+                        ],
                       ),
                     ),
-                ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -114,47 +121,46 @@ class _TabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final icon = Icon(
       selected ? tab.selectedIcon : tab.icon,
-      size: tab.ringed ? 17 : 26,
+      size: tab.ringed ? 16 : 24,
       color: Colors.white,
     );
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: 26,
-              child: tab.ringed
-                  ? Container(
-                      width: 26,
-                      height: 26,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: selected ? 2.4 : 1.6,
+    // Icon only — the design's pill carries no labels. The label survives
+    // as the tooltip and the semantic name, so the tab is still findable
+    // by assistive tech and by hover.
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: tab.label,
+      child: Tooltip(
+        message: tab.label,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 13),
+            child: SizedBox(
+              height: 24,
+              width: 24,
+              child: Center(
+                child: tab.ringed
+                    ? Container(
+                        width: 24,
+                        height: 24,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: selected ? 2.2 : 1.5,
+                          ),
                         ),
-                      ),
-                      child: icon,
-                    )
-                  : icon,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              tab.label,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.fade,
-              style: AppText.caption.copyWith(
-                color: Colors.white,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                        child: icon,
+                      )
+                    : icon,
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

@@ -5,10 +5,10 @@ import '../../../../core/theme/colors.dart';
 /// The card an offline driver lands on: the reason to go online, and the
 /// button that does it.
 ///
-/// The design puts a photograph behind this. There is no asset in the pack —
-/// only a flattened PNG of the whole screen — so it is drawn as a gradient
-/// until a real image is supplied. Swap the decoration for a DecorationImage
-/// and nothing else here changes.
+/// The photograph is the design's own — cropped out of the Figma export
+/// (the car and skyline, clear of the baked-in text) and anchored right,
+/// with a dark scrim running in from the left so the copy stays readable
+/// at any card width.
 class OfflineHero extends StatelessWidget {
   final VoidCallback? onGoOnline;
 
@@ -18,15 +18,32 @@ class OfflineHero extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         height: 250,
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1B1B3A), Color(0xFF3D2A6B), Color(0xFF7A4A8C)],
+          color: const Color(0xFF1B1B3A),
+          image: const DecorationImage(
+            image: AssetImage('assets/brand/offline_hero_photo.jpg'),
+            fit: BoxFit.cover,
+            alignment: Alignment.centerRight,
           ),
         ),
-        child: Padding(
+        child: Container(
+          // The scrim sits between the photo and the copy, so the text
+          // keeps its contrast without dimming itself.
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Color(0xE01B1B3A),
+                Color(0x731B1B3A),
+                Colors.transparent,
+              ],
+              stops: [0, 0.45, 0.8],
+            ),
+          ),
+          child: Padding(
           padding: const EdgeInsets.all(22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,6 +96,7 @@ class OfflineHero extends StatelessWidget {
                 ),
               ),
             ],
+          ),
           ),
         ),
       );

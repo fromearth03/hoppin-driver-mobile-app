@@ -78,7 +78,8 @@ class PeriodGrid extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Icon(Icons.account_balance_wallet_outlined,
+                // The design's pictogram: a document with money on it.
+                const Icon(Icons.request_quote_outlined,
                     size: 26, color: AppColors.textPrimary),
                 const SizedBox(width: 8),
                 Expanded(

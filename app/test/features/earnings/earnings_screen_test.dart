@@ -162,7 +162,10 @@ void main() {
     await tester.pumpWidget(wrap(repo, trips));
     await tester.pumpAndSettle();
 
-    expect(find.text('−£50.00'), findsOneWidget);
+    // Magnitude under the "You Owe" caption — the caption carries the
+    // direction, and a minus on top of it would read as the company owing.
+    expect(find.text('£50.00'), findsOneWidget);
+    expect(find.text('−£50.00'), findsNothing);
     // A red "Company Owes You" is a contradiction; debt says so.
     expect(find.text('You Owe'), findsOneWidget);
   });

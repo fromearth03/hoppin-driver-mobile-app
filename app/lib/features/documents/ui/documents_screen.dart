@@ -63,12 +63,21 @@ class DocumentsScreen extends ConsumerWidget {
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(
                       16, 12, 16, AppShell.bottomClearance),
-                  sliver: SliverGrid.count(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 1.12,
-                    children: [
+                  // Sized by extent, not aspect ratio: the card's content is
+                  // a fixed stack (icon, two text lines), so its height is a
+                  // constant — an aspect ratio would squash it on narrow
+                  // phones and balloon it on tablets. The max tile width
+                  // adds columns as the screen grows instead of stretching
+                  // two tiles to fill it.
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 230,
+                      mainAxisExtent: 148,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                    ),
+                    delegate: SliverChildListDelegate([
                       ...slots.map((slot) => DocumentCard(
                             slot: slot,
                             onTap: () =>
@@ -90,7 +99,7 @@ class DocumentsScreen extends ConsumerWidget {
                           );
                         },
                       ),
-                    ],
+                    ]),
                   ),
                 ),
                 // Rejections are the one thing a tile cannot hold — the

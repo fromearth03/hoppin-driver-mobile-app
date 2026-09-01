@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_loading.dart';
 import '../data/models/driver_promotion.dart';
 import '../logic/earnings_controller.dart';
 import 'widgets/balance_cards.dart';
+import 'widgets/owes_dialog.dart';
 import 'widgets/breakdown_card.dart';
 import 'widgets/earnings_card.dart';
 import 'widgets/last_updated_bar.dart';
@@ -81,7 +82,14 @@ class EarningsScreen extends ConsumerWidget {
                   if (state.wallet != null)
                     BalanceCards(
                       wallet: state.wallet!,
-                      onViewStatement: () => context.push(Routes.statement),
+                      // The design opens the dark balance overlay here; the
+                      // full statement page stays reachable from the drawer
+                      // and from the overlay's Dispute button.
+                      onViewStatement: () => OwesDialog.show(
+                        context,
+                        wallet: state.wallet!,
+                        onDispute: () => context.push(Routes.statement),
+                      ),
                     ),
                   TripStrip(
                     period: state.period,

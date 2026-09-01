@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app_router.dart';
 import '../../../core/api/error_codes.dart';
+import '../../support/data/support_repository.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_buttons.dart';
@@ -105,11 +106,16 @@ class TripScreen extends ConsumerWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _mapButton(
-                            icon: Icons.close,
-                            tooltip: 'Cancel ride',
-                            onPressed: () => _cancel(context, ref, state),
-                          ),
+                          // Cancelling is a pre-trip act: wrong pickup, or a
+                          // passenger who never showed. Once the ride starts
+                          // there is a passenger in the car and the button
+                          // goes away.
+                          if (ride.phase != TripPhase.inTrip)
+                            _mapButton(
+                              icon: Icons.close,
+                              tooltip: 'Cancel ride',
+                              onPressed: () => _cancel(context, ref, state),
+                            ),
                           // Adding a stop is only possible while the ride is
                           // live; the handler answers 409 RIDE_CLOSED
                           // otherwise. Offered from the trip proper, once
@@ -429,18 +435,49 @@ class TripScreen extends ConsumerWidget {
 
   Future<void> _cancel(
       BuildContext context, WidgetRef ref, TripState state) async {
-    final reasonId = await CancelSheet.show(
+    final choice = await CancelSheet.show(
       context,
       freeCancelRemaining: state.freeCancelSecondsRemaining,
     );
-    if (reasonId == null || !context.mounted) return;
+    if (choice == null || !context.mounted) return;
 
-    final result =
-        await ref.read(tripControllerProvider(rideId).notifier).cancel(reasonId);
+    final result = await ref
+        .read(tripControllerProvider(rideId).notifier)
+        .cancel(choice.reasonId);
     if (!context.mounted) return;
 
     result.when(
-      ok: (_) => context.go(Routes.home),
+      ok: (_) {
+        // The driver's own words have no field on the cancel call, so they
+        // go to support against the ride. Navigation doesn't wait on the
+        // ticket, but its failure is not silent either — losing the one
+        // record of why the ride was cancelled deserves a nudge to refile.
+        if (choice.details.isNotEmpty) {
+          final messenger = ScaffoldMessenger.of(context);
+          ref
+              .read(supportRepositoryProvider)
+              .create(
+                // An other-reason cancel is named as such so operations can
+                // audit it — it carried no configured reason or fee, and
+                // this ticket is its only paper trail.
+                subject: choice.reasonId == null
+                    ? 'Ride cancelled — other reason (review)'
+                    : 'Ride cancellation details',
+                category: 'ride',
+                ticketBody: choice.details,
+                rideId: rideId,
+              )
+              .then((r) {
+            if (!r.isOk) {
+              messenger.showSnackBar(const SnackBar(
+                content: Text("Your note to support didn't send — please "
+                    'refile it from Help & Support.'),
+              ));
+            }
+          });
+        }
+        context.go(Routes.home);
+      },
       // NO_SHOW_TOO_EARLY renders as a countdown rather than a bare refusal,
       // so the driver knows how long to keep waiting.
       err: (e) => ScaffoldMessenger.of(context)

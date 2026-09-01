@@ -38,13 +38,15 @@ void main() {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
+    // The pill is icon-only; the names live on as tooltips, which is also
+    // what assistive tech reads.
     final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
     final labels = tester
-        .widgetList<Text>(find.descendant(
+        .widgetList<Tooltip>(find.descendant(
           of: find.byWidget(scaffold.bottomNavigationBar!),
-          matching: find.byType(Text),
+          matching: find.byType(Tooltip),
         ))
-        .map((t) => t.data)
+        .map((t) => t.message)
         .toList();
 
     expect(labels, ['Home', 'Earnings', 'Docs', 'Stats']);

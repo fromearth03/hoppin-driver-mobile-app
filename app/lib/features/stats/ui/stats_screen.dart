@@ -67,7 +67,7 @@ class StatsScreen extends ConsumerWidget {
                       children: [
                         StatTile(
                           icon: Icons.directions_car_filled_outlined,
-                          tint: AppColors.primaryLight,
+                          tint: AppColors.statPurple,
                           label: 'Total Trips',
                           // The design renders this as "£ 1247.00". It is a
                           // trip count, not money — no currency symbol.
@@ -93,7 +93,7 @@ class StatsScreen extends ConsumerWidget {
                         ),
                         StatTile(
                           icon: Icons.close_rounded,
-                          tint: AppColors.negative,
+                          tint: AppColors.statRed,
                           label: 'Cancellation Rate',
                           value:
                               stats?.ratePercent(stats.cancellationRate) ?? '—',

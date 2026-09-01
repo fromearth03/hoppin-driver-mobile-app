@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/money.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
 import '../../data/models/wallet.dart';
@@ -39,9 +40,14 @@ class BalanceCards extends StatelessWidget {
           children: [
             Expanded(
               child: _tile(
-                amount: wallet.availableBalance.format(),
+                // Magnitude under a "You Owe" caption — the caption already
+                // states the direction; a minus on top of it reads as the
+                // company owing the driver. Same rule as the statement panel.
+                amount: Pence(wallet.availableBalance.pence.abs()).format(),
                 caption: owes ? 'You Owe' : 'Company Owes You',
-                colour: owes ? AppColors.negative : AppColors.positive,
+                // The design's coral, not the deeper crimson — this card is
+                // a statement of balance, not an error state.
+                colour: owes ? AppColors.statRed : AppColors.positive,
                 action: 'View Details',
                 onTap: onViewStatement,
               ),

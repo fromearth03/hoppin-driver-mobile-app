@@ -16,6 +16,7 @@ ThemeData appTheme() {
 
   return ThemeData(
     useMaterial3: true,
+    fontFamily: AppText.fontFamily,
     colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.background,
     appBarTheme: const AppBarTheme(

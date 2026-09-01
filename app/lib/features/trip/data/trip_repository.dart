@@ -24,18 +24,20 @@ class TripRepository {
       _transition(rideId, '/rides/$rideId/complete');
 
   /// `reasonId` comes from the picker, which only ever offers entries the
-  /// server marked `pickable: true`.
+  /// server marked `pickable: true` — or null for "Other reason", which the
+  /// handler accepts (`reason_id` is optional; the cancellation still lands,
+  /// it just carries no configured reason or fee).
   ///
   /// `canceled_by_user_id` and `actor_type` are `binding:"required"` on the
   /// handler, so omitting them fails validation before the ride is even
   /// looked at and every cancellation returns 400.
   Future<Result<Ride>> cancel(
     String rideId, {
-    required String reasonId,
+    String? reasonId,
     required String driverUserId,
   }) =>
       _transition(rideId, '/rides/$rideId/cancel', body: {
-        'reason_id': reasonId,
+        if (reasonId != null) 'reason_id': reasonId,
         'canceled_by_user_id': driverUserId,
         'actor_type': 'driver',
       });

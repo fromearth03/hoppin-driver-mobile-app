@@ -52,27 +52,22 @@ class SideDrawer extends ConsumerWidget {
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
+                // No rules between rows — the design separates them with
+                // breathing room alone, and hairlines here read as clutter.
                 children: [
                   _item(context, Icons.person_outline, 'Personal Information',
                       Routes.personalInfo),
-                  _rule(),
                   _item(context, Icons.history, 'Trips', Routes.trips),
-                  _rule(),
                   _item(context, Icons.receipt_long_outlined, 'Statement',
                       Routes.statement),
-                  _rule(),
                   _item(context, Icons.account_balance_outlined, 'Payouts',
                       Routes.payouts),
-                  _rule(),
                   _item(context, Icons.notifications_none, 'Notifications',
                       Routes.notifications),
-                  _rule(),
                   _item(context, Icons.support_agent_outlined, 'Help & Support',
                       Routes.support),
-                  _rule(),
                   _item(context, Icons.settings_outlined, 'Settings',
                       Routes.settings),
-                  _rule(),
                   _item(context, Icons.delete_outline, 'Delete account',
                       Routes.deleteAccount,
                       color: AppColors.negative),
@@ -95,11 +90,6 @@ class SideDrawer extends ConsumerWidget {
     Navigator.of(context).pop();
     context.go(route);
   }
-
-  Widget _rule() => const Padding(
-        padding: EdgeInsets.only(left: 31, right: 41),
-        child: Divider(height: 1, thickness: 1, color: AppColors.border),
-      );
 
   Widget _item(
     BuildContext context,
@@ -233,7 +223,7 @@ class _Rating extends StatelessWidget {
             child: Icon(
               rating >= i - 0.25 ? Icons.star : Icons.star_border,
               size: 17,
-              color: AppColors.warning,
+              color: AppColors.gold,
             ),
           ),
         const SizedBox(width: 6),

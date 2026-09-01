@@ -64,8 +64,9 @@ class _PenaltiesSectionState extends State<PenaltiesSection> {
             if (active.isNotEmpty)
               _group(
                 group: _Group.active,
-                icon: Icons.priority_high_rounded,
-                tint: AppColors.negative,
+                icon: Icons.error_outline,
+                tint: AppColors.statRed,
+                circle: AppColors.tintRed,
                 title: 'Active (${active.length})',
                 subtitle: active.length == 1
                     ? '1 penalty currently affecting your account'
@@ -75,8 +76,9 @@ class _PenaltiesSectionState extends State<PenaltiesSection> {
             if (underReview.isNotEmpty)
               _group(
                 group: _Group.underReview,
-                icon: Icons.history_rounded,
+                icon: Icons.restore,
                 tint: AppColors.warning,
+                circle: AppColors.tintAmber,
                 title: 'Under review (${underReview.length})',
                 subtitle: underReview.length == 1
                     ? '1 appeal is being reviewed'
@@ -88,6 +90,8 @@ class _PenaltiesSectionState extends State<PenaltiesSection> {
                 group: _Group.resolved,
                 icon: Icons.check_rounded,
                 tint: AppColors.positive,
+                circle: AppColors.tintMint,
+                solid: true,
                 title: 'Resolved (${resolved.length})',
                 subtitle: resolved.length == 1
                     ? '1 appeal has been resolved'
@@ -104,9 +108,11 @@ class _PenaltiesSectionState extends State<PenaltiesSection> {
     required _Group group,
     required IconData icon,
     required Color tint,
+    required Color circle,
     required String title,
     required String subtitle,
     required List<Widget> children,
+    bool solid = false,
   }) {
     final open = _open == group;
     return Column(
@@ -119,14 +125,18 @@ class _PenaltiesSectionState extends State<PenaltiesSection> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(
               children: [
+                // Resolved is the one solid disc in the design — a green
+                // circle with a white check; the open states sit as tinted
+                // outlines on their pale grounds.
                 Container(
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: tint.withValues(alpha: 0.13),
+                    color: solid ? tint : circle,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, size: 19, color: tint),
+                  child:
+                      Icon(icon, size: 19, color: solid ? Colors.white : tint),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -172,7 +182,9 @@ class _PenaltiesSectionState extends State<PenaltiesSection> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: tint.withValues(alpha: 0.10),
+          // The design's pale panel colours, laid flat — not an alpha mix
+          // that would shift on any other ground.
+          color: tint,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -205,7 +217,7 @@ class _PenaltiesSectionState extends State<PenaltiesSection> {
   Widget _penaltyRow(Penalty p) {
     final date = DateFormat('d MMM yyyy').format(p.createdAt.toLocal());
     return _detailCard(
-      tint: AppColors.negative,
+      tint: AppColors.tintRed,
       title: p.displayTitle,
       meta: '$date · Penalty: ${p.amount.format()}',
       // The design's third line is "Appeal window: 48h left". No penalty
@@ -221,16 +233,16 @@ class _PenaltiesSectionState extends State<PenaltiesSection> {
   }
 
   Widget _appealRow(Appeal a) {
-    final (label, colour) = switch (a.status) {
-      AppealStatus.approved => ('Approved', AppColors.positive),
-      AppealStatus.rejected => ('Rejected', AppColors.negative),
-      AppealStatus.underReview => ('Under review', AppColors.warning),
+    final (label, tint) = switch (a.status) {
+      AppealStatus.approved => ('Approved', AppColors.tintMint),
+      AppealStatus.rejected => ('Rejected', AppColors.tintRed),
+      AppealStatus.underReview => ('Under review', AppColors.tintAmber),
     };
     final decided = a.reviewedAt ?? a.createdAt;
     final date = DateFormat('d MMM yyyy').format(decided.toLocal());
 
     return _detailCard(
-      tint: colour,
+      tint: tint,
       title: a.reason.isEmpty ? 'Appeal' : a.reason,
       meta: a.documentType == null
           ? '$date · $label'
@@ -253,7 +265,7 @@ class _AppealButton extends StatelessWidget {
   Widget build(BuildContext context) => FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.negative,
+          backgroundColor: AppColors.statRed,
           foregroundColor: AppColors.surface,
           minimumSize: const Size(0, 36),
           padding: const EdgeInsets.symmetric(horizontal: 20),

@@ -90,16 +90,19 @@ class PayoutRow extends StatelessWidget {
           ),
           if (payout.failureReason != null) ...[
             const SizedBox(height: 12),
+            // The design's pale red pill under a failed payout. Its Retry
+            // chip is still not drawn — there is no endpoint behind it.
             Container(
               width: double.infinity,
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
+                color: AppColors.tintRed,
+                borderRadius: BorderRadius.circular(22),
               ),
               child: Text('Reason: ${payout.failureReason}',
-                  style: AppText.body.copyWith(fontSize: 14)),
+                  style: AppText.body
+                      .copyWith(fontSize: 14, color: AppColors.textPrimary)),
             ),
           ],
         ],

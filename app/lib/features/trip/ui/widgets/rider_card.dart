@@ -52,7 +52,7 @@ class RiderCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(Icons.star, size: 14, color: AppColors.warning),
+                      const Icon(Icons.star, size: 14, color: AppColors.gold),
                       const SizedBox(width: 4),
                       Text(
                         // A rider with no ratings yet shows an em dash;

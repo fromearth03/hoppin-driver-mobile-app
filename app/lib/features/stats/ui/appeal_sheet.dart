@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,12 +29,23 @@ class AppealSheet extends ConsumerStatefulWidget {
   const AppealSheet({super.key, required this.penalty});
 
   /// Returns true when an appeal was filed.
+  ///
+  /// A centred dialog over a blurred page, as the design draws it — the
+  /// stats behind stay visible as shapes but unreadable, so the form is
+  /// the only thing to look at.
   static Future<bool> show(BuildContext context, Penalty penalty) async =>
-      await showModalBottomSheet<bool>(
+      await showGeneralDialog<bool>(
         context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => AppealSheet(penalty: penalty),
+        barrierDismissible: true,
+        barrierLabel: 'Appeal Penalty',
+        barrierColor: Colors.black.withValues(alpha: 0.12),
+        transitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (_, __, ___) => AppealSheet(penalty: penalty),
+        transitionBuilder: (_, anim, __, child) => BackdropFilter(
+          filter: ImageFilter.blur(
+              sigmaX: 8 * anim.value, sigmaY: 8 * anim.value),
+          child: FadeTransition(opacity: anim, child: child),
+        ),
       ) ??
       false;
 
@@ -59,8 +72,15 @@ class _AppealSheetState extends ConsumerState<AppealSheet> {
       _error = null;
     });
 
+    // The endpoint carries only free text — no penalty id field — so the
+    // penalty's identity is embedded in the text itself, the same
+    // workaround the ledger dispute uses. Without it, a driver holding two
+    // penalties files an appeal nobody can match to a charge.
+    final p = widget.penalty;
     final result = await ref.read(appealsRepositoryProvider).file(
-          reason: _description.text.trim(),
+          reason: 'Appealed penalty: ${p.displayTitle} — '
+              '${p.amount.format()} — id ${p.id}\n\n'
+              '${_description.text.trim()}',
         );
     if (!mounted) return;
 
@@ -77,15 +97,16 @@ class _AppealSheetState extends ConsumerState<AppealSheet> {
   Widget build(BuildContext context) {
     final inset = MediaQuery.of(context).viewInsets.bottom;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: inset),
-      child: Container(
-        decoration: const BoxDecoration(
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + inset),
+        child: Material(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          top: false,
+          borderRadius: BorderRadius.circular(20),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: SingleChildScrollView(
           child: Form(
             key: _formKey,
             child: Column(
@@ -184,6 +205,8 @@ class _AppealSheetState extends ConsumerState<AppealSheet> {
                   ),
                 ),
               ],
+            ),
+          ),
             ),
           ),
         ),

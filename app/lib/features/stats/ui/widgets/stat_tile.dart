@@ -122,7 +122,7 @@ class _Stars extends StatelessWidget {
             child: Icon(
               filled ? Icons.star_rounded : Icons.star_outline_rounded,
               size: 14,
-              color: filled ? AppColors.warning : AppColors.textDisabled,
+              color: filled ? AppColors.gold : AppColors.textDisabled,
             ),
           );
         }),

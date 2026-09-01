@@ -142,7 +142,7 @@ class _TripSummaryState extends ConsumerState<TripSummary> {
                   iconSize: 44,
                   icon: Icon(
                     filled ? Icons.star_rounded : Icons.star_outline_rounded,
-                    color: filled ? AppColors.warning : AppColors.textDisabled,
+                    color: filled ? AppColors.gold : AppColors.textDisabled,
                   ),
                   tooltip: '${i + 1} star${i == 0 ? '' : 's'}',
                   onPressed: () => setState(() => _score = i + 1),

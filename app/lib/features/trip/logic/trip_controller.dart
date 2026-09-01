@@ -301,7 +301,7 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
     ));
   }
 
-  Future<Result<Ride>> cancel(String reasonId) {
+  Future<Result<Ride>> cancel(String? reasonId) {
     // The handler requires the acting user's id. It comes from the live
     // Supabase session rather than being passed down from the UI, so a
     // screen cannot forget it and turn every cancellation into a 400.
