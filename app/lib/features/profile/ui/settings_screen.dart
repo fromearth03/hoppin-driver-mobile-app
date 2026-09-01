@@ -102,28 +102,11 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              SettingsCard(
-                children: [
-                  SettingsRow(
-                    icon: Icons.person_outline,
-                    label: 'Personal information',
-                    trailing: const _Chevron(),
-                    onTap: () => context.push(Routes.personalInfo),
-                  ),
-                  SettingsRow(
-                    icon: Icons.account_balance_outlined,
-                    label: 'Payouts',
-                    trailing: const _Chevron(),
-                    onTap: () => context.push(Routes.payouts),
-                  ),
-                  SettingsRow(
-                    icon: Icons.headset_mic_outlined,
-                    label: 'Help & support',
-                    trailing: const _Chevron(),
-                    onTap: () => context.push(Routes.support),
-                  ),
-                ],
-              ),
+              // Personal information, Payouts and Help & Support used to be
+              // linked from here too. The drawer is their one home now — a
+              // second path from Settings was redundancy the design never
+              // drew, and two routes to the same screen is two places for a
+              // driver to look for it.
               SettingsCard(
                 children: [
                   SettingsRow(
@@ -147,10 +130,3 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _Chevron extends StatelessWidget {
-  const _Chevron();
-
-  @override
-  Widget build(BuildContext context) => const Icon(Icons.chevron_right,
-      size: 24, color: AppColors.textPrimary);
-}

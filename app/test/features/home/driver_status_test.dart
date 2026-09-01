@@ -104,6 +104,19 @@ void main() {
           ['private_hire_licence']);
     });
 
+    test("goOnline succeeds on the live shape — an acknowledgement, not a status",
+        () async {
+      // The handler answers {"message","status"} with NO presence key.
+      // Parsing that as a DriverStatus reads as offline — which painted the
+      // toggle off on the very success that turned the driver online.
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((_) async =>
+          body('{"message":"online","status":"online"}', 200));
+
+      final r = await repo.goOnline();
+
+      expect(r.isOk, isTrue);
+    });
+
     test('goOnline surfaces PAYOUT_NOT_READY', () async {
       when(() => adapter.fetch(any(), any(), any())).thenAnswer(
           (_) async => body('{"code":"PAYOUT_NOT_READY","error":"setup"}', 403));

@@ -29,12 +29,17 @@ class DriverStatusRepository {
 
   /// A refusal arrives as 403 with `reason` + `blocking_document_types`;
   /// ApiException.fields carries both through untouched.
-  Future<Result<DriverStatus>> goOnline() async {
-    final r = await _api.post<Map<String, dynamic>>('/drivers/me/online');
-    return r.when(
-      ok: (json) => Ok(DriverStatus.fromJson(json)),
-      err: (e) => Err(e),
-    );
+  ///
+  /// The success body is an acknowledgement — {"message","status"} with no
+  /// `presence` key. It must NOT be parsed as a [DriverStatus]: the missing
+  /// presence reads as offline, which painted the toggle off on the very
+  /// call that turned the driver online. The caller re-reads /status.
+  Future<Result<void>> goOnline() async {
+    // post<dynamic>: the ack's shape is not ours to depend on — a typed
+    // decode failing on a 204 would surface a successful go-online as an
+    // error, the exact bug class this method was rewritten to remove.
+    final r = await _api.post<dynamic>('/drivers/me/online');
+    return r.when(ok: (_) => const Ok(null), err: (e) => Err(e));
   }
 
   Future<Result<void>> goOffline() async {

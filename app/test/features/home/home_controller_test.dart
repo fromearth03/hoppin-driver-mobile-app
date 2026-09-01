@@ -76,10 +76,15 @@ void main() {
     expect(state.offer, isNull);
   });
 
-  test('going online stores the returned status', () async {
-    when(() => status.status()).thenAnswer((_) async => Ok(buildStatus()));
-    when(() => status.goOnline())
-        .thenAnswer((_) async => Ok(buildStatus(presence: Presence.online)));
+  test('going online re-reads /status and shows online immediately',
+      () async {
+    // The POST acknowledges without a presence; the truth comes from the
+    // follow-up /status read. Trusting the acknowledgement painted the
+    // toggle off on the very success that turned the driver online.
+    var calls = 0;
+    when(() => status.status()).thenAnswer((_) async => Ok(buildStatus(
+        presence: ++calls == 1 ? Presence.offline : Presence.online)));
+    when(() => status.goOnline()).thenAnswer((_) async => const Ok(null));
 
     final c = container();
     await c.read(homeControllerProvider.future);

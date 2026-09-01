@@ -129,7 +129,7 @@ class HomeController extends AsyncNotifier<HomeState> {
 
     if (_current.isOnline) {
       final result = await _statusRepo.goOffline();
-      result.when(
+      await result.when(
         ok: (_) async {
           stopPolling();
           await refresh();
@@ -138,18 +138,22 @@ class HomeController extends AsyncNotifier<HomeState> {
         // A failed go-offline leaves the driver online and dispatchable
         // server-side. Flipping the toggle off anyway would strand them
         // taking jobs the app has stopped polling for.
-        err: (e) => _emit(_current.copyWith(isBusy: false, error: e)),
+        err: (e) async => _emit(_current.copyWith(isBusy: false, error: e)),
       );
       return;
     }
 
     final result = await _statusRepo.goOnline();
-    result.when(
-      ok: (status) {
-        _emit(_current.copyWith(status: status, isBusy: false));
+    await result.when(
+      ok: (_) async {
+        // Same shape as going offline: the POST acknowledges, /status is
+        // the truth. Reading presence out of the acknowledgement is what
+        // left the toggle off until the next poll.
+        await refresh();
+        _emit(_current.copyWith(isBusy: false));
         startPolling();
       },
-      err: (e) {
+      err: (e) async {
         // A refusal is not an error toast — it is a state the Home screen
         // renders as a resolution list. Fold the reason into the status so
         // one widget handles both the polled and refused paths.
@@ -198,6 +202,19 @@ class HomeController extends AsyncNotifier<HomeState> {
   /// One tick fetches offers and status together — the stale-GPS warning is
   /// as time-sensitive as an offer, and a second timer would double the load.
   Future<void> _tick() async {
+    if (_disposed) return;
+
+    // Status is read on every tick regardless of the cached presence: the
+    // follow-up read after go-online can fail or lag, and a guard on the
+    // cached value would leave the app showing offline forever while the
+    // dispatcher considers the driver online.
+    final statusResult = await _statusRepo.status();
+    if (_disposed) return;
+    statusResult.when(
+      ok: (s) => _emit(_current.copyWith(status: s)),
+      err: (_) {},
+    );
+
     if (!_canReceiveOffers) return;
 
     final offersResult = await _offerRepo.offers();
@@ -213,12 +230,6 @@ class HomeController extends AsyncNotifier<HomeState> {
             : _current.copyWith(offer: fresh.first));
       },
       // A failed poll is not worth surfacing; the next tick retries.
-      err: (_) {},
-    );
-
-    final statusResult = await _statusRepo.status();
-    statusResult.when(
-      ok: (s) => _emit(_current.copyWith(status: s)),
       err: (_) {},
     );
   }

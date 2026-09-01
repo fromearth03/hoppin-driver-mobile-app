@@ -48,6 +48,10 @@ class DocumentCard extends StatelessWidget {
 
   IconData get _glyph => _glyphs[slot.type.code] ?? Icons.description_outlined;
 
+  /// A missing document is quiet grey, not red: on a fresh account all
+  /// eight tiles are missing, and eight red warnings read as a broken app
+  /// rather than a to-do list. Red is kept for the two states where
+  /// something the driver did was refused or ran out.
   (String, Color, IconData) get statusChip => switch (slot.status) {
         DocumentStatus.approved => (
             'Approved',
@@ -71,10 +75,15 @@ class DocumentCard extends StatelessWidget {
           ),
         DocumentStatus.missing => (
             'Not uploaded',
-            AppColors.textSecondary,
+            AppColors.textDisabled,
             Icons.upload_file
           ),
       };
+
+  /// Refused or lapsed — the only states loud enough for a red ring.
+  bool get _urgent =>
+      slot.status == DocumentStatus.rejected ||
+      slot.status == DocumentStatus.expired;
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +105,7 @@ class DocumentCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: slot.needsAction
+                color: _urgent
                     ? AppColors.negative.withValues(alpha: 0.4)
                     : Colors.transparent,
               ),
@@ -111,7 +120,7 @@ class DocumentCard extends StatelessWidget {
                     const Spacer(),
                     Tooltip(
                       message: label,
-                      child: Icon(statusIcon, size: 18, color: colour),
+                      child: Icon(statusIcon, size: 16, color: colour),
                     ),
                   ],
                 ),
@@ -132,8 +141,7 @@ class DocumentCard extends StatelessWidget {
                       ? label
                       : 'Expire: ${DateFormat('MMMM d, y').format(expiry.toLocal())}',
                   style: AppText.caption.copyWith(
-                    color: slot.needsAction ||
-                            (document?.isExpiringSoon ?? false)
+                    color: _urgent || (document?.isExpiringSoon ?? false)
                         ? AppColors.negative
                         : AppColors.textSecondary,
                   ),

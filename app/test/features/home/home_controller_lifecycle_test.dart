@@ -122,7 +122,9 @@ void main() {
           .thenAnswer((_) async => Ok(buildStatus(presence: Presence.offline)));
       when(() => status.goOnline()).thenAnswer((_) async {
         await Future<void>.delayed(const Duration(milliseconds: 30));
-        return Ok(buildStatus(presence: Presence.online));
+        // The live endpoint acknowledges without a status; presence comes
+        // from the follow-up /status read.
+        return const Ok(null);
       });
       when(() => offers.offers()).thenAnswer((_) async => Ok([buildOffer()]));
 

@@ -21,7 +21,12 @@ class DocumentsController extends AsyncNotifier<List<DocumentSlot>> {
     if (_disposed) return;
     result.when(
       ok: (slots) => state = AsyncData(slots),
-      err: (e) => state = AsyncError(e, StackTrace.current),
+      // A failed refresh over a list already on screen keeps the list — a
+      // background revalidate on a flaky link must not blank eight tiles
+      // into an error page. The error state is only for having nothing.
+      err: (e) {
+        if (!state.hasValue) state = AsyncError(e, StackTrace.current);
+      },
     );
   }
 }

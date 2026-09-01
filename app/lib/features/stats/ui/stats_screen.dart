@@ -55,15 +55,23 @@ class StatsScreen extends ConsumerWidget {
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                    child: GridView.count(
-                      crossAxisCount: 2,
+                    child: GridView(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      // Tall enough for a two-line label ("Acceptance
-                      // Rate") plus the note row beneath the value.
-                      childAspectRatio: 1.55,
+                      // Fixed tile height: the content (two-line label,
+                      // value, note) is constant in text lines, so deriving
+                      // height from width via an aspect ratio overflowed on
+                      // narrow phones and left dead space on wide ones. The
+                      // extent scales with the system font setting — 118
+                      // logical pixels only fits the lines at scale 1.0.
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        mainAxisExtent: 118 *
+                            MediaQuery.textScalerOf(context).scale(14) /
+                            14,
+                      ),
                       children: [
                         StatTile(
                           icon: Icons.directions_car_filled_outlined,

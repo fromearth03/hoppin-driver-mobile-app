@@ -37,26 +37,20 @@ class TodayTiles extends StatelessWidget {
             const SizedBox(height: 16),
             const Divider(height: 1, color: AppColors.border),
             const SizedBox(height: 20),
-            IntrinsicHeight(
-              child: Row(
-                children: [
-                  Expanded(
-                      child: _tile('Earnings', today.earnings.format())),
-                  _divider(),
-                  Expanded(child: _tile('Trips', '${today.tripCount}')),
-                  _divider(),
-                  Expanded(child: _tile('Online Time', today.onlineLabel)),
-                ],
-              ),
+            // No vertical rules between the columns: at this size they read
+            // as stray strokes rather than structure — the even thirds and
+            // the shared baseline do the separating on their own.
+            Row(
+              children: [
+                Expanded(child: _tile('Earnings', today.earnings.format())),
+                const SizedBox(width: 16),
+                Expanded(child: _tile('Trips', '${today.tripCount}')),
+                const SizedBox(width: 16),
+                Expanded(child: _tile('Online Time', today.onlineLabel)),
+              ],
             ),
           ],
         ),
-      );
-
-  Widget _divider() => const VerticalDivider(
-        width: 1,
-        thickness: 1,
-        color: AppColors.border,
       );
 
   Widget _tile(String label, String value) => Column(
