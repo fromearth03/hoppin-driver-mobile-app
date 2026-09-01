@@ -47,7 +47,7 @@ class LocationReporter {
 
     if (epoch != _epoch) return false; // stopped while the dialog was up
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _report());
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) => _report());
     _report();
     return true;
   }

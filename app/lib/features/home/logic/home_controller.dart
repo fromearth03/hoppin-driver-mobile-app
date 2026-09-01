@@ -7,6 +7,8 @@ import '../../../core/result.dart';
 import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../auth/data/auth_repository.dart';
+import '../../../core/api/api_client.dart';
 import '../data/driver_status_repository.dart';
 import 'location_reporter.dart';
 import '../data/models/driver_status.dart';
@@ -109,7 +111,18 @@ class HomeController extends AsyncNotifier<HomeState> {
     }
     final result = await _statusRepo.status();
     return await result.when(
-      ok: (status) async => HomeState(status: status, today: await _today()),
+      ok: (status) async {
+        final state = HomeState(status: status, today: await _today());
+        // A relaunch mid-shift resumes what the toggle would have started:
+        // a driver the server says is online must poll for offers and
+        // report position, however the app came back to life. (Tests that
+        // stub an online status own stopping the poll they trigger.)
+        if (state.isOnline) {
+          startPolling();
+          reporter.start();
+        }
+        return state;
+      },
       err: (e) async => HomeState(error: e),
     );
   }
@@ -145,11 +158,27 @@ class HomeController extends AsyncNotifier<HomeState> {
     );
   }
 
+  /// One shot at winning the session back: web tab and phone fight over
+  /// the single live session the backend allows, and the loser's every
+  /// call is 401 SESSION_REPLACED. A deliberate tap on the toggle is the
+  /// driver saying "use it HERE" — so re-claim once and retry, rather
+  /// than freezing on an error the driver cannot read.
+  Future<Result<T>> _withSessionRetry<T>(
+      Future<Result<T>> Function() call) async {
+    final first = await call();
+    if (first.isOk || first.errorOrNull?.code != 'SESSION_REPLACED') {
+      return first;
+    }
+    await ref.read(authRepositoryProvider).claimSession(
+        ref.read(apiClientProvider));
+    return call();
+  }
+
   Future<void> toggleOnline() async {
     state = AsyncData(_current.copyWith(isBusy: true, clearError: true));
 
     if (_current.isOnline) {
-      final result = await _statusRepo.goOffline();
+      final result = await _withSessionRetry(_statusRepo.goOffline);
       await result.when(
         ok: (_) async {
           stopPolling();
@@ -165,7 +194,7 @@ class HomeController extends AsyncNotifier<HomeState> {
       return;
     }
 
-    final result = await _statusRepo.goOnline();
+    final result = await _withSessionRetry(_statusRepo.goOnline);
     await result.when(
       ok: (_) async {
         // Same shape as going offline: the POST acknowledges, /status is

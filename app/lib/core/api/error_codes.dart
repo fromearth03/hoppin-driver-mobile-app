@@ -35,6 +35,8 @@ const _copy = <String, String>{
   // Auth
   'INVALID_CREDENTIALS': 'That email or password is incorrect.',
   'TOO_MANY_ATTEMPTS': 'Too many attempts. Please wait a minute and try again.',
+  'SESSION_REPLACED':
+      'This account signed in on another device. Tap again to use it here.',
   'EXPIRED_LINK': 'This link has expired. Please request a new one.',
   'AUTH_FAILED': "We couldn't sign you in. Please try again.",
   // Going online
