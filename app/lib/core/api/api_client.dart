@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/token_store.dart';
+import '../device/device_identity.dart';
 import '../result.dart';
 import 'api_exception.dart';
 
@@ -32,6 +33,11 @@ class ApiClient {
       if (options.uri.origin == apiOrigin) {
         final token = await _tokens.read();
         if (token != null) options.headers['Authorization'] = 'Bearer $token';
+        // The blacklist gate reads this on every call; requests without it
+        // simply aren't gated, so it costs nothing and buys enforcement.
+        if (DeviceIdentity.id.isNotEmpty) {
+          options.headers['X-Hoppin-Device-ID'] = DeviceIdentity.id;
+        }
       }
       handler.next(options);
     }));

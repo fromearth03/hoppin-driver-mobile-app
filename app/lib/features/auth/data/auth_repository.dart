@@ -1,12 +1,20 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/device/device_identity.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/auth/token_store.dart';
 import '../../../core/result.dart';
+
+/// The same build-time defines main.dart boots Supabase with — the raw
+/// password-reset request signs itself with them.
+const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
 /// Wraps `supabase_flutter`'s auth client so the rest of the app sees the
 /// same `Result` + `{code}` contract it uses for the ride service.
@@ -109,17 +117,77 @@ class AuthRepository {
   /// authenticated successfully.
   Future<void> claimSession(ApiClient api) async {
     await api.post<dynamic>('/me/session');
+    // Same beat, second half: the fingerprint ingest that fills the
+    // admin's Device Fingerprints screen. The gate header alone blocks
+    // blacklisted devices; this is what lets an operator SEE devices.
+    // Best-effort like the claim — a failed ingest must not cost a login.
+    await api.post<dynamic>('/me/device', body: {
+      'device_hardware_id': DeviceIdentity.id,
+      'operating_system': DeviceIdentity.operatingSystem,
+      'app_version': DeviceIdentity.appVersion,
+      'is_emulator': false,
+    });
   }
 
+  /// The Supabase project is shared with the admin panel, and the
+  /// project-wide "Reset Password" template is the admin OTP email — the
+  /// SDK's resetPasswordForEmail sends the WRONG mail. The magic-link
+  /// template is the branded one, so this posts the raw OTP request. Raw
+  /// Dio, not signInWithOtp: the SDK attaches PKCE, and a PKCE link only
+  /// completes inside the app instance that minted it — but the driver
+  /// opens the email in a browser. The plain token_hash link works
+  /// anywhere, including the hosted reset page.
   Future<Result<void>> requestPasswordReset(String email) async {
     try {
-      await _auth.resetPasswordForEmail(email.trim());
+      final base = _supabaseUrl.replaceFirst(RegExp(r'/+$'), '');
+      await Dio().post<void>(
+        '$base/auth/v1/otp',
+        queryParameters: {'redirect_to': passwordResetRedirect()},
+        options: Options(headers: {
+          'apikey': _supabaseAnonKey,
+          'Content-Type': 'application/json',
+        }),
+        data: {
+          'email': email.trim(),
+          // Never sign someone up by a typo in the reset form.
+          'create_user': false,
+          'data': <String, dynamic>{},
+        },
+      );
       return const Ok(null);
-    } on AuthException catch (e) {
-      return Err(_map(e));
+    } on DioException catch (e) {
+      final status = e.response?.statusCode ?? 0;
+      if (status == 429) {
+        return Err(ApiException('TOO_MANY_ATTEMPTS', '', status));
+      }
+      // The screen's copy never confirms whether the address exists; most
+      // failures still resolve to the same neutral confirmation upstream.
+      return Err(ApiException('AUTH_FAILED', e.message ?? '', status));
     } catch (e) {
       return Err(ApiException('INTERNAL', e.toString(), 0));
     }
+  }
+
+  /// Where the emailed link lands. Env override first, then the web
+  /// build's own public origin, then the hosted production page (shared
+  /// with riders — it is account-agnostic). Never localhost: GoTrue
+  /// silently falls back to the project Site URL (the admin panel) for a
+  /// redirect it refuses.
+  static String passwordResetRedirect() {
+    const configured = String.fromEnvironment('PASSWORD_RESET_REDIRECT');
+    if (_isPublicUrl(configured)) return configured;
+    if (kIsWeb) {
+      final origin = Uri.base.origin;
+      if (_isPublicUrl(origin)) return '$origin/reset';
+    }
+    return 'https://rider.hoppin.tech/reset';
+  }
+
+  static bool _isPublicUrl(String url) {
+    if (url.isEmpty) return false;
+    final u = url.toLowerCase();
+    if (u.contains('localhost') || u.contains('127.0.0.1')) return false;
+    return u.startsWith('http://') || u.startsWith('https://');
   }
 
   /// Called on the recovery screen — the SDK has already exchanged the

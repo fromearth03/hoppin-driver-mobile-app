@@ -39,6 +39,7 @@ import 'features/trips/logic/trips_controller.dart';
 import 'features/notifications/logic/notifications_controller.dart';
 import 'features/profile/logic/profile_controller.dart';
 import 'shared/widgets/revalidate_on_visit.dart';
+import 'shared/widgets/scroll_edge_blur.dart';
 
 import 'shared/responsive_frame.dart';
 
@@ -112,18 +113,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ),
         routes: [
-          GoRoute(path: Routes.home, builder: (_, __) => RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, homeControllerProvider, ref.read(homeControllerProvider.notifier).refresh), child: const HomeScreen())),
+          GoRoute(path: Routes.home, builder: (_, __) => ScrollEdgeBlur(child: RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, homeControllerProvider, ref.read(homeControllerProvider.notifier).refresh), child: const HomeScreen()))),
           GoRoute(
               path: Routes.earnings,
-              builder: (_, __) => RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, earningsControllerProvider, ref.read(earningsControllerProvider.notifier).refresh), child: const EarningsScreen())),
+              builder: (_, __) => ScrollEdgeBlur(child: RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, earningsControllerProvider, ref.read(earningsControllerProvider.notifier).refresh), child: const EarningsScreen()))),
           GoRoute(
               path: Routes.statement,
-              builder: (_, __) => RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, statementControllerProvider, ref.read(statementControllerProvider.notifier).refresh), child: const StatementScreen())),
+              builder: (_, __) => ScrollEdgeBlur(child: RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, statementControllerProvider, ref.read(statementControllerProvider.notifier).refresh), child: const StatementScreen()))),
           GoRoute(
               path: Routes.documents,
-              builder: (_, __) => RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, documentsControllerProvider, ref.read(documentsControllerProvider.notifier).refresh), child: const DocumentsScreen())),
-          GoRoute(path: Routes.stats, builder: (_, __) => RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, statsControllerProvider, ref.read(statsControllerProvider.notifier).refresh), child: const StatsScreen())),
-          GoRoute(path: Routes.trips, builder: (_, __) => RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, tripsControllerProvider, ref.read(tripsControllerProvider.notifier).refresh), child: const TripsScreen())),
+              builder: (_, __) => ScrollEdgeBlur(child: RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, documentsControllerProvider, ref.read(documentsControllerProvider.notifier).refresh), child: const DocumentsScreen()))),
+          GoRoute(path: Routes.stats, builder: (_, __) => ScrollEdgeBlur(child: RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, statsControllerProvider, ref.read(statsControllerProvider.notifier).refresh), child: const StatsScreen()))),
+          GoRoute(path: Routes.trips, builder: (_, __) => ScrollEdgeBlur(child: RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, tripsControllerProvider, ref.read(tripsControllerProvider.notifier).refresh), child: const TripsScreen()))),
           GoRoute(
             path: '${Routes.trip}/:rideId',
             builder: (_, state) =>
@@ -136,15 +137,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
               path: Routes.personalInfo,
-              builder: (_, __) => RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, profileProvider, () => ref.invalidate(profileProvider)), child: const ProfileScreen())),
+              builder: (_, __) => ScrollEdgeBlur(child: RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, profileProvider, () => ref.invalidate(profileProvider)), child: const ProfileScreen()))),
           GoRoute(
               path: Routes.notifications,
-              builder: (_, __) => RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, notificationsControllerProvider, ref.read(notificationsControllerProvider.notifier).refresh), child: const NotificationsScreen())),
+              builder: (_, __) => ScrollEdgeBlur(child: RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, notificationsControllerProvider, ref.read(notificationsControllerProvider.notifier).refresh), child: const NotificationsScreen()))),
           GoRoute(
               path: Routes.support,
-              builder: (_, state) => SupportScreen(
-                  initialTab:
-                      state.uri.queryParameters['tab'] == 'complaints' ? 1 : 0)),
+              builder: (_, state) => ScrollEdgeBlur(
+                  child: SupportScreen(
+                      initialTab: state.uri.queryParameters['tab'] ==
+                              'complaints'
+                          ? 1
+                          : 0))),
           GoRoute(
             path: '${Routes.supportTicket}/:id',
             builder: (_, state) =>
@@ -152,9 +156,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
               path: Routes.settings,
-              builder: (_, __) => const SettingsScreen()),
+              builder: (_, __) => const ScrollEdgeBlur(child: SettingsScreen())),
           GoRoute(
-              path: Routes.payouts, builder: (_, __) => RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, payoutStatusProvider, () => ref.invalidate(payoutStatusProvider)), child: const PayoutScreen())),
+              path: Routes.payouts, builder: (_, __) => ScrollEdgeBlur(child: RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, payoutStatusProvider, () => ref.invalidate(payoutStatusProvider)), child: const PayoutScreen()))),
           GoRoute(
               path: Routes.deleteAccount,
               builder: (_, __) => const DeleteAccountScreen()),
