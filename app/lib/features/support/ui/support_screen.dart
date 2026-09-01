@@ -45,7 +45,11 @@ final platformContactsProvider = FutureProvider<PlatformContacts>((ref) async {
 /// be collected and silently discarded. What the driver wants goes in the
 /// description, which a human reads.
 class SupportScreen extends ConsumerStatefulWidget {
-  const SupportScreen({super.key});
+  /// 0 = Support, 1 = Complaints. Deep entries (the earnings dispute
+  /// button) land straight on the complaint form.
+  final int initialTab;
+
+  const SupportScreen({super.key, this.initialTab = 0});
 
   @override
   ConsumerState<SupportScreen> createState() => _SupportScreenState();
@@ -110,7 +114,11 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
     final subject = types.firstWhere((c) => c.code == code).label;
     final result = await ref.read(supportRepositoryProvider).create(
           subject: subject,
-          category: code,
+          // 'support', not the complaint code: category is what separates
+          // the two lanes. With the code here, the Recent Issues filter
+          // (which excludes complaint categories) hid every ticket this
+          // very form created.
+          category: 'support',
           typeCode: code,
           ticketBody: _description.text.trim(),
         );
@@ -131,6 +139,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
+      initialIndex: widget.initialTab,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: settingsAppBar(context, 'Help & Support'),
@@ -379,7 +388,13 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
   Widget _recentIssues(AsyncValue<List<SupportTicket>> async) => SettingsCard(
         title: 'Recent Issues',
         children: [
-          async.when(
+          Consumer(builder: (context, ref, _) {
+            final complaintCodes =
+                (ref.watch(complaintTypesProvider).valueOrNull ??
+                        const <ComplaintType>[])
+                    .map((t) => t.code)
+                    .toSet();
+            return async.when(
             loading: () =>
                 const Padding(padding: EdgeInsets.all(32), child: AppLoading()),
             error: (_, __) => const Padding(
@@ -387,26 +402,36 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
               child: Text('Tickets are unavailable right now.',
                   style: AppText.bodySecondary),
             ),
-            data: (tickets) => tickets.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 24, 20, 28),
-                    child: Text('No tickets yet',
-                        style: AppText.bodySecondary,
-                        textAlign: TextAlign.center),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                    child: Column(
-                      children: tickets
-                          .map((t) => TicketCard(
-                                ticket: t,
-                                onTap: () => context.push(
-                                    '${Routes.supportTicket}/${t.id}'),
-                              ))
-                          .toList(),
-                    ),
-                  ),
-          ),
+            data: (all) {
+              // Complaints have their own tab and their own list; showing
+              // them twice made "Recent Issues" read as a duplicate.
+              final tickets = all
+                  .where((t) =>
+                      t.category == null ||
+                      !complaintCodes.contains(t.category))
+                  .toList();
+              return tickets.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 24, 20, 28),
+                      child: Text('No tickets yet',
+                          style: AppText.bodySecondary,
+                          textAlign: TextAlign.center),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                      child: Column(
+                        children: tickets
+                            .map((t) => TicketCard(
+                                  ticket: t,
+                                  onTap: () => context.push(
+                                      '${Routes.supportTicket}/${t.id}'),
+                                ))
+                            .toList(),
+                      ),
+                    );
+            },
+          );
+          }),
         ],
       );
 }
@@ -636,16 +661,22 @@ class _ContactRow extends StatelessWidget {
               Text(label,
                   style: AppText.body
                       .copyWith(fontSize: 16, color: AppColors.textSecondary)),
-              const Spacer(),
-              Flexible(
-                child: Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.body.copyWith(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: valueColor ?? AppColors.textPrimary,
+              const SizedBox(width: 12),
+              // A phone number cut to "0434394…" cannot be dialled by eye.
+              // The value owns the slack and shrinks to fit before it would
+              // ever truncate.
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    style: AppText.body.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: valueColor ?? AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ),

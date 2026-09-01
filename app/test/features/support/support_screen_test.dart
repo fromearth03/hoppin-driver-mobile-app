@@ -96,7 +96,9 @@ void main() {
 
     verify(() => repo.create(
           subject: 'Fare or earnings',
-          category: 'fare_dispute',
+          // 'support' keeps this lane out of the complaints filter; the
+          // typed reason still travels as the validated type_code.
+          category: 'support',
           typeCode: 'fare_dispute',
           ticketBody: 'I was underpaid.',
         )).called(1);

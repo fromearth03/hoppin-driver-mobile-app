@@ -120,14 +120,13 @@ void main() {
     expect(find.byIcon(Icons.star_border), findsNothing);
   });
 
-  testWidgets('logout row calls the shell callback', (tester) async {
-    var loggedOut = false;
+  testWidgets('logout row asks before signing anyone out', (tester) async {
     await tester.pumpWidget(ProviderScope(
       overrides: [profileRepositoryProvider.overrideWithValue(_repo())],
       child: MaterialApp(
         home: AppShell(
           currentIndex: 0,
-          onLogout: () => loggedOut = true,
+          onLogout: () {},
           child: const Text('body'),
         ),
       ),
@@ -138,6 +137,8 @@ void main() {
     await tester.tap(find.text('Logout'));
     await tester.pumpAndSettle();
 
-    expect(loggedOut, isTrue);
+    // One mis-tap must not end a shift: the confirm dialog stands between
+    // the row and the sign-out.
+    expect(find.text('Are you logging out?'), findsOneWidget);
   });
 }

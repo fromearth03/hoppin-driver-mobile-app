@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The dispatcher cannot offer work to a driver it cannot place, and
+         ride offers arrive as notifications on 13+. Both are requested at
+         the moment they matter, not blanket at launch. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
-        android:label="hoppin_driver"
+        android:label="Hoppin Driver"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app_router.dart';
@@ -72,6 +73,10 @@ class TripScreen extends ConsumerWidget {
                 ),
               ),
               SafeArea(
+                // On web the map is a browser layer under Flutter's — without
+                // an interceptor, drags on these pills fall through and pan
+                // the map. Physical shield, exactly as it looks.
+                child: PointerInterceptor(
                 child: Column(
                   children: [
                     // A poll that keeps failing leaves the driver looking at
@@ -92,6 +97,7 @@ class TripScreen extends ConsumerWidget {
                     TripEtaPill(etaSeconds: ride.pickupEtaSeconds),
                   ],
                 ),
+                ),
               ),
               // Cancelling is a real action mid-job, but it is not the one
               // the driver came for. It takes the map's right edge — where
@@ -104,6 +110,7 @@ class TripScreen extends ConsumerWidget {
                     alignment: Alignment.centerRight,
                     child: Padding(
                       padding: const EdgeInsets.only(right: 12),
+                      child: PointerInterceptor(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -141,47 +148,111 @@ class TripScreen extends ConsumerWidget {
                           ],
                         ],
                       ),
+                      ),
                     ),
                   ),
                 ),
-              // The floating cards and the sheet share one bottom-aligned
-              // column. Aligning them separately let the sheet grow over the
-              // cards, hiding the cancel countdown behind Start Trip.
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // While waiting, the design floats the elapsed wait and
-                    // the free-cancellation countdown over the map.
-                    if (ride.phase == TripPhase.waiting)
-                      WaitingCancelCard(
-                        arrivedAt: ride.arrivedAt,
-                        freeCancelRemaining: state.freeCancelSecondsRemaining,
-                      ),
-                    // The leg list, with arrive/depart on each stop. Only
-                    // offered once the rider is aboard: a stop cannot be
-                    // served before the trip has started.
-                    StopsCard(
-                      stops: state.stops,
-                      busy: state.isBusy,
-                      onArrive: ride.phase == TripPhase.inTrip
-                          ? (stop) => _arriveAtStop(context, ref, stop)
-                          : null,
-                      onDepart: ride.phase == TripPhase.inTrip
-                          ? (stop) => _departStop(context, ref, stop)
-                          : null,
+              // The bottom panel is a real sheet now: drag it down to a
+              // peek (grab handle + the action row stay reachable) to see
+              // the whole map, pull it back up for the cards. Intercepted,
+              // so dragging the sheet never pans the map beneath it on web.
+              DraggableScrollableSheet(
+                initialChildSize: 0.42,
+                minChildSize: 0.17,
+                maxChildSize: 0.80,
+                snap: true,
+                snapSizes: const [0.17, 0.42],
+                builder: (context, scrollController) => PointerInterceptor(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(26)),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Color(0x33000000),
+                            blurRadius: 14,
+                            offset: Offset(0, -3)),
+                      ],
                     ),
-                    if (state.stops.multiStop) const SizedBox(height: 10),
-                    // The destination plate names the final dropoff. While
-                    // stops remain it would point past them, so it waits
-                    // until the last leg.
-                    if (ride.phase == TripPhase.inTrip &&
-                        state.stops.nextStop == null)
-                      TripDestinationPlate(label: ride.geo.dropoff.label),
-                    const SizedBox(height: 12),
-                    _bottomSheet(context, ref, state, ride),
-                  ],
+                    child: SafeArea(
+                      top: false,
+                      child: Column(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(top: 12, bottom: 4),
+                            height: 5,
+                            width: 78,
+                            decoration: BoxDecoration(
+                              color: AppColors.textDisabled,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                          // Pinned: at the peek size the driver still sees
+                          // the waiting clock / passenger and the CTA.
+                          Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(20, 6, 20, 8),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(child: _sheetStatus(state, ride)),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: _action(context, ref, state, ride,
+                                      ref.read(
+                                          tripControllerProvider(rideId)
+                                              .notifier)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: ListView(
+                              controller: scrollController,
+                              padding:
+                                  const EdgeInsets.fromLTRB(0, 4, 0, 12),
+                              children: [
+                                if (ride.phase == TripPhase.waiting)
+                                  WaitingCancelCard(
+                                    arrivedAt: ride.arrivedAt,
+                                    freeCancelRemaining:
+                                        state.freeCancelSecondsRemaining,
+                                  ),
+                                StopsCard(
+                                  stops: state.stops,
+                                  busy: state.isBusy,
+                                  onArrive: ride.phase == TripPhase.inTrip
+                                      ? (stop) =>
+                                          _arriveAtStop(context, ref, stop)
+                                      : null,
+                                  onDepart: ride.phase == TripPhase.inTrip
+                                      ? (stop) =>
+                                          _departStop(context, ref, stop)
+                                      : null,
+                                ),
+                                if (state.stops.multiStop)
+                                  const SizedBox(height: 10),
+                                if (ride.phase == TripPhase.inTrip &&
+                                    state.stops.nextStop == null)
+                                  TripDestinationPlate(
+                                      label: ride.geo.dropoff.label),
+                                if (ride.rider != null)
+                                  RiderCard(
+                                    rider: ride.rider!,
+                                    rideRef: ride.ref,
+                                    chatUnread: ride.chatUnread,
+                                    onCall: () => _call(ride.rider!.phone),
+                                    onChat: () => context
+                                        .push('${Routes.trip}/$rideId/chat'),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -211,59 +282,6 @@ class TripScreen extends ConsumerWidget {
         ),
       );
 
-  Widget _bottomSheet(
-      BuildContext context, WidgetRef ref, TripState state, Ride ride) {
-    final controller = ref.read(tripControllerProvider(rideId).notifier);
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // The grab handle the design draws. Decorative here - the sheet
-            // does not drag - but it reads as the bottom of the map.
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 4),
-              height: 5,
-              width: 78,
-              decoration: BoxDecoration(
-                color: AppColors.textDisabled,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-            if (ride.rider != null)
-              RiderCard(
-                rider: ride.rider!,
-                rideRef: ride.ref,
-                chatUnread: ride.chatUnread,
-                onCall: () => _call(ride.rider!.phone),
-                onChat: () => context.push('${Routes.trip}/$rideId/chat'),
-              ),
-            // The design pairs a status block on the left with the action
-            // button on the right, rather than stacking them full width.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(child: _sheetStatus(state, ride)),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: _action(context, ref, state, ride, controller),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   /// The left column of the sheet: the waiting clock while waiting, and who
   /// is aboard once under way — the two things the design puts there.

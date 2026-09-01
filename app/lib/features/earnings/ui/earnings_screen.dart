@@ -82,13 +82,17 @@ class EarningsScreen extends ConsumerWidget {
                   if (state.wallet != null)
                     BalanceCards(
                       wallet: state.wallet!,
-                      // The design opens the dark balance overlay here; the
-                      // full statement page stays reachable from the drawer
-                      // and from the overlay's Dispute button.
+                      // The design opens the dark balance overlay here;
+                      // the full statement page stays reachable from the
+                      // drawer.
                       onViewStatement: () => OwesDialog.show(
                         context,
                         wallet: state.wallet!,
-                        onDispute: () => context.push(Routes.statement),
+                        // Disputing is filing a complaint — the dialog drops
+                        // the driver on the complaint form, trip attach and
+                        // all, rather than on the raw ledger.
+                        onDispute: () => context
+                            .push('${Routes.support}?tab=complaints'),
                       ),
                     ),
                   TripStrip(

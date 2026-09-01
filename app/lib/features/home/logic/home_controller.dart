@@ -4,7 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/result.dart';
+import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import '../data/driver_status_repository.dart';
+import 'location_reporter.dart';
 import '../data/models/driver_status.dart';
 import '../data/models/driver_today.dart';
 import '../data/models/pending_offer.dart';
@@ -82,10 +86,27 @@ class HomeController extends AsyncNotifier<HomeState> {
 
   @override
   Future<HomeState> build() async {
+    // Captured now: reading a provider inside onDispose hits a container
+    // that is already torn down.
+    final reporter = ref.read(locationReporterProvider);
     ref.onDispose(() {
       _disposed = true;
       stopPolling();
+      reporter.stop();
     });
+    // Ride offers arrive as notifications on Android 13+; asking here —
+    // on the working screen, once — beats a blanket splash prompt. Web
+    // and already-granted answer instantly.
+    if (!kIsWeb) {
+      // Best-effort and crash-proof: without the platform channel (tests,
+      // exotic platforms) the request can throw synchronously OR
+      // asynchronously; neither may take the controller down with it.
+      try {
+        Permission.notification
+            .request()
+            .catchError((_) => PermissionStatus.denied);
+      } catch (_) {}
+    }
     final result = await _statusRepo.status();
     return await result.when(
       ok: (status) async => HomeState(status: status, today: await _today()),
@@ -132,6 +153,7 @@ class HomeController extends AsyncNotifier<HomeState> {
       await result.when(
         ok: (_) async {
           stopPolling();
+          ref.read(locationReporterProvider).stop();
           await refresh();
           _emit(_current.copyWith(isBusy: false, clearOffer: true));
         },
@@ -152,6 +174,11 @@ class HomeController extends AsyncNotifier<HomeState> {
         await refresh();
         _emit(_current.copyWith(isBusy: false));
         startPolling();
+        // The dispatcher can only work a driver it can place. Refusing
+        // location does not block going online — the server will mark
+        // them stale and the banner explains — but it is asked for here,
+        // at the moment it visibly matters.
+        ref.read(locationReporterProvider).start();
       },
       err: (e) async {
         // A refusal is not an error toast — it is a state the Home screen
@@ -211,7 +238,15 @@ class HomeController extends AsyncNotifier<HomeState> {
     final statusResult = await _statusRepo.status();
     if (_disposed) return;
     statusResult.when(
-      ok: (s) => _emit(_current.copyWith(status: s)),
+      ok: (s) {
+        _emit(_current.copyWith(status: s));
+        // The server is the authority on presence. Forced offline (admin,
+        // SESSION_REPLACED) must also silence the GPS beat — the toggle
+        // callbacks alone would leave it running forever.
+        if (!_current.isOnline) {
+          ref.read(locationReporterProvider).stop();
+        }
+      },
       err: (_) {},
     );
 

@@ -141,7 +141,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: Routes.notifications,
               builder: (_, __) => RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, notificationsControllerProvider, ref.read(notificationsControllerProvider.notifier).refresh), child: const NotificationsScreen())),
           GoRoute(
-              path: Routes.support, builder: (_, __) => const SupportScreen()),
+              path: Routes.support,
+              builder: (_, state) => SupportScreen(
+                  initialTab:
+                      state.uri.queryParameters['tab'] == 'complaints' ? 1 : 0)),
           GoRoute(
             path: '${Routes.supportTicket}/:id',
             builder: (_, state) =>

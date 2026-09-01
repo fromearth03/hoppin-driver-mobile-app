@@ -38,19 +38,36 @@ class _ReportCardState extends ConsumerState<ReportCard> {
     );
   }
 
+  /// Two real calendars, start then end — month arrows and all — instead of
+  /// Material's range picker, which opens in a type-the-date mode with one
+  /// shared grid and no way to page months.
   Future<void> _pickRange() async {
     final now = DateTime.now();
-    final picked = await showDateRangePicker(
+    // The service refuses a range longer than 366 days, so neither calendar
+    // offers a day that could only produce a validation error.
+    final earliest = now.subtract(const Duration(days: maxReportDays));
+
+    final start = await showDatePicker(
       context: context,
-      // The service refuses a range longer than 366 days, so the picker
-      // cannot offer a start further back than that from today — a wider
-      // window would only let the driver build a request guaranteed to
-      // come back as a validation error.
-      firstDate: now.subtract(const Duration(days: maxReportDays)),
+      helpText: 'Report from',
+      initialDate: _range.start,
+      firstDate: earliest,
       lastDate: now,
-      initialDateRange: _range,
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
     );
-    if (picked != null && mounted) setState(() => _range = picked);
+    if (start == null || !mounted) return;
+
+    final end = await showDatePicker(
+      context: context,
+      helpText: 'Report until',
+      initialDate: _range.end.isBefore(start) ? start : _range.end,
+      firstDate: start,
+      lastDate: now,
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+    );
+    if (end == null || !mounted) return;
+
+    setState(() => _range = DateTimeRange(start: start, end: end));
   }
 
   /// The service's own cap on a report range.

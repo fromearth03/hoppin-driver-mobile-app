@@ -7,6 +7,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../shared/widgets/app_buttons.dart';
 import '../../../auth/logic/auth_controller.dart';
+import '../../../home/logic/home_controller.dart';
 
 /// The logout confirmation from the design: a centred card with a close
 /// button, an image, the question, and Cancel beside Logout.
@@ -94,6 +95,10 @@ Future<void> showLogoutDialog(BuildContext context, WidgetRef ref) async {
   );
 
   if (confirmed != true || !context.mounted) return;
+  // The home machinery (offer poll, GPS beat) belongs to the session.
+  // signOut only flips auth state; without this a logged-out app keeps
+  // reporting the driver's location on a dead token.
+  ref.invalidate(homeControllerProvider);
   await ref.read(authControllerProvider.notifier).signOut();
   if (!context.mounted) return;
   context.go(Routes.signIn);
