@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoppin_driver/features/auth/data/auth_repository.dart';
 import 'package:mocktail/mocktail.dart';
@@ -6,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class _MockGoTrue extends Mock implements GoTrueClient {}
 
 class _MockSupabase extends Mock implements SupabaseClient {}
+
+class _MockDio extends Mock implements Dio {}
 
 Session testSession() => Session(
       accessToken: 'jwt',
@@ -20,17 +23,22 @@ Session testSession() => Session(
     );
 
 void main() {
-  setUpAll(() => registerFallbackValue(UserAttributes()));
+  setUpAll(() {
+    registerFallbackValue(UserAttributes());
+    registerFallbackValue(Options());
+  });
 
   late _MockGoTrue auth;
   late _MockSupabase client;
+  late _MockDio resetDio;
   late AuthRepository repo;
 
   setUp(() {
     auth = _MockGoTrue();
     client = _MockSupabase();
+    resetDio = _MockDio();
     when(() => client.auth).thenReturn(auth);
-    repo = AuthRepository(client);
+    repo = AuthRepository(client, resetDio: resetDio);
   });
 
   test('signIn returns the SDK session', () async {
@@ -95,13 +103,47 @@ void main() {
     expect(r.errorOrNull!.isRetryable, isTrue);
   });
 
-  test('requestPasswordReset succeeds', () async {
-    when(() => auth.resetPasswordForEmail(any(),
-        redirectTo: any(named: 'redirectTo'))).thenAnswer((_) async {});
+  test('requestPasswordReset posts the raw OTP request, never signing up',
+      () async {
+    // The SDK helper sends the wrong (admin) template, so the repo posts
+    // the raw magic-link request itself — the test pins that contract.
+    when(() => resetDio.post<void>(any(),
+            queryParameters: any(named: 'queryParameters'),
+            options: any(named: 'options'),
+            data: any(named: 'data')))
+        .thenAnswer((i) async =>
+            Response<void>(requestOptions: RequestOptions(), statusCode: 200));
 
     final r = await repo.requestPasswordReset('d@hoppin.tech');
 
     expect(r.isOk, isTrue);
+    final captured = verify(() => resetDio.post<void>(
+          captureAny(),
+          queryParameters: captureAny(named: 'queryParameters'),
+          options: any(named: 'options'),
+          data: captureAny(named: 'data'),
+        )).captured;
+    expect(captured[0], endsWith('/auth/v1/otp'));
+    final query = captured[1] as Map<String, dynamic>;
+    expect(query['redirect_to'], AuthRepository.passwordResetRedirect());
+    final body = captured[2] as Map<String, dynamic>;
+    expect(body['email'], 'd@hoppin.tech');
+    expect(body['create_user'], isFalse);
+  });
+
+  test('requestPasswordReset maps 429 to TOO_MANY_ATTEMPTS', () async {
+    when(() => resetDio.post<void>(any(),
+        queryParameters: any(named: 'queryParameters'),
+        options: any(named: 'options'),
+        data: any(named: 'data'))).thenThrow(DioException(
+      requestOptions: RequestOptions(),
+      response: Response<void>(
+          requestOptions: RequestOptions(), statusCode: 429),
+    ));
+
+    final r = await repo.requestPasswordReset('d@hoppin.tech');
+
+    expect(r.errorOrNull!.code, 'TOO_MANY_ATTEMPTS');
   });
 
   test('signOut succeeds even when the server rejects the call', () async {

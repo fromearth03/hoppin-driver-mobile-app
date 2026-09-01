@@ -22,7 +22,12 @@ const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 /// The SDK owns refresh and persistence — nothing here re-implements them.
 class AuthRepository {
   final SupabaseClient _client;
-  AuthRepository(this._client);
+
+  /// The reset request bypasses the SDK on purpose (see
+  /// [requestPasswordReset]); injectable so tests can stub the transport.
+  final Dio _resetDio;
+
+  AuthRepository(this._client, {Dio? resetDio}) : _resetDio = resetDio ?? Dio();
 
   GoTrueClient get _auth => _client.auth;
 
@@ -140,7 +145,7 @@ class AuthRepository {
   Future<Result<void>> requestPasswordReset(String email) async {
     try {
       final base = _supabaseUrl.replaceFirst(RegExp(r'/+$'), '');
-      await Dio().post<void>(
+      await _resetDio.post<void>(
         '$base/auth/v1/otp',
         queryParameters: {'redirect_to': passwordResetRedirect()},
         options: Options(headers: {
