@@ -156,7 +156,10 @@ class Ride {
         'assigned' ||
         'driver_assigned' =>
           TripPhase.headingToPickup,
-        'arrived' || 'waiting' => TripPhase.waiting,
+        // The service's own constant is `arriving` (models.StatusArriving);
+        // missing it left the CTA on "Arrived at pickup" after a successful
+        // arrive, and the second tap answered ILLEGAL_TRANSITION.
+        'arriving' || 'arrived' || 'waiting' => TripPhase.waiting,
         'in_progress' || 'started' || 'on_trip' => TripPhase.inTrip,
         'completed' => TripPhase.completed,
         'cancelled' || 'canceled' => TripPhase.cancelled,

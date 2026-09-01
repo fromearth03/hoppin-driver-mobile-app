@@ -16,7 +16,10 @@ class AppButtons {
         backgroundColor: AppColors.buttonPrimary,
         disabledBackgroundColor: AppColors.buttonPrimary.withValues(alpha: 0.5),
         foregroundColor: Colors.white,
-        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(
+            fontFamily: AppText.fontFamily,
+            fontSize: 17,
+            fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_radius),
         ),
@@ -26,7 +29,10 @@ class AppButtons {
   static ButtonStyle outlined() => OutlinedButton.styleFrom(
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textSecondary,
-        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
+        textStyle: const TextStyle(
+            fontFamily: AppText.fontFamily,
+            fontSize: 17,
+            fontWeight: FontWeight.w500),
         side: const BorderSide(color: AppColors.border),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_radius),
@@ -39,7 +45,10 @@ class AppButtons {
   static ButtonStyle deep() => FilledButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(
+            fontFamily: AppText.fontFamily,
+            fontSize: 17,
+            fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_radius),
         ),
@@ -50,7 +59,10 @@ class AppButtons {
   static ButtonStyle muted() => FilledButton.styleFrom(
         backgroundColor: AppColors.buttonMuted,
         foregroundColor: AppColors.textPrimary,
-        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(
+            fontFamily: AppText.fontFamily,
+            fontSize: 17,
+            fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_radius),
         ),

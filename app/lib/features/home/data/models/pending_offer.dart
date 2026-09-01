@@ -107,6 +107,27 @@ class PendingOffer {
         receivedAt: receivedAt ?? DateTime.now(),
       );
 
+  /// A copy with the address labels filled in — used when the service sends
+  /// them blank (dispatch creates the ride from coordinates alone, and the
+  /// backend only reverse-geocodes on the post-accept endpoints).
+  PendingOffer withLabels({String? pickupLabel, String? dropoffLabel}) =>
+      PendingOffer(
+        id: id,
+        rideId: rideId,
+        fare: fare,
+        pickupLabel: pickupLabel ?? this.pickupLabel,
+        dropoffLabel: dropoffLabel ?? this.dropoffLabel,
+        expiresInSec: expiresInSec,
+        receivedAt: receivedAt,
+        rideCategory: rideCategory,
+        estimatedDurationSeconds: estimatedDurationSeconds,
+        estimatedMiles: estimatedMiles,
+        pickupEtaSeconds: pickupEtaSeconds,
+        pickup: pickup,
+        dropoff: dropoff,
+        expiresAt: expiresAt,
+      );
+
   int get secondsRemaining {
     final left = expiresAt != null
         ? expiresAt!.difference(DateTime.now().toUtc()).inSeconds

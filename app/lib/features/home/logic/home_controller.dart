@@ -9,8 +9,10 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../auth/data/auth_repository.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/push/push_service.dart';
 import '../data/driver_status_repository.dart';
 import 'location_reporter.dart';
+import 'offer_labels.dart';
 import '../data/models/driver_status.dart';
 import '../data/models/driver_today.dart';
 import '../data/models/pending_offer.dart';
@@ -108,6 +110,13 @@ class HomeController extends AsyncNotifier<HomeState> {
             .request()
             .catchError((_) => PermissionStatus.denied);
       } catch (_) {}
+      // The wake-up half of offer delivery: register this device's FCM
+      // token and route a foreground ride-offer push straight to the
+      // authoritative fetch. Fire-and-forget — a device without Google
+      // services still gets every offer from the 5s poll.
+      final push = ref.read(pushServiceProvider);
+      push.onRideOffer = () => onPushWake();
+      push.register();
     }
     final result = await _statusRepo.status();
     return await result.when(
@@ -286,16 +295,18 @@ class HomeController extends AsyncNotifier<HomeState> {
     // accepted a ride while this request was in flight, and committing the
     // result then would put a card back on top of a driver already driving.
     if (!_canReceiveOffers) return;
-    offersResult.when(
-      ok: (list) {
-        final fresh = _withoutDismissed(list);
-        _emit(fresh.isEmpty
-            ? _current.copyWith(clearOffer: true)
-            : _current.copyWith(offer: fresh.first));
-      },
-      // A failed poll is not worth surfacing; the next tick retries.
-      err: (_) {},
-    );
+    // A failed poll is not worth surfacing; the next tick retries.
+    final list = offersResult.valueOrNull;
+    if (list == null) return;
+    final fresh = _withoutDismissed(list);
+    if (fresh.isEmpty) {
+      _emit(_current.copyWith(clearOffer: true));
+      return;
+    }
+    final offer =
+        await ref.read(offerLabelResolverProvider).resolve(fresh.first);
+    if (!_canReceiveOffers) return;
+    _emit(_current.copyWith(offer: offer));
   }
 
   bool get _canReceiveOffers =>
@@ -306,15 +317,12 @@ class HomeController extends AsyncNotifier<HomeState> {
   Future<void> onPushWake() async {
     final result = await _offerRepo.offers();
     if (_disposed) return;
-    result.when(
-      ok: (list) {
-        final fresh = _withoutDismissed(list);
-        if (fresh.isNotEmpty) {
-          _emit(_current.copyWith(offer: fresh.first));
-        }
-      },
-      err: (_) {},
-    );
+    final fresh = _withoutDismissed(result.valueOrNull ?? const []);
+    if (fresh.isEmpty) return;
+    final offer =
+        await ref.read(offerLabelResolverProvider).resolve(fresh.first);
+    if (_disposed) return;
+    _emit(_current.copyWith(offer: offer));
   }
 
   /// Drops the offer already acted on, and forgets the id once the server

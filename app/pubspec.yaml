@@ -23,6 +23,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   pointer_interceptor: ^0.10.1+2
   shared_preferences: ^2.5.5
+  geocoding: ^5.0.0
+  firebase_core: ^4.14.0
+  firebase_messaging: ^16.6.0
 
 dev_dependencies:
   flutter_test:

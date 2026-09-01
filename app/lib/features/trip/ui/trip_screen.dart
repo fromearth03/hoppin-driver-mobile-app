@@ -342,8 +342,12 @@ class TripScreen extends ConsumerWidget {
     final style = AppButtons.primary().copyWith(
       backgroundColor: WidgetStatePropertyAll(
           chargeMoment ? AppColors.accent : AppColors.buttonPrimary),
-      textStyle: const WidgetStatePropertyAll(
-          TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
+      // ButtonStyle.textStyle replaces the theme's labelLarge wholesale, so
+      // the family must ride along or the CTA falls back to the system font.
+      textStyle: const WidgetStatePropertyAll(TextStyle(
+          fontFamily: AppText.fontFamily,
+          fontSize: 19,
+          fontWeight: FontWeight.w600)),
     );
 
     if (action == null) {

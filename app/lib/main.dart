@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'core/device/device_identity.dart';
+import 'core/push/push_service.dart';
 
 /// Injected at build time:
 ///   flutter run --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_ANON_KEY=…
@@ -14,6 +15,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await DeviceIdentity.init();
+  await PushService.boot();
 
   await Supabase.initialize(
     url: _supabaseUrl,

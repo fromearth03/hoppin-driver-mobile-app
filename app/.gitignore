@@ -44,3 +44,4 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 test/visual/failures/
+android/app/google-services.json

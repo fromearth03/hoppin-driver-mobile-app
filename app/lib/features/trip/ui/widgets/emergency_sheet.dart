@@ -23,6 +23,11 @@ class EmergencySheet extends ConsumerStatefulWidget {
   static Future<void> show(BuildContext context, {String? rideId}) =>
       showModalBottomSheet<void>(
         context: context,
+        // The root navigator, or the sheet opens INSIDE the shell and the
+        // floating nav pill paints over the SOS button — the one control
+        // this sheet exists for.
+        useRootNavigator: true,
+        isScrollControlled: true,
         backgroundColor: AppColors.surface,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -60,7 +65,9 @@ class _EmergencySheetState extends ConsumerState<EmergencySheet> {
     final contacts = ref.watch(platformContactsProvider).valueOrNull;
 
     return SafeArea(
-      child: Padding(
+      // Scrollable so a short screen still reaches the SOS button below the
+      // contact rows, rather than clipping it out of reach.
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
