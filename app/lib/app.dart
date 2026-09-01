@@ -25,6 +25,7 @@ import 'features/onboarding/ui/sign_up_screen.dart';
 import 'features/onboarding/ui/vehicle_screen.dart';
 import 'features/stats/ui/stats_screen.dart';
 import 'features/support/ui/support_screen.dart';
+import 'features/support/ui/ticket_thread_screen.dart';
 import 'features/trip/ui/chat_screen.dart';
 import 'features/trip/ui/trip_screen.dart';
 import 'features/trips/ui/trips_screen.dart';
@@ -141,6 +142,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               builder: (_, __) => RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, notificationsControllerProvider, ref.read(notificationsControllerProvider.notifier).refresh), child: const NotificationsScreen())),
           GoRoute(
               path: Routes.support, builder: (_, __) => const SupportScreen()),
+          GoRoute(
+            path: '${Routes.supportTicket}/:id',
+            builder: (_, state) =>
+                TicketThreadScreen(ticketId: state.pathParameters['id']!),
+          ),
           GoRoute(
               path: Routes.settings,
               builder: (_, __) => const SettingsScreen()),

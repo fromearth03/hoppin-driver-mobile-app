@@ -13,6 +13,7 @@ class Routes {
   static const personalInfo = '/profile';
   static const notifications = '/notifications';
   static const support = '/support';
+  static const supportTicket = '/support/ticket';
   static const settings = '/settings';
   static const payouts = '/payouts';
   static const deleteAccount = '/delete-account';

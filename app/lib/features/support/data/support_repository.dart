@@ -83,6 +83,38 @@ class SupportRepository {
       err: (e) => Err(e),
     );
   }
+
+  /// The platform contact card. Public read — email, phone, emergency and
+  /// WhatsApp numbers the admin panel maintains, blank when unset.
+  Future<Result<PlatformContacts>> contacts() async {
+    final r = await _api.get<Map<String, dynamic>>('/contacts');
+    return r.when(
+      ok: (json) => Ok(PlatformContacts.fromJson(json)),
+      err: (e) => Err(e),
+    );
+  }
+
+  /// One ticket with its whole conversation. The server also marks the
+  /// thread read for this driver as a side effect of the fetch.
+  Future<Result<TicketThread>> thread(String id) async {
+    final r = await _api.get<Map<String, dynamic>>('/me/support-tickets/$id');
+    return r.when(
+      ok: (json) => Ok(TicketThread.fromJson(json)),
+      err: (e) => Err(e),
+    );
+  }
+
+  /// Sends the driver's message into the ticket. [replyToId] quotes an
+  /// earlier message, mirroring the ride chat's reply mechanic.
+  Future<Result<void>> reply(String id, String body,
+      {String? replyToId}) async {
+    final r = await _api
+        .post<Map<String, dynamic>>('/me/support-tickets/$id/messages', body: {
+      'body': body,
+      if (replyToId != null) 'reply_to_id': replyToId,
+    });
+    return r.when(ok: (_) => const Ok(null), err: (e) => Err(e));
+  }
 }
 
 final supportRepositoryProvider = Provider<SupportRepository>(

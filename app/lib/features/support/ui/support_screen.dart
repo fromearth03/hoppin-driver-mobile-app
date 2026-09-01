@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../app_router.dart';
 import '../../../shared/nav/app_shell.dart';
 
 import '../../../core/api/error_codes.dart';
@@ -25,6 +29,13 @@ final complaintTypesProvider =
   return result.valueOrNull ?? const [];
 });
 
+/// The admin-maintained contact card. Never hardcoded: the address shown is
+/// whatever the platform actually staffs, or nothing.
+final platformContactsProvider = FutureProvider<PlatformContacts>((ref) async {
+  final result = await ref.watch(supportRepositoryProvider).contacts();
+  return result.valueOrNull ?? const PlatformContacts();
+});
+
 /// Help & Support: the FAQ card, the ticket form, the contact card, the
 /// legal card, and the driver's own recent issues.
 ///
@@ -40,8 +51,6 @@ class SupportScreen extends ConsumerStatefulWidget {
 }
 
 class _SupportScreenState extends ConsumerState<SupportScreen> {
-  static const _supportEmail = 'support@hoppin.com';
-
   static const _faq = [
     (
       'How do I go online?',
@@ -66,9 +75,19 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
   ];
 
   final _description = TextEditingController();
+  final _formCardKey = GlobalKey();
   String? _category;
   bool _busy = false;
   String? _error;
+
+  /// The "Open Ticket" tile walks the driver to the form that opens one.
+  void _scrollToForm() {
+    final ctx = _formCardKey.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(ctx,
+          duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+    }
+  }
 
   @override
   void dispose() {
@@ -128,11 +147,11 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
             ),
             _openTicketCard(ref.watch(complaintTypesProvider).valueOrNull ??
                 const <ComplaintType>[]),
-            const SettingsCard(
+            SettingsCard(
               title: 'Contact to Support',
               children: [
                 Padding(
-                  padding: EdgeInsets.fromLTRB(20, 18, 20, 20),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
                   // The two tiles match heights, so the taller subtitle sets
                   // the row rather than leaving a ragged bottom edge.
                   child: IntrinsicHeight(
@@ -143,17 +162,32 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                           child: _ContactTile(
                             icon: Icons.receipt_long_outlined,
                             title: 'Open Ticket',
-                            subtitle:
-                                'Representative will respond in 24 Hours',
+                            subtitle: 'Representative will respond in 24 Hours',
+                            onTap: _scrollToForm,
                           ),
                         ),
-                        SizedBox(width: 14),
+                        const SizedBox(width: 14),
                         Expanded(
-                          child: _ContactTile(
-                            icon: Icons.mail_outline,
-                            title: 'Email',
-                            subtitle: _supportEmail,
-                          ),
+                          child: Consumer(builder: (context, ref, _) {
+                            final email = ref
+                                    .watch(platformContactsProvider)
+                                    .valueOrNull
+                                    ?.supportEmail ??
+                                '';
+                            return _ContactTile(
+                              icon: Icons.mail_outline,
+                              title: 'Email',
+                              // The live address from /contacts — a made-up
+                              // one would bounce a plea for help into the
+                              // void.
+                              subtitle:
+                                  email.isEmpty ? 'Not available yet' : email,
+                              onTap: email.isEmpty
+                                  ? null
+                                  : () => launchUrl(
+                                      Uri(scheme: 'mailto', path: email)),
+                            );
+                          }),
                         ),
                       ],
                     ),
@@ -188,6 +222,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
   }
 
   Widget _openTicketCard(List<ComplaintType> types) => SettingsCard(
+        key: _formCardKey,
         title: 'Open a Ticket',
         children: [
           Padding(
@@ -294,8 +329,13 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                 : Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                     child: Column(
-                      children:
-                          tickets.map((t) => _TicketCard(ticket: t)).toList(),
+                      children: tickets
+                          .map((t) => _TicketCard(
+                                ticket: t,
+                                onTap: () => context.push(
+                                    '${Routes.supportTicket}/${t.id}'),
+                              ))
+                          .toList(),
                     ),
                   ),
           ),
@@ -357,29 +397,38 @@ class _ContactTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   const _ContactTile({
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
-        decoration: BoxDecoration(
-          color: AppColors.background,
+  Widget build(BuildContext context) => Material(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 36, color: AppColors.textPrimary),
-            const SizedBox(height: 22),
-            Text(title, style: AppText.body.copyWith(fontSize: 18)),
-            const SizedBox(height: 6),
-            Text(subtitle, style: AppText.caption),
-          ],
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, size: 36, color: AppColors.textPrimary),
+                const SizedBox(height: 22),
+                Text(title, style: AppText.body.copyWith(fontSize: 18)),
+                const SizedBox(height: 6),
+                Text(subtitle,
+                    style: AppText.caption,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
         ),
       );
 }
@@ -388,7 +437,8 @@ class _ContactTile extends StatelessWidget {
 /// green resolved, amber in progress, red rejected.
 class _TicketCard extends StatelessWidget {
   final SupportTicket ticket;
-  const _TicketCard({required this.ticket});
+  final VoidCallback? onTap;
+  const _TicketCard({required this.ticket, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -411,14 +461,17 @@ class _TicketCard extends StatelessWidget {
       TicketStatus.open => ('Open', AppColors.info, Icons.schedule),
     };
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
         color: colour.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+            child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(ticket.subject,
@@ -444,9 +497,15 @@ class _TicketCard extends StatelessWidget {
                       color: colour, fontWeight: FontWeight.w600),
                 ),
               ),
+              // The conversation lives one tap deeper.
+              const Icon(Icons.chevron_right,
+                  size: 22, color: AppColors.textSecondary),
             ],
           ),
         ],
+            ),
+          ),
+        ),
       ),
     );
   }
