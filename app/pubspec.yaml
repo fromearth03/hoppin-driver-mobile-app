@@ -24,6 +24,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
   mocktail: ^1.0.3
 
 flutter:
@@ -43,3 +44,10 @@ flutter:
           weight: 600
         - asset: assets/fonts/Baloo2-Bold.ttf
           weight: 700
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/brand/launcher_icon.png
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/brand/launcher_icon_fg.png

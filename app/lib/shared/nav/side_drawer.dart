@@ -7,6 +7,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/typography.dart';
 import '../../features/profile/data/models/driver_profile.dart';
 import '../../features/profile/logic/profile_controller.dart';
+import '../../features/profile/ui/widgets/logout_dialog.dart';
 import '../widgets/authed_avatar.dart';
 
 /// The side navigation from the design: a rounded white panel that stops
@@ -77,7 +78,10 @@ class SideDrawer extends ConsumerWidget {
             _Row(
               icon: Icons.logout,
               label: 'Logout',
-              onTap: onLogout,
+              // The design's "Are you logging out?" dialog stands between
+              // the tap and the sign-out — one mis-tap here otherwise dumps
+              // a working driver back to the sign-in screen.
+              onTap: () => showLogoutDialog(context, ref),
             ),
             const SizedBox(height: 12),
           ],
