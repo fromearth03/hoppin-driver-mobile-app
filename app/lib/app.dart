@@ -32,6 +32,7 @@ import 'features/trips/ui/trips_screen.dart';
 import 'features/gate/logic/app_gate_controller.dart';
 import 'features/gate/ui/app_gate_screen.dart';
 import 'shared/nav/app_shell.dart';
+import 'shared/nav/tab_transition.dart';
 import 'features/home/logic/home_controller.dart';
 import 'features/earnings/logic/earnings_controller.dart';
 import 'features/statement/logic/statement_controller.dart';
@@ -112,7 +113,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             currentPath: state.uri.path,
             onLogout: () =>
                 ref.read(authControllerProvider.notifier).signOut(),
-            child: child,
+            // The slide lives here rather than on each tab's pageBuilder:
+            // the shell sees every navigation through it, so one place knows
+            // both where the driver was and where they are going.
+            child: TabSwitcher(path: state.uri.path, child: child),
           ),
         ),
         routes: [
