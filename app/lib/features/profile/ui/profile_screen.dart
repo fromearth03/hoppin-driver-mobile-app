@@ -37,8 +37,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   String? _error;
   String? _saved;
 
+  /// What the server last confirmed, so Save can tell an edit from a
+  /// re-submission of the same number.
+  String _committed = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Rebuilds the button as the field changes: it was live from the moment
+    // the screen opened, so the driver could post the number that was
+    // already saved and watch a spinner accomplish nothing.
+    _phone.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    // A message about the last save stops being true the moment the field is
+    // touched again.
+    if (_saved != null || _error != null) {
+      setState(() {
+        _saved = null;
+        _error = null;
+      });
+    } else {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
+    _phone.removeListener(_onFieldChanged);
     _phone.dispose();
     super.dispose();
   }
@@ -47,7 +74,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (_seeded || profile == null) return;
     _seeded = true;
     _phone.text = profile.phoneNumber ?? '';
+    _committed = _phone.text;
   }
+
+  /// Whether there is anything to save. Trimmed on both sides, so trailing
+  /// whitespace is not mistaken for an edit.
+  bool get _dirty => _phone.text.trim() != _committed.trim();
 
   /// Pick, upload, re-read. The picker caps the image client-side so a
   /// full-resolution phone photo does not hit the server's size limit.
@@ -96,8 +128,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     result.when(
       ok: (_) {
+        // The committed value moves first: invalidating the provider rebuilds
+        // this screen, and the confirmation has to survive that rebuild
+        // rather than being wiped by the fresh read that follows it.
+        _committed = _phone.text.trim();
+        setState(() => _saved = 'Saved');
         ref.invalidate(profileProvider);
-        if (mounted) setState(() => _saved = 'Saved');
       },
       err: (e) => setState(() => _error = errorCopy(e)),
     );
@@ -241,9 +277,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 padding: const EdgeInsets.fromLTRB(
                     16, 0, 16, AppShell.bottomClearance),
                 child: AppButton(
-                  label: 'Save',
+                  // Named for what it will do. With nothing edited there is
+                  // nothing to save, and a live button there only invited a
+                  // pointless round trip.
+                  label: _dirty ? 'Save changes' : 'No changes to save',
                   busy: _busy,
-                  onPressed: _save,
+                  onPressed: _dirty ? _save : null,
                   style: AppButtons.outlined().copyWith(
                     textStyle: WidgetStateProperty.all(
                       const TextStyle(

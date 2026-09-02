@@ -72,8 +72,11 @@ class NotificationsScreen extends ConsumerWidget {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    16, 4, 16, AppShell.bottomClearance),
+                // The shell's bottom clearance belongs to the scrolling list
+                // below, which is what runs under the floating pill. Applied
+                // here it opened a gap the height of the tab bar between the
+                // filter and the first notification.
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
                 child: _FilterBar(
                   value: filter,
                   onChanged: (f) =>
@@ -153,8 +156,18 @@ class _FilterBar extends StatelessWidget {
         ),
       );
 
+  /// A colour per filter, so the selected one says which list is on screen
+  /// without the driver reading the label. Unread is the red one — it is the
+  /// pile that still wants something from them.
+  static const _tints = {
+    NotificationFilter.all: AppColors.info,
+    NotificationFilter.read: AppColors.positive,
+    NotificationFilter.unread: AppColors.negative,
+  };
+
   Widget _segment(NotificationFilter f, String label) {
     final selected = f == value;
+    final tint = _tints[f]!;
     return Expanded(
       child: GestureDetector(
         onTap: () => onChanged(f),
@@ -163,15 +176,17 @@ class _FilterBar extends StatelessWidget {
           height: 54,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? AppColors.textPrimary : Colors.transparent,
+            color: selected ? tint : Colors.transparent,
             borderRadius: BorderRadius.circular(27),
           ),
           child: Text(
             label,
             style: AppText.body.copyWith(
               fontSize: 17,
-              fontWeight: FontWeight.w500,
-              color: selected ? Colors.white : AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+              // Unselected segments carry their colour in the text, so the
+              // three are told apart before one is chosen.
+              color: selected ? Colors.white : tint,
             ),
           ),
         ),
