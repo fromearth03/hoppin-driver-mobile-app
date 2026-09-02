@@ -303,10 +303,20 @@ class HomeController extends AsyncNotifier<HomeState> {
       _emit(_current.copyWith(clearOffer: true));
       return;
     }
-    final offer =
-        await ref.read(offerLabelResolverProvider).resolve(fresh.first);
-    if (!_canReceiveOffers) return;
-    _emit(_current.copyWith(offer: offer));
+    // The card first, the street names after: a driver has ~60 seconds to
+    // decide, and holding the offer hostage to a geocoder would spend them.
+    _emit(_current.copyWith(offer: fresh.first));
+    _enrich(fresh.first);
+  }
+
+  /// Fills in addresses and the multi-stop shape, then re-emits — unless
+  /// the offer has moved on underneath the lookup.
+  void _enrich(PendingOffer offer) {
+    final resolver = ref.read(offerLabelResolverProvider);
+    unawaited(resolver.resolve(offer).then((enriched) {
+      if (_disposed || _current.offer?.id != offer.id) return;
+      _emit(_current.copyWith(offer: enriched));
+    }).catchError((_) {}));
   }
 
   bool get _canReceiveOffers =>
@@ -319,19 +329,22 @@ class HomeController extends AsyncNotifier<HomeState> {
     if (_disposed) return;
     final fresh = _withoutDismissed(result.valueOrNull ?? const []);
     if (fresh.isEmpty) return;
-    final offer =
-        await ref.read(offerLabelResolverProvider).resolve(fresh.first);
-    if (_disposed) return;
-    _emit(_current.copyWith(offer: offer));
+    _emit(_current.copyWith(offer: fresh.first));
+    _enrich(fresh.first);
   }
 
   /// Drops the offer already acted on, and forgets the id once the server
   /// stops sending it so a later, genuinely new offer is never suppressed.
+  ///
+  /// Lapsed offers go the same way. The poll clears them on its next tick,
+  /// but the driver is looking at the card in between — and once they are
+  /// offline, or the network drops, there is no next tick at all, so a dead
+  /// card would sit there with a button the server refuses.
   List<PendingOffer> _withoutDismissed(List<PendingOffer> list) {
-    if (_dismissedOfferId == null) return list;
-    final remaining =
-        list.where((o) => o.id != _dismissedOfferId).toList();
-    if (remaining.length == list.length) _dismissedOfferId = null;
+    final live = list.where((o) => !o.hasExpired).toList();
+    if (_dismissedOfferId == null) return live;
+    final remaining = live.where((o) => o.id != _dismissedOfferId).toList();
+    if (remaining.length == live.length) _dismissedOfferId = null;
     return remaining;
   }
 
@@ -354,6 +367,22 @@ class HomeController extends AsyncNotifier<HomeState> {
     // safety net; only a successful one hands over to the trip screen.
     if (!result.isOk && _canReceiveOffers) startPolling();
     return result;
+  }
+
+  /// Takes down an offer whose window closed while it was on screen.
+  ///
+  /// Deliberately silent: the driver did not refuse this job, they simply
+  /// ran out of time, and dispatch already knows — the offer expired on its
+  /// side too. Sending a decline here would record a refusal against them
+  /// for a ride they may well have wanted.
+  ///
+  /// The id is suppressed so a poll mid-flight cannot put the dead card
+  /// back, and polling continues: the next offer is the one that matters.
+  void expireOffer() {
+    final offer = _current.offer;
+    if (offer == null) return;
+    _dismissedOfferId = offer.id;
+    _emit(_current.copyWith(clearOffer: true));
   }
 
   Future<void> declineOffer() async {

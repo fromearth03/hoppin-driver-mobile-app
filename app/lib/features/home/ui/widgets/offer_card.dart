@@ -7,6 +7,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../shared/widgets/app_buttons.dart';
 import '../../data/models/pending_offer.dart';
+import 'decline_dialog.dart';
 
 /// The decision surface. A driver has ~60 seconds to answer two questions:
 /// is this worth it, and how far do I drive unpaid to start it. Fare,
@@ -28,6 +29,13 @@ class OfferCard extends StatefulWidget {
   final PendingOffer offer;
   final VoidCallback? onAccept;
   final VoidCallback? onDecline;
+
+  /// Fired once, when the window closes with the card still on screen.
+  ///
+  /// The poll clears a lapsed offer on its next tick, but it is stopped
+  /// while an accept is in flight and never runs at all once the driver
+  /// goes offline. Without this the card would outlive its own countdown.
+  final VoidCallback? onExpired;
   final bool isBusy;
 
   const OfferCard({
@@ -35,6 +43,7 @@ class OfferCard extends StatefulWidget {
     required this.offer,
     this.onAccept,
     this.onDecline,
+    this.onExpired,
     this.isBusy = false,
   });
 
@@ -54,6 +63,10 @@ class _OfferCardState extends State<OfferCard> {
   /// had in fact already taken.
   int? _heldRemaining;
 
+  /// The lapse is reported once; the ticker that noticed it is cancelled in
+  /// the same breath, but a rebuild must not raise it again.
+  bool _announcedExpiry = false;
+
   @override
   void initState() {
     super.initState();
@@ -61,7 +74,16 @@ class _OfferCardState extends State<OfferCard> {
       if (!mounted) return;
       // Nothing left to count; rebuilding once a second forever would burn
       // battery on a card that can no longer change.
-      if (widget.offer.hasExpired || widget.isBusy) timer.cancel();
+      if (widget.offer.hasExpired || widget.isBusy) {
+        timer.cancel();
+        // An accept in flight owns the outcome — the server's answer decides
+        // it, not our clock. Otherwise the card has genuinely lapsed and
+        // says so, once.
+        if (!widget.isBusy && !_announcedExpiry) {
+          _announcedExpiry = true;
+          widget.onExpired?.call();
+        }
+      }
       setState(() {});
     });
   }
@@ -84,6 +106,19 @@ class _OfferCardState extends State<OfferCard> {
   void dispose() {
     _ticker?.cancel();
     super.dispose();
+  }
+
+  /// A decline is final, and the button sits full-width under Accept where
+  /// a thumb reaching for the fare panel can catch it. An expired offer is
+  /// exempt: "Dismiss" throws nothing away, so asking would be noise.
+  Future<void> _declineWithConfirm(bool expired) async {
+    if (expired) {
+      widget.onDecline?.call();
+      return;
+    }
+    final sure = await confirmDecline(context, widget.offer);
+    if (!mounted || !sure) return;
+    widget.onDecline?.call();
   }
 
   static String _minutes(int seconds) => '${(seconds / 60).round()} min';
@@ -259,7 +294,7 @@ class _OfferCardState extends State<OfferCard> {
           SizedBox(
             height: AppButtons.height,
             child: OutlinedButton.icon(
-              onPressed: widget.isBusy ? null : widget.onDecline,
+              onPressed: widget.isBusy ? null : () => _declineWithConfirm(expired),
               style: AppButtons.outlined(),
               icon: const Icon(Icons.cancel_outlined, size: 20),
               label: Text(expired ? 'Dismiss' : 'Decline Ride'),

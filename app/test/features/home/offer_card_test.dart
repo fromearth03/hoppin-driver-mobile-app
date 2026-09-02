@@ -117,7 +117,8 @@ void main() {
     expect(find.text('Decline Ride'), findsOneWidget);
   });
 
-  testWidgets('accept and decline fire their callbacks', (tester) async {
+  testWidgets('accept fires straight away; decline asks first',
+      (tester) async {
     var accepted = false, declined = false;
     await tester.pumpWidget(wrap(OfferCard(
       offer: buildOffer(),
@@ -126,9 +127,32 @@ void main() {
     )));
 
     await tester.tap(find.text('Accept Ride'));
-    await tester.tap(find.text('Decline Ride'));
-
     expect(accepted, isTrue);
+
+    // Decline is final and sits under the driver's thumb, so it goes
+    // through a confirmation rather than firing on the tap itself.
+    await tester.tap(find.text('Decline Ride'));
+    await tester.pumpAndSettle();
+    expect(declined, isFalse);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Decline'));
+    await tester.pumpAndSettle();
+    expect(declined, isTrue);
+  });
+
+  testWidgets('a lapsed offer is dismissed without a confirmation',
+      (tester) async {
+    var declined = false;
+    await tester.pumpWidget(wrap(OfferCard(
+      offer: buildOffer(expiresInSec: 30, age: const Duration(seconds: 32)),
+      onDecline: () => declined = true,
+    )));
+
+    await tester.tap(find.text('Dismiss'));
+    await tester.pumpAndSettle();
+
+    // Nothing is being thrown away, so there is nothing to ask about.
+    expect(find.text('Decline this ride?'), findsNothing);
     expect(declined, isTrue);
   });
 

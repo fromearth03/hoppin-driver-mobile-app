@@ -30,14 +30,19 @@ DriverStatus buildStatus({
       activeRideId: activeRide,
     );
 
-PendingOffer buildOffer({String id = 'o1'}) => PendingOffer(
+PendingOffer buildOffer({
+  String id = 'o1',
+  int expiresInSec = 60,
+  Duration age = Duration.zero,
+}) =>
+    PendingOffer(
       id: id,
       rideId: 'r1',
       fare: const Pence(2015),
       pickupLabel: 'City Centre',
       dropoffLabel: 'Station',
-      expiresInSec: 60,
-      receivedAt: DateTime.now(),
+      expiresInSec: expiresInSec,
+      receivedAt: DateTime.now().subtract(age),
     );
 
 void main() {
@@ -212,5 +217,37 @@ void main() {
 
     expect(r.errorOrNull!.code, 'OFFER_EXPIRED');
     expect(c.read(homeControllerProvider).value!.offer, isNull);
+  });
+
+  test('an offer that lapses on screen clears itself', () async {
+    // The poll drops a lapsed offer on its next tick, but the driver is
+    // looking at the card in between - and while they are offline, or the
+    // network is down, there is no next tick at all. A dead card with a
+    // refusing button is not a state to leave them in.
+    when(() => status.status())
+        .thenAnswer((_) async => Ok(buildStatus(presence: Presence.online)));
+    when(() => offers.offers()).thenAnswer((_) async => Ok([
+          buildOffer(expiresInSec: 30, age: const Duration(seconds: 31)),
+        ]));
+
+    final c = container();
+    await c.read(homeControllerProvider.future);
+    await c.read(homeControllerProvider.notifier).onPushWake();
+
+    expect(c.read(homeControllerProvider).value!.offer, isNull);
+  });
+
+  test('a live offer is still shown', () async {
+    when(() => status.status())
+        .thenAnswer((_) async => Ok(buildStatus(presence: Presence.online)));
+    when(() => offers.offers()).thenAnswer((_) async => Ok([
+          buildOffer(expiresInSec: 30, age: const Duration(seconds: 2)),
+        ]));
+
+    final c = container();
+    await c.read(homeControllerProvider.future);
+    await c.read(homeControllerProvider.notifier).onPushWake();
+
+    expect(c.read(homeControllerProvider).value!.offer, isNotNull);
   });
 }

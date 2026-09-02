@@ -1,79 +1,71 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geocoding/geocoding.dart';
 
+import '../../../core/geo/place_labeler.dart';
+import '../../trip/data/trip_repository.dart';
 import '../data/models/pending_offer.dart';
 
 /// Fills in an offer's pickup/dropoff addresses when the service sends them
 /// blank. Dispatch creates the ride from coordinates alone, and the backend
 /// reverse-geocodes only on the post-accept endpoints — so a fresh offer
 /// carries empty labels precisely when the driver most needs to know where
-/// the job is. The platform geocoder (no API key, on-device) answers here.
-///
-/// Best-effort throughout: web has no platform geocoder, and a lookup can
-/// fail offline — the offer then shows what the server sent, exactly as
-/// before. Results are cached per offer so the 5-second poll never repeats
-/// a lookup.
+/// the job is. The shared [PlaceLabeler] answers on-device.
 class OfferLabelResolver {
-  final _cache = <String, ({String pickup, String dropoff})>{};
+  final PlaceLabeler _labeler;
+  final TripRepository _trips;
 
-  /// Lazy: constructing the platform channel in tests throws, and an offer
-  /// with server-sent labels never needs it at all.
-  Geocoding? _geocoder;
+  /// One stops fetch per ride, remembered across the 5-second poll. An
+  /// empty list is a real answer (single-leg ride) and is cached too.
+  final _stops = <String, List<String>>{};
+
+  OfferLabelResolver(this._labeler, this._trips);
 
   Future<PendingOffer> resolve(PendingOffer offer) async {
-    final needsPickup = offer.pickupLabel.isEmpty && offer.pickup != null;
-    final needsDropoff = offer.dropoffLabel.isEmpty && offer.dropoff != null;
-    if (!needsPickup && !needsDropoff) return offer;
-    if (kIsWeb) return offer;
+    var out = offer;
 
-    final cached = _cache[offer.id];
-    if (cached != null) {
-      return offer.withLabels(
-        pickupLabel: needsPickup && cached.pickup.isNotEmpty ? cached.pickup : null,
-        dropoffLabel:
-            needsDropoff && cached.dropoff.isNotEmpty ? cached.dropoff : null,
+    final needsPickup = out.pickupLabel.isEmpty && out.pickup != null;
+    final needsDropoff = out.dropoffLabel.isEmpty && out.dropoff != null;
+    if (needsPickup || needsDropoff) {
+      final pickup = needsPickup
+          ? await _labeler.label(out.pickup!.lat, out.pickup!.lng)
+          : '';
+      final dropoff = needsDropoff
+          ? await _labeler.label(out.dropoff!.lat, out.dropoff!.lng)
+          : '';
+      out = out.withLabels(
+        pickupLabel: pickup.isNotEmpty ? pickup : null,
+        dropoffLabel: dropoff.isNotEmpty ? dropoff : null,
       );
     }
 
-    final pickup = needsPickup
-        ? await _label(offer.pickup!.lat, offer.pickup!.lng)
-        : '';
-    final dropoff = needsDropoff
-        ? await _label(offer.dropoff!.lat, offer.dropoff!.lng)
-        : '';
-    // Cache even a miss: a coordinate the geocoder cannot name now will not
-    // name it on the next poll either, and retrying every 5s costs battery.
-    _cache[offer.id] = (pickup: pickup, dropoff: dropoff);
-    if (_cache.length > 16) _cache.remove(_cache.keys.first);
-
-    return offer.withLabels(
-      pickupLabel: pickup.isNotEmpty ? pickup : null,
-      dropoffLabel: dropoff.isNotEmpty ? dropoff : null,
-    );
-  }
-
-  Future<String> _label(double lat, double lng) async {
-    try {
-      final geocoder = _geocoder ??= Geocoding();
-      final placemarks = await geocoder.placemarkFromCoordinates(lat, lng);
-      if (placemarks.isEmpty) return '';
-      final p = placemarks.first;
-      final street = [p.subThoroughfare, p.thoroughfare]
-          .whereType<String>()
-          .where((s) => s.isNotEmpty)
-          .join(' ');
-      final parts = [
-        street.isNotEmpty ? street : (p.name ?? ''),
-        p.locality ?? p.subAdministrativeArea ?? '',
-      ].where((s) => s.isNotEmpty).toList();
-      return parts.join(', ');
-    } catch (_) {
-      // No geocoder on this platform, or no network — blank is honest.
-      return '';
+    // Multi-stop shape: the driver is already a ride party at offer time,
+    // so the stops read is authorized pre-accept. A job with a mid point
+    // must show it BEFORE the driver commits.
+    if (out.rideId.isNotEmpty) {
+      var labels = _stops[out.rideId];
+      if (labels == null) {
+        final result = await _trips.stops(out.rideId);
+        final stops = result.valueOrNull;
+        if (stops != null) {
+          labels = <String>[];
+          for (final (i, stop) in stops.waypoints.indexed) {
+            var label = stop.label;
+            if (label.isEmpty) {
+              label = await _labeler.label(stop.to.lat, stop.to.lng);
+            }
+            labels.add(label.isEmpty ? 'Stop ${i + 1}' : label);
+          }
+          _stops[out.rideId] = labels;
+          if (_stops.length > 16) _stops.remove(_stops.keys.first);
+        }
+      }
+      if (labels != null && labels.isNotEmpty) {
+        out = out.withLabels(waypointLabels: labels);
+      }
     }
+    return out;
   }
 }
 
-final offerLabelResolverProvider =
-    Provider<OfferLabelResolver>((ref) => OfferLabelResolver());
+final offerLabelResolverProvider = Provider<OfferLabelResolver>((ref) =>
+    OfferLabelResolver(
+        ref.watch(placeLabelerProvider), ref.watch(tripRepositoryProvider)));

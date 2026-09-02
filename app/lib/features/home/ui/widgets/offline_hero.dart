@@ -16,90 +16,81 @@ class OfflineHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        height: 250,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: const Color(0xFF1B1B3A),
-          image: const DecorationImage(
-            image: AssetImage('assets/brand/offline_hero_photo.jpg'),
-            fit: BoxFit.cover,
-            alignment: Alignment.centerRight,
-          ),
+    margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+    height: 250,
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      color: const Color(0xFF1B1B3A),
+      image: const DecorationImage(
+        image: AssetImage('assets/brand/offline_hero_photo.jpg'),
+        fit: BoxFit.cover,
+        alignment: Alignment.centerRight,
+      ),
+    ),
+    child: Container(
+      // The scrim sits between the photo and the copy, so the text
+      // keeps its contrast without dimming itself.
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [Color(0xE01B1B3A), Color(0x731B1B3A), Colors.transparent],
+          stops: [0, 0.45, 0.8],
         ),
-        child: Container(
-          // The scrim sits between the photo and the copy, so the text
-          // keeps its contrast without dimming itself.
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Color(0xE01B1B3A),
-                Color(0x731B1B3A),
-                Colors.transparent,
-              ],
-              stops: [0, 0.45, 0.8],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "You're Offline",
+              style: TextStyle(
+                fontSize: 27,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
-          ),
-          child: Padding(
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "You're Offline",
-                style: TextStyle(
-                  fontSize: 27,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Go online to start receiving ride requests and earn',
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.35,
-                  color: Colors.white,
-                ),
-              ),
-              const Spacer(),
-              // Frosted rather than solid: it sits on a photograph in the
-              // design, and a filled button would fight the image behind it.
-              Material(
-                color: Colors.white.withValues(alpha: 0.22),
+            const SizedBox(height: 8),
+            const Text(
+              'Go online to start receiving ride requests and earn',
+              style: TextStyle(fontSize: 15, height: 1.35, color: Colors.white),
+            ),
+            const Spacer(),
+            // Frosted rather than solid: it sits on a photograph in the
+            // design, and a filled button would fight the image behind it.
+            Material(
+              color: Colors.white.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
                 borderRadius: BorderRadius.circular(14),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: onGoOnline,
-                  child: const Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Go Online',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
+                onTap: onGoOnline,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Go Online',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
                         ),
-                        SizedBox(width: 12),
-                        Icon(Icons.arrow_forward, color: Colors.white),
-                      ],
-                    ),
+                      ),
+                      SizedBox(width: 12),
+                      Icon(Icons.arrow_forward, color: Colors.white),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Shown under the summary while the driver is offline. Static encouragement,
@@ -110,49 +101,51 @@ class MoreRidesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+    margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Row(
+      children: [
+        Container(
+          height: 66,
+          width: 66,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(
+            Icons.savings_outlined,
+            color: Colors.white,
+            size: 32,
+          ),
         ),
-        child: Row(
-          children: [
-            Container(
-              height: 66,
-              width: 66,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(14),
+        const SizedBox(width: 16),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'More rides, more earnings!',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
-              child: const Icon(Icons.savings_outlined,
-                  color: Colors.white, size: 32),
-            ),
-            const SizedBox(width: 16),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'More rides, more earnings!',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Going online now means more ride requests',
-                    style: TextStyle(
-                        fontSize: 14, color: AppColors.textSecondary),
-                  ),
-                ],
+              SizedBox(height: 4),
+              Text(
+                'Going online now means more ride requests',
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 /// The waiting state. An online driver with no offer yet is not an error and
@@ -164,36 +157,106 @@ class NoBookingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-        padding: const EdgeInsets.symmetric(vertical: 44, horizontal: 24),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+    margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+    padding: const EdgeInsets.symmetric(vertical: 44, horizontal: 24),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Column(
+      children: [
+        // Online, the globe becomes a radar: slow expanding rings say
+        // "actively listening" the way a static icon never can.
+        isOnline
+            ? const _RadarPulse(
+                child: Icon(Icons.public, size: 76, color: AppColors.primary),
+              )
+            : const Icon(Icons.public, size: 76, color: AppColors.primary),
+        const SizedBox(height: 20),
+        Text(
+          isOnline ? 'Waiting for ride requests' : 'No upcoming bookings',
+          style: const TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+          textAlign: TextAlign.center,
         ),
-        child: Column(
-          children: [
-            const Icon(Icons.public, size: 76, color: AppColors.primary),
-            const SizedBox(height: 20),
-            Text(
-              isOnline ? 'Waiting for ride requests' : 'No upcoming bookings',
-              style: const TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isOnline
-                  ? 'You will be notified the moment one arrives.'
-                  : 'Go online to see ride requests and scheduled bookings '
-                      'here',
-              style: const TextStyle(
-                  fontSize: 15, height: 1.35, color: AppColors.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-          ],
+        const SizedBox(height: 8),
+        Text(
+          isOnline
+              ? 'You will be notified the moment one arrives.'
+              : 'Go online to see ride requests and scheduled bookings '
+                    'here',
+          style: const TextStyle(
+            fontSize: 15,
+            height: 1.35,
+            color: AppColors.textSecondary,
+          ),
+          textAlign: TextAlign.center,
         ),
-      );
+      ],
+    ),
+  );
+}
+
+/// Soft radar rings breathing outward behind a child — the dispatch
+/// "listening" cue. Two rings, phase-shifted, expanding and fading on a
+/// slow loop; calm at a glance, alive on a second look.
+class _RadarPulse extends StatefulWidget {
+  final Widget child;
+
+  const _RadarPulse({required this.child});
+
+  @override
+  State<_RadarPulse> createState() => _RadarPulseState();
+}
+
+class _RadarPulseState extends State<_RadarPulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 132,
+    height: 132,
+    child: AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) =>
+          CustomPaint(painter: _RingsPainter(_controller.value), child: child),
+      child: Center(child: widget.child),
+    ),
+  );
+}
+
+class _RingsPainter extends CustomPainter {
+  final double t;
+
+  _RingsPainter(this.t);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    for (final phase in const [0.0, 0.5]) {
+      final p = (t + phase) % 1.0;
+      final radius = 40 + p * (size.width / 2 - 40);
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..color = AppColors.primary.withValues(alpha: (1 - p) * 0.35);
+      canvas.drawCircle(center, radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingsPainter old) => old.t != t;
 }

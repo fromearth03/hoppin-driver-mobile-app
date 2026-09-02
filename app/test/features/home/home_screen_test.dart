@@ -107,7 +107,11 @@ void main() {
         .thenAnswer((_) async => Ok(buildStatus(presence: Presence.stale)));
 
     await tester.pumpWidget(wrap(status, offers));
-    await tester.pumpAndSettle();
+    // Bounded pumps, not pumpAndSettle: a stale driver still counts as
+    // online, so the waiting card's radar animation loops forever and
+    // pumpAndSettle would never return.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.textContaining('location'), findsOneWidget);
   });

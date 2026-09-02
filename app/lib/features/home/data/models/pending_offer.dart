@@ -32,6 +32,12 @@ class PendingOffer {
   final ({double lat, double lng})? pickup;
   final ({double lat, double lng})? dropoff;
 
+  /// Address labels of the intermediate stops, in travel order — filled by
+  /// the controller from `GET /rides/:id/stops` (the driver is already a
+  /// ride party at offer time), so a multi-stop job shows its whole
+  /// A → B → C shape before the driver commits to it.
+  final List<String> waypointLabels;
+
   final int expiresInSec;
 
   /// When this app received the offer. The countdown runs from here when the
@@ -58,6 +64,7 @@ class PendingOffer {
     this.pickup,
     this.dropoff,
     this.expiresAt,
+    this.waypointLabels = const [],
   });
 
   static ({double lat, double lng})? _point(
@@ -110,7 +117,11 @@ class PendingOffer {
   /// A copy with the address labels filled in — used when the service sends
   /// them blank (dispatch creates the ride from coordinates alone, and the
   /// backend only reverse-geocodes on the post-accept endpoints).
-  PendingOffer withLabels({String? pickupLabel, String? dropoffLabel}) =>
+  PendingOffer withLabels({
+    String? pickupLabel,
+    String? dropoffLabel,
+    List<String>? waypointLabels,
+  }) =>
       PendingOffer(
         id: id,
         rideId: rideId,
@@ -126,6 +137,7 @@ class PendingOffer {
         pickup: pickup,
         dropoff: dropoff,
         expiresAt: expiresAt,
+        waypointLabels: waypointLabels ?? this.waypointLabels,
       );
 
   int get secondsRemaining {
