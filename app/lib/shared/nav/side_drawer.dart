@@ -15,17 +15,24 @@ import '../widgets/authed_avatar.dart';
 /// stack of icon rows separated by inset rules, and Logout pinned to the
 /// bottom.
 ///
-/// The design lists a "Payment Methods" row. Every `/me/payment-methods`
-/// route is rider-only in the ride service — a driver is paid through Stripe
-/// Connect, which lives on the Payouts screen — so the row is omitted rather
-/// than drawn onto an endpoint that would reject them.
+/// "Payment Methods" is where a driver manages being paid — Stripe Connect,
+/// not the rider's cards. It takes that name because it is the one a driver
+/// looks for; "Payouts" described the money's direction rather than the
+/// thing they came to change.
 ///
 /// The design's "Ride History" is this app's Trips, so the row keeps its
 /// position in the list and takes the name the rest of the app uses.
 class SideDrawer extends ConsumerWidget {
   final VoidCallback? onLogout;
 
-  const SideDrawer({super.key, this.onLogout});
+  /// The route the driver is on, so the matching row can say so.
+  ///
+  /// Passed in rather than read from GoRouterState: the shell already knows
+  /// it, and reaching for the router here would make the drawer unbuildable
+  /// anywhere without one — including in tests, where it threw outright.
+  final String? currentPath;
+
+  const SideDrawer({super.key, this.onLogout, this.currentPath});
 
   /// The design leaves a strip of the screen showing to the right of the
   /// panel, so the drawer is narrower than Flutter's 304pt default.
@@ -34,6 +41,9 @@ class SideDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider).valueOrNull;
+    // Which row the driver is already on. Without it every row looked
+    // equally available, and the drawer gave no clue where they were.
+    final here = currentPath;
 
     return Drawer(
       backgroundColor: AppColors.surface,
@@ -52,28 +62,35 @@ class SideDrawer extends ConsumerWidget {
             const Divider(height: 1, thickness: 1, color: AppColors.border),
             Expanded(
               child: ListView(
-                padding: EdgeInsets.zero,
-                // No rules between rows — the design separates them with
-                // breathing room alone, and hairlines here read as clutter.
+                padding: const EdgeInsets.only(top: 10),
+                // Two groups under quiet labels. Nine flat rows made the
+                // driver read every one to find the money; work and money
+                // are different errands and now look like it.
+                //
+                // Personal Information and Settings are not here: both are
+                // reached from the Settings screen and its gear on Home, and
+                // a second door only made the drawer a longer way round.
+                // Delete account is not a destination either — it belongs
+                // where the driver manages their account, not one mis-tap
+                // from Trips.
                 children: [
-                  // Personal Information and Settings are both reached from
-                  // the Settings screen and its gear on Home. Listing them
-                  // here as well only made the drawer a longer way round.
-                  _item(context, Icons.history, 'Trips', Routes.trips),
-                  _item(context, Icons.receipt_long_outlined, 'Statement',
-                      Routes.statement),
-                  _item(context, Icons.account_balance_outlined, 'Payment Methods',
-                      Routes.payouts),
+                  const _GroupLabel('Your work'),
+                  _item(context, Icons.history, 'Trips', Routes.trips,
+                      here: here),
+                  _item(context, Icons.support_agent_outlined,
+                      'Help & Support', Routes.support,
+                      here: here),
                   _item(context, Icons.notifications_none, 'Notifications',
-                      Routes.notifications),
-                  _item(context, Icons.support_agent_outlined, 'Help & Support',
-                      Routes.support),
-                  // Settings has its own gear on the Home app bar, which is
-                  // where a driver reaches for it. Listing it here too made
-                  // the drawer a second, longer route to the same screen.
-                  // Deleting an account is not a navigation destination —
-                  // it belongs where the driver manages their account, not
-                  // one mis-tap away from Trips.
+                      Routes.notifications,
+                      here: here),
+                  const SizedBox(height: 14),
+                  const _GroupLabel('Your money'),
+                  _item(context, Icons.receipt_long_outlined, 'Statement',
+                      Routes.statement,
+                      here: here),
+                  _item(context, Icons.account_balance_outlined,
+                      'Payment Methods', Routes.payouts,
+                      here: here),
                 ],
               ),
             ),
@@ -106,55 +123,95 @@ class SideDrawer extends ConsumerWidget {
     String label,
     String route, {
     Color? color,
+    String? here,
   }) =>
       _Row(
         icon: icon,
         label: label,
         color: color,
+        selected: here == route,
         onTap: () => _go(context, route),
       );
 }
 
-/// One navigation row: a 26pt outline icon on the left gutter, the label at
-/// the design's size, and the whole row tappable at a comfortable height.
+/// One navigation row: the icon in a soft tile, the label beside it, and a
+/// chevron saying the row leads somewhere.
+///
+/// The row the driver is already on is filled and tinted rather than merely
+/// bolded — a drawer of nine identical rows told them what the app contains
+/// but never where they were standing in it.
 class _Row extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color? color;
   final VoidCallback? onTap;
+  final bool selected;
 
   const _Row({
     required this.icon,
     required this.label,
     this.color,
     this.onTap,
+    this.selected = false,
   });
 
   @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(31, 19, 20, 19),
-          child: Row(
-            children: [
-              Icon(icon, size: 25, color: color ?? AppColors.textPrimary),
-              const SizedBox(width: 18),
-              Expanded(
-                child: Text(
-                  label,
-                  style: AppText.heading.copyWith(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: color ?? AppColors.textPrimary,
+  Widget build(BuildContext context) {
+    final tint = color ?? AppColors.primary;
+    final ink = color ?? AppColors.textPrimary;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: Material(
+        color: selected
+            ? tint.withValues(alpha: 0.08)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Row(
+              children: [
+                Container(
+                  height: 38,
+                  width: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: tint.withValues(alpha: selected ? 0.16 : 0.07),
+                    borderRadius: BorderRadius.circular(11),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  child: Icon(icon, size: 20, color: tint),
                 ),
-              ),
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AppText.heading.copyWith(
+                      fontSize: 17,
+                      fontWeight:
+                          selected ? FontWeight.w700 : FontWeight.w500,
+                      color: ink,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: selected
+                      ? tint
+                      : AppColors.textSecondary.withValues(alpha: 0.5),
+                ),
+              ],
+            ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 /// Name, photo and rating, all from `GET /me/profile`. While the request is
@@ -247,4 +304,26 @@ class _Rating extends StatelessWidget {
       ],
     );
   }
+}
+
+/// A quiet heading over a group of rows. Small, spaced and secondary — it
+/// orients without competing with the destinations under it.
+class _GroupLabel extends StatelessWidget {
+  final String text;
+
+  const _GroupLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(26, 8, 20, 6),
+        child: Text(
+          text.toUpperCase(),
+          style: AppText.caption.copyWith(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.1,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      );
 }

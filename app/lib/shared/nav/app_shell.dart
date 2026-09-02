@@ -66,7 +66,7 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     key: scaffoldKey,
     backgroundColor: AppColors.background,
-    drawer: SideDrawer(onLogout: onLogout),
+    drawer: SideDrawer(onLogout: onLogout, currentPath: currentPath),
     // The pill floats over the content rather than reserving a strip of
     // it, which is how the design shows it sitting on the page ground.
     extendBody: true,

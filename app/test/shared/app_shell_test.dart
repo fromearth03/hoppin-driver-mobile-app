@@ -158,4 +158,14 @@ void main() {
     // the row and the sign-out.
     expect(find.text('Are you logging out?'), findsOneWidget);
   });
+
+  testWidgets('the drawer groups its destinations', (tester) async {
+    // Nine flat rows made the driver read every one to find the money.
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+    await openDrawer(tester);
+
+    expect(find.text('YOUR WORK', skipOffstage: false), findsOneWidget);
+    expect(find.text('YOUR MONEY', skipOffstage: false), findsOneWidget);
+  });
 }
