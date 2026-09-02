@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../app_router.dart';
 import '../../core/theme/colors.dart';
 import '../widgets/offer_banner.dart';
+import '../widgets/push_alert_listener.dart';
 import 'side_drawer.dart';
 
 /// Bottom nav + drawer wrapper. The four tabs are locked: Home, Earnings,
@@ -78,6 +79,9 @@ class AppShell extends StatelessWidget {
           right: 0,
           child: OfferBanner(currentPath: currentPath),
         ),
+        // Raises a foreground push as a toast. Zero-sized: it only listens,
+        // and the toast itself goes into the overlay above everything.
+        const PushAlertListener(),
       ],
     ),
     bottomNavigationBar: _onTrip

@@ -36,17 +36,30 @@ class OnlineToggle extends StatelessWidget {
   /// animates in the direction the driver asked for.
   bool get _shown => isBusy ? !isOnline : isOnline;
 
+  /// The chip names what a tap would DO, not the state the driver is
+  /// already in.
+  ///
+  /// A driver looking at a pill that reads "Offline" while they are offline
+  /// learns nothing they did not know, and the one thing they need — how to
+  /// change it — is unsaid. Naming the action makes the control explain
+  /// itself: "Go online" is a button, "Offline" is a label.
   String get _label {
     if (isBusy) return isOnline ? 'Going offline…' : 'Going online…';
-    return isOnline ? 'Online' : 'Offline';
+    return isOnline ? 'Go offline' : 'Go online';
   }
+
+  /// What the driver's presence actually is, for the screen reader and for
+  /// the resting state text beside the chip.
+  String get _stateLabel => isOnline ? 'Online' : 'Offline';
 
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
         enabled: _enabled,
         toggled: _shown,
-        label: _label,
+        // The screen reader gets the state and the action, in that order —
+        // the visual chip only has room for the action.
+        label: isBusy ? _label : '$_stateLabel. ${_label}',
         child: GestureDetector(
           onTap: _enabled ? () => onChanged!(!isOnline) : null,
           child: Opacity(

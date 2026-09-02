@@ -64,6 +64,19 @@ void main() {
     expect(find.text('Trips'), findsOneWidget);
   });
 
+  testWidgets('the drawer does not duplicate what Settings already holds',
+      (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+    await openDrawer(tester);
+
+    // Both are reached from the Settings screen and its gear on Home; a
+    // second door here only made the drawer longer.
+    expect(find.text('Settings', skipOffstage: false), findsNothing);
+    expect(
+        find.text('Personal Information', skipOffstage: false), findsNothing);
+  });
+
   testWidgets('drawer lists every account destination', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
@@ -72,13 +85,11 @@ void main() {
     // The list scrolls at the default test viewport, so the destinations are
     // asserted on the widget tree rather than only on what is painted.
     for (final label in [
-      'Personal Information',
       'Trips',
       'Statement',
       'Payouts',
       'Notifications',
       'Help & Support',
-      'Settings',
       'Delete account',
       'Logout',
     ]) {

@@ -56,7 +56,7 @@ class BalancePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
             child: Text(
               owes ? 'What you owe the company' : 'What the company owes you',
               style: AppText.title.copyWith(fontSize: 20),
@@ -64,7 +64,7 @@ class BalancePanel extends StatelessWidget {
           ),
           const Divider(height: 1, thickness: 1, color: AppColors.border),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -83,18 +83,23 @@ class BalancePanel extends StatelessWidget {
                   ),
                 ),
                 if (s != null) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
                   Text(
                     s.period == 'month' ? 'Last 30 days' : 'Last 7 days',
                     style: AppText.caption,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  // A rule under every entry, not just before the total: four
+                  // money rows floating in one field made the driver count
+                  // baselines to see which figure belonged to which label.
                   _Line(label: 'Opening balance', amount: s.opening),
+                  const _RowRule(),
                   _Line(
                     label: 'Credits in',
                     amount: s.credits,
                     tint: AppColors.positive,
                   ),
+                  const _RowRule(),
                   // `debits_pence` arrives negative from the handler; it is
                   // printed as received rather than re-signed here.
                   _Line(
@@ -103,7 +108,7 @@ class BalancePanel extends StatelessWidget {
                     tint: AppColors.negative,
                   ),
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10),
+                    padding: EdgeInsets.symmetric(vertical: 6),
                     child: Divider(
                         height: 1, thickness: 1, color: AppColors.border),
                   ),
@@ -123,6 +128,20 @@ class BalancePanel extends StatelessWidget {
   }
 }
 
+/// The hairline between two money rows. Lighter than the panel's own
+/// dividers, so it separates entries without competing with the rule above
+/// the total.
+class _RowRule extends StatelessWidget {
+  const _RowRule();
+
+  @override
+  Widget build(BuildContext context) => Divider(
+        height: 1,
+        thickness: 1,
+        color: AppColors.border.withValues(alpha: 0.55),
+      );
+}
+
 /// One label/amount row in the panel.
 class _Line extends StatelessWidget {
   final String label;
@@ -139,7 +158,7 @@ class _Line extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(
           children: [
             Expanded(

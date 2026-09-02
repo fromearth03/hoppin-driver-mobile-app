@@ -22,6 +22,14 @@ class PushService {
   /// wired by the controller that owns the offer card.
   void Function()? onRideOffer;
 
+  /// Called for every other foreground push: penalties, compliance notices,
+  /// a ride ending underneath the driver.
+  ///
+  /// With the app open, FCM hands the payload to the client and shows the
+  /// driver nothing — so without this, the news that costs them money is the
+  /// news they never see. The shell turns it into a toast.
+  void Function(PushAlert alert)? onAlert;
+
   PushService(this._ref);
 
   /// Boots Firebase once per process. Android reads google-services.json via
@@ -72,8 +80,72 @@ class PushService {
   }
 
   void _onForegroundMessage(RemoteMessage message) {
-    if (message.data['type'] == 'ride_offer') onRideOffer?.call();
+    final data = message.data;
+    final type = data['type'];
+    if (type == 'ride_offer') {
+      onRideOffer?.call();
+      return;
+    }
+
+    // The service sends `alert` (title/body already written for a human) and
+    // `ride_update` (a status change, with the ride it belongs to). Anything
+    // else is ignored rather than guessed at.
+    if (type != 'alert' && type != 'ride_update') return;
+
+    final title = data['title'] ?? message.notification?.title ?? '';
+    final body = data['body'] ?? message.notification?.body ?? '';
+    if (title.isEmpty && body.isEmpty) return;
+
+    onAlert?.call(PushAlert(
+      title: title.isEmpty ? 'Update' : title,
+      body: body,
+      rideId: data['ride_id'] ?? data['rideId'],
+      deepLink: data['deep_link'],
+      status: data['status'],
+      // The service has no severity field, so it is read off the copy it did
+      // send. A penalty is money already taken from the driver: it has to
+      // outlast a four-second window, and guessing wrong the other way only
+      // costs them a toast they must tap once.
+      critical: _looksCritical('$title $body'),
+    ));
   }
+
+  /// Whether this reads as news the driver cannot afford to miss.
+  static bool _looksCritical(String text) {
+    final t = text.toLowerCase();
+    const markers = [
+      'penalt',
+      'charge',
+      'fee',
+      'suspend',
+      'block',
+      'expir',
+      'rejected',
+      'cancel',
+      'urgent',
+      'debt',
+    ];
+    return markers.any(t.contains);
+  }
+}
+
+/// One foreground push, reduced to what a toast needs.
+class PushAlert {
+  final String title;
+  final String body;
+  final String? rideId;
+  final String? deepLink;
+  final String? status;
+  final bool critical;
+
+  const PushAlert({
+    required this.title,
+    required this.body,
+    this.rideId,
+    this.deepLink,
+    this.status,
+    this.critical = false,
+  });
 }
 
 final pushServiceProvider = Provider<PushService>((ref) => PushService(ref));

@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../auth/data/auth_repository.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/push/push_alerts.dart';
 import '../../../core/push/push_service.dart';
 import '../data/driver_status_repository.dart';
 import 'location_reporter.dart';
@@ -154,6 +155,16 @@ class HomeController extends AsyncNotifier<HomeState> {
       // services still gets every offer from the 5s poll.
       final push = ref.read(pushServiceProvider);
       push.onRideOffer = () => onPushWake();
+      // Penalties, compliance notices and a ride ending underneath the
+      // driver all arrive here while the app is open, where FCM shows them
+      // nothing. Parked for the shell to raise as a toast.
+      push.onAlert = (alert) {
+        if (_disposed) return;
+        ref.read(pushAlertProvider.notifier).post(alert);
+        // A ride_update means the status the app is holding is already
+        // stale — most often a cancellation, which Home must reflect.
+        if (alert.status != null) refresh();
+      };
       push.register();
     }
     final result = await _statusRepo.status();

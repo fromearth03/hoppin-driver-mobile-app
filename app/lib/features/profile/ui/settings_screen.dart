@@ -7,6 +7,7 @@ import '../../../app_router.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_loading.dart';
+import '../data/notification_settings.dart';
 import '../logic/profile_controller.dart';
 import 'widgets/logout_dialog.dart';
 import 'widgets/settings_card.dart';
@@ -58,6 +59,20 @@ class SettingsScreen extends ConsumerWidget {
                       value: prefs.rideRequestSound,
                       onChanged: (v) =>
                           controller.apply(prefs.copyWith(rideRequestSound: v)),
+                    ),
+                  ),
+                  SettingsRow(
+                    icon: Icons.vibration,
+                    label: 'Vibrate for alerts',
+                    trailing: SettingsSwitch(
+                      // Local to this handset rather than part of the
+                      // account's preferences: the same driver on a second
+                      // phone should not inherit a choice made about the
+                      // first, and the toast needs the answer without waiting
+                      // on a round trip.
+                      value: ref.watch(notificationHapticsProvider),
+                      onChanged: (v) =>
+                          ref.read(notificationHapticsProvider.notifier).set(v),
                     ),
                   ),
                   SettingsRow(

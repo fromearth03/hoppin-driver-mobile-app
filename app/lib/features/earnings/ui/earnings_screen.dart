@@ -7,7 +7,6 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/nav/app_shell.dart';
 import '../../../shared/widgets/app_error_state.dart';
-import '../../../shared/widgets/app_loading.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../data/models/driver_promotion.dart';
 import '../logic/earnings_controller.dart';
@@ -15,7 +14,6 @@ import 'widgets/balance_cards.dart';
 import 'widgets/owes_dialog.dart';
 import 'widgets/breakdown_card.dart';
 import 'widgets/earnings_card.dart';
-import 'widgets/last_updated_bar.dart';
 import 'widgets/payout_row.dart';
 import 'widgets/period_grid.dart';
 import 'widgets/report_card.dart';
@@ -73,7 +71,6 @@ class EarningsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  LastUpdatedBar(fetchedAt: state.fetchedAt),
                   PeriodGrid(
                     summaries: state.summaries,
                     selected: state.period,

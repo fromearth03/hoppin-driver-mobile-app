@@ -56,8 +56,9 @@ class SideDrawer extends ConsumerWidget {
                 // No rules between rows — the design separates them with
                 // breathing room alone, and hairlines here read as clutter.
                 children: [
-                  _item(context, Icons.person_outline, 'Personal Information',
-                      Routes.personalInfo),
+                  // Personal Information and Settings are both reached from
+                  // the Settings screen and its gear on Home. Listing them
+                  // here as well only made the drawer a longer way round.
                   _item(context, Icons.history, 'Trips', Routes.trips),
                   _item(context, Icons.receipt_long_outlined, 'Statement',
                       Routes.statement),
@@ -67,8 +68,9 @@ class SideDrawer extends ConsumerWidget {
                       Routes.notifications),
                   _item(context, Icons.support_agent_outlined, 'Help & Support',
                       Routes.support),
-                  _item(context, Icons.settings_outlined, 'Settings',
-                      Routes.settings),
+                  // Settings has its own gear on the Home app bar, which is
+                  // where a driver reaches for it. Listing it here too made
+                  // the drawer a second, longer route to the same screen.
                   _item(context, Icons.delete_outline, 'Delete account',
                       Routes.deleteAccount,
                       color: AppColors.negative),
