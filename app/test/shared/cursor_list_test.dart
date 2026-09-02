@@ -76,4 +76,74 @@ void main() {
 
     expect(find.text('Balance'), findsOneWidget);
   });
+
+  testWidgets('fetches the next page as the end comes into view',
+      (tester) async {
+    var calls = 0;
+    final controller = ScrollController();
+    await tester.pumpWidget(wrap(CursorList<String>(
+      items: List.generate(30, (i) => 'row $i'),
+      hasMore: true,
+      onLoadMore: () => calls++,
+      scrollController: controller,
+      itemBuilder: (_, item) => SizedBox(height: 80, child: Text(item)),
+    )));
+    await tester.pump();
+
+    // Nothing asked for while the driver is at the top.
+    expect(calls, 0);
+
+    controller.jumpTo(controller.position.maxScrollExtent - 100);
+    await tester.pump();
+
+    // Reaching the end fetched the next page without the driver having to
+    // find and tap a button.
+    expect(calls, 1);
+  });
+
+  testWidgets('does not fetch twice for one approach to the end',
+      (tester) async {
+    var calls = 0;
+    final controller = ScrollController();
+    Widget build({required bool loading}) => wrap(CursorList<String>(
+          items: List.generate(30, (i) => 'row $i'),
+          hasMore: true,
+          isLoadingMore: loading,
+          onLoadMore: () => calls++,
+          scrollController: controller,
+          itemBuilder: (_, item) => SizedBox(height: 80, child: Text(item)),
+        ));
+
+    await tester.pumpWidget(build(loading: false));
+    await tester.pump();
+    controller.jumpTo(controller.position.maxScrollExtent - 100);
+    await tester.pump();
+    expect(calls, 1);
+
+    // A page already in flight must not be requested again by the next
+    // scroll frame — that is how a cursor list double-posts and duplicates
+    // rows.
+    await tester.pumpWidget(build(loading: true));
+    controller.jumpTo(controller.position.maxScrollExtent - 40);
+    await tester.pump();
+
+    expect(calls, 1);
+  });
+
+  testWidgets('the last page never asks for another', (tester) async {
+    var calls = 0;
+    final controller = ScrollController();
+    await tester.pumpWidget(wrap(CursorList<String>(
+      items: List.generate(30, (i) => 'row $i'),
+      onLoadMore: () => calls++,
+      scrollController: controller,
+      itemBuilder: (_, item) => SizedBox(height: 80, child: Text(item)),
+    )));
+    await tester.pump();
+
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pump();
+
+    expect(calls, 0);
+  });
 }
