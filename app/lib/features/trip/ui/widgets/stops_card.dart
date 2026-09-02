@@ -36,11 +36,12 @@ class StopsCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 12),
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(18),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,7 +49,8 @@ class StopsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.alt_route, color: Colors.white, size: 20),
+              const Icon(Icons.alt_route,
+                  color: AppColors.textPrimary, size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -58,7 +60,7 @@ class StopsCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -67,7 +69,7 @@ class StopsCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
@@ -78,7 +80,7 @@ class StopsCard extends StatelessWidget {
           const Text(
             'Legs are priced separately and added up. Fees come off the total '
             'once, not per leg.',
-            style: TextStyle(fontSize: 13, color: Colors.white70),
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 14),
           for (final stop in stops.stops)
@@ -95,14 +97,15 @@ class StopsCard extends StatelessWidget {
               children: [
                 const Expanded(
                   child: Text('Waiting so far',
-                      style: TextStyle(fontSize: 15, color: Colors.white70)),
+                      style: TextStyle(
+                          fontSize: 15, color: AppColors.textSecondary)),
                 ),
                 Text(
                   stops.waitingTotal.format(),
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -154,15 +157,15 @@ class _StopRow extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight:
-                              isNext ? FontWeight.w600 : FontWeight.w400,
-                          color: Colors.white,
+                              isNext ? FontWeight.w600 : FontWeight.w500,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         _subtitle,
-                        style:
-                            const TextStyle(fontSize: 13, color: Colors.white70),
+                        style: const TextStyle(
+                            fontSize: 13, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -172,8 +175,8 @@ class _StopRow extends StatelessWidget {
                   stop.fare.format(),
                   style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -194,7 +197,7 @@ class _StopRow extends StatelessWidget {
                       'Waiting ${clockOf(waited < 0 ? 0 : waited)}',
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w500,
                       ),
                     );
@@ -229,7 +232,7 @@ class _StopRow extends StatelessWidget {
   Widget _action() {
     if (stop.isDone) {
       return const Text('Departed',
-          style: TextStyle(fontSize: 14, color: Colors.white54));
+          style: TextStyle(fontSize: 14, color: AppColors.textDisabled));
     }
     final arrived = stop.isWaiting;
     return SizedBox(
@@ -238,8 +241,8 @@ class _StopRow extends StatelessWidget {
         key: Key('stop_action_${stop.seq}'),
         onPressed: busy ? null : (arrived ? onDepart : onArrive),
         style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.white,
-          side: const BorderSide(color: Colors.white54),
+          foregroundColor: AppColors.textPrimary,
+          side: const BorderSide(color: AppColors.border),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -264,7 +267,7 @@ class _StopRow extends StatelessWidget {
       colour = AppColors.warning;
     } else {
       icon = Icons.trip_origin;
-      colour = Colors.white;
+      colour = AppColors.textSecondary;
     }
     return Icon(icon, size: 20, color: colour);
   }

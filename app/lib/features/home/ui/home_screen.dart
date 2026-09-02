@@ -7,7 +7,6 @@ import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/nav/app_shell.dart';
-import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
 import '../data/models/driver_status.dart';
 import '../logic/home_controller.dart';
@@ -38,9 +37,14 @@ class HomeScreen extends ConsumerWidget {
         title: async.maybeWhen(
           data: (s) => OnlineToggle(
             isOnline: s.isOnline,
+            // Busy is passed rather than folded into a null callback: the
+            // pill draws a switching driver differently from a blocked one,
+            // and collapsing both into "disabled" is what made a slow
+            // go-online look like a tap that missed.
+            isBusy: s.isBusy,
             // A blocked driver gets a disabled toggle plus a list saying
             // why — never a live toggle that silently refuses.
-            onChanged: (s.status?.isBlocked ?? false) || s.isBusy
+            onChanged: (s.status?.isBlocked ?? false)
                 ? null
                 : (_) => controller.toggleOnline(),
           ),
@@ -57,12 +61,11 @@ class HomeScreen extends ConsumerWidget {
         loading: () => const AppLoading(),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
         data: (state) {
-          if (state.error != null && state.status == null) {
-            return AppErrorState(
-              error: state.error!,
-              onRetry: controller.refresh,
-            );
-          }
+          // No full-screen failure here any more. A cold start that cannot
+          // reach /status opens on the offline screen carrying the error,
+          // because the toggle is what recovers the session and an error
+          // page put itself in front of the one control that would help.
+          // The banner below says the figures are not current.
           return RefreshIndicator(
             onRefresh: () async {
               await controller.refresh();
@@ -77,7 +80,14 @@ class HomeScreen extends ConsumerWidget {
             },
             child: ListView(
               children: [
-                if (state.status?.presence == Presence.stale) _staleBanner(),
+                // Two different silences. The server saying "your GPS has
+                // gone quiet" is the stale banner; the app unable to reach
+                // the server at all is the disconnected one, and only the
+                // second means the figures on screen cannot be trusted.
+                if (state.error != null)
+                  _disconnectedBanner(controller)
+                else if (state.showsNoLocationWarning)
+                  _staleBanner(),
                 // Above everything: a driver with a passenger in the car
                 // needs the way back to Arrive/Start/Complete before they
                 // need anything else on this screen.
@@ -150,7 +160,12 @@ class HomeScreen extends ConsumerWidget {
                       onExpired: controller.expireOffer,
                     ),
                   )
-                else
+                // Not while a job is running. "Waiting for ride requests"
+                // under the banner offering the way back into a trip with a
+                // passenger already in the car is simply false, and it is
+                // the state a driver sees every time they step back to Home
+                // mid-job.
+                else if (!(state.today?.hasActiveRide ?? false))
                   NoBookingsCard(isOnline: state.isOnline),
               ],
             ),
@@ -159,6 +174,38 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
+
+  /// Shown when Home could not reach the server at all.
+  ///
+  /// The screen underneath is a placeholder, not a reading: the driver is
+  /// shown as offline because an app that cannot talk to dispatch is not
+  /// taking work, and the day's figures are simply absent. Both facts have
+  /// to be said out loud, with the retry beside them.
+  Widget _disconnectedBanner(HomeController controller) => Container(
+    margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    padding: const EdgeInsets.fromLTRB(12, 12, 6, 12),
+    decoration: BoxDecoration(
+      color: AppColors.warning.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.cloud_off, color: AppColors.warning),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Text(
+            "We can't reach the server, so today's figures aren't showing. "
+            'Going online will try again.',
+            style: AppText.caption,
+          ),
+        ),
+        TextButton(
+          onPressed: controller.refresh,
+          child: const Text('Retry'),
+        ),
+      ],
+    ),
+  );
 
   Widget _staleBanner() => Container(
     margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),

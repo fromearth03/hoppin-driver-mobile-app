@@ -41,7 +41,7 @@ void main() {
       ],
       child: MaterialApp(
         theme: ThemeData(useMaterial3: true, fontFamily: 'Roboto'),
-        home: AppShell(
+        home: AppShell(currentPath: '/', 
           currentIndex: currentIndex,
           child: const ColoredBox(color: Color(0xFFF5F5F7), child: SizedBox.expand()),
         ),

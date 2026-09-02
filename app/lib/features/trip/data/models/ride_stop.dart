@@ -57,6 +57,24 @@ class RideStop {
     this.addedMidTrip = false,
   });
 
+  /// A copy with the address filled in — for legs the rider created with
+  /// coordinates alone, labelled on-device.
+  RideStop withLabel(String value) => RideStop(
+        seq: seq,
+        kind: kind,
+        label: value,
+        from: from,
+        to: to,
+        distanceMeters: distanceMeters,
+        durationSeconds: durationSeconds,
+        fare: fare,
+        waitingSeconds: waitingSeconds,
+        waiting: waiting,
+        arrivedAt: arrivedAt,
+        departedAt: departedAt,
+        addedMidTrip: addedMidTrip,
+      );
+
   bool get isDropoff => kind == 'dropoff';
 
   /// Waiting is only ever charged at an intermediate stop.

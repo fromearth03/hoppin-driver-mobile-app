@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/auth/token_store.dart';
+import '../../../core/geo/place_labeler.dart';
 import '../../../core/money.dart';
 import '../../../core/result.dart';
 import '../data/cancel_reason_repository.dart';
@@ -178,7 +179,28 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
   /// failure degrades to the single-leg view rather than taking the screen.
   Future<RideStops> _stopsFor(Ride ride) async {
     final result = await _repo.stops(ride.id);
-    return result.valueOrNull ?? RideStops.empty;
+    final stops = result.valueOrNull ?? RideStops.empty;
+    if (stops.stops.every((s) => s.label.isNotEmpty)) return stops;
+    // Rider-created stops arrive as bare coordinates; "Stop 1" tells the
+    // driver nothing about where they are going. Label them on-device —
+    // cached, so the 3s poll costs no repeat lookups.
+    final labeler = ref.read(placeLabelerProvider);
+    final labelled = <RideStop>[];
+    for (final s in stops.stops) {
+      if (s.label.isNotEmpty) {
+        labelled.add(s);
+      } else {
+        final label = await labeler.label(s.to.lat, s.to.lng);
+        labelled.add(label.isEmpty ? s : s.withLabel(label));
+      }
+    }
+    return RideStops(
+      multiStop: stops.multiStop,
+      stops: labelled,
+      legsTotal: stops.legsTotal,
+      waitingTotal: stops.waitingTotal,
+      total: stops.total,
+    );
   }
 
   void _startPolling() {

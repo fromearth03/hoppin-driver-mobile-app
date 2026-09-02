@@ -46,8 +46,9 @@ class TripStatusPill extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
                   color: Colors.white,
                 ),
               ),
@@ -80,8 +81,8 @@ class TripEtaPill extends StatelessWidget {
       child: Text(
         parts.join('  |  '),
         style: const TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w500,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
       ),
@@ -99,7 +100,7 @@ class _Pill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.45),
+          color: Colors.black.withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(36),
         ),
         child: child,
@@ -160,8 +161,8 @@ class TripNavBanner extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
               ),
@@ -192,8 +193,8 @@ class TripDestinationPlate extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(14),
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,8 +208,8 @@ class TripDestinationPlate extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
+              fontSize: 19,
+              fontWeight: FontWeight.w600,
               color: Colors.white,
             ),
           ),
@@ -248,11 +249,12 @@ class WaitingCancelCard extends StatelessWidget {
 
         return Container(
           width: double.infinity,
-          margin: const EdgeInsets.symmetric(horizontal: 12),
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(18),
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,13 +265,14 @@ class WaitingCancelCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 6),
               const Text(
                 "If the passenger doesn't show up soon, you can cancel the ride",
-                style: TextStyle(fontSize: 15, color: Colors.white),
+                style:
+                    TextStyle(fontSize: 15, color: AppColors.textSecondary),
               ),
               if (freeCancelRemaining != null) ...[
                 const SizedBox(height: 14),
@@ -277,7 +280,7 @@ class WaitingCancelCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: AppColors.background,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(

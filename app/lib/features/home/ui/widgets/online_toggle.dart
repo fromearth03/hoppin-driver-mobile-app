@@ -13,20 +13,46 @@ class OnlineToggle extends StatelessWidget {
   final bool isOnline;
   final ValueChanged<bool>? onChanged;
 
-  const OnlineToggle({super.key, required this.isOnline, this.onChanged});
+  /// True while the presence change is in flight.
+  ///
+  /// Going online is a round trip — and on a cold start it waits on a GPS
+  /// fix behind it — so the pill can sit in the old position for seconds.
+  /// A driver who reads that as "the tap missed" taps again, and the second
+  /// tap is the one that flips them straight back. Busy is therefore louder
+  /// than the blocked state: dimmer, spinning, and naming the direction of
+  /// travel rather than the presence it has not reached yet.
+  final bool isBusy;
 
-  bool get _enabled => onChanged != null;
+  const OnlineToggle({
+    super.key,
+    required this.isOnline,
+    this.onChanged,
+    this.isBusy = false,
+  });
+
+  bool get _enabled => onChanged != null && !isBusy;
+
+  /// Where the chip sits mid-flight: the state being moved TO, so the pill
+  /// animates in the direction the driver asked for.
+  bool get _shown => isBusy ? !isOnline : isOnline;
+
+  String get _label {
+    if (isBusy) return isOnline ? 'Going offline…' : 'Going online…';
+    return isOnline ? 'Online' : 'Offline';
+  }
 
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
         enabled: _enabled,
-        toggled: isOnline,
-        label: isOnline ? 'Online' : 'Offline',
+        toggled: _shown,
+        label: _label,
         child: GestureDetector(
           onTap: _enabled ? () => onChanged!(!isOnline) : null,
           child: Opacity(
-            opacity: _enabled ? 1 : 0.5,
+            // Busy reads as unmistakably inert; merely blocked stays
+            // legible, because the list beside it explains itself.
+            opacity: isBusy ? 0.35 : (_enabled ? 1 : 0.5),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(30),
               child: BackdropFilter(
@@ -52,22 +78,42 @@ class OnlineToggle extends StatelessWidget {
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
                 alignment:
-                    isOnline ? Alignment.centerRight : Alignment.centerLeft,
+                    _shown ? Alignment.centerRight : Alignment.centerLeft,
                 child: Container(
-                  width: 88,
+                  width: isBusy ? 122 : 88,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color:
-                        isOnline ? AppColors.positive : AppColors.negative,
+                    color: _shown ? AppColors.positive : AppColors.negative,
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  child: Text(
-                    isOnline ? 'Online' : 'Offline',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isBusy) ...[
+                        const SizedBox(
+                          height: 13,
+                          width: 13,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: Text(
+                          _label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

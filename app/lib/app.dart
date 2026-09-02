@@ -107,6 +107,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) => Consumer(
           builder: (context, ref, _) => AppShell(
             currentIndex: Routes.tabs.indexOf(state.uri.path).clamp(0, 3),
+            currentPath: state.uri.path,
             onLogout: () =>
                 ref.read(authControllerProvider.notifier).signOut(),
             child: child,
@@ -151,8 +152,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                           : 0))),
           GoRoute(
             path: '${Routes.supportTicket}/:id',
-            builder: (_, state) =>
-                TicketThreadScreen(ticketId: state.pathParameters['id']!),
+            builder: (_, state) => ScrollEdgeBlur(
+                child:
+                    TicketThreadScreen(ticketId: state.pathParameters['id']!)),
           ),
           GoRoute(
               path: Routes.settings,
@@ -161,7 +163,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: Routes.payouts, builder: (_, __) => ScrollEdgeBlur(child: RevalidateOnVisit(revalidate: (ref) => revalidateIfLoaded(ref, payoutStatusProvider, () => ref.invalidate(payoutStatusProvider)), child: const PayoutScreen()))),
           GoRoute(
               path: Routes.deleteAccount,
-              builder: (_, __) => const DeleteAccountScreen()),
+              builder: (_, __) =>
+                  const ScrollEdgeBlur(child: DeleteAccountScreen())),
         ],
       ),
     ],

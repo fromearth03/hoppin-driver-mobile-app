@@ -115,4 +115,37 @@ void main() {
 
     expect(find.textContaining('location'), findsOneWidget);
   });
+
+  testWidgets('a driver mid-trip is not told we are waiting for requests',
+      (tester) async {
+    // Coming back to Home with a passenger in the car, the idle radar card
+    // said "Waiting for ride requests" — flatly untrue, and it sat directly
+    // under the banner offering the way back into the running job.
+    when(() => status.status()).thenAnswer(
+        (_) async => Ok(buildStatus(presence: Presence.online)));
+    when(() => status.today()).thenAnswer(
+        (_) async => const Ok(DriverToday(activeRideId: 'r1')));
+
+    await tester.pumpWidget(wrap(status, offers));
+    // The idle radar pulses forever, so pumpAndSettle never returns on this
+    // screen; fixed pumps clear the futures without waiting on a clock that
+    // does not stop.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Waiting for ride requests'), findsNothing);
+    // The way back into the trip is what belongs there instead.
+    expect(find.text('Trip in progress'), findsOneWidget);
+  });
+
+  testWidgets('an idle online driver still gets the radar', (tester) async {
+    when(() => status.status()).thenAnswer(
+        (_) async => Ok(buildStatus(presence: Presence.online)));
+
+    await tester.pumpWidget(wrap(status, offers));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Waiting for ride requests'), findsOneWidget);
+  });
 }

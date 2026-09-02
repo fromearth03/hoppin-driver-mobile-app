@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_router.dart';
 import '../../core/theme/colors.dart';
+import '../widgets/offer_banner.dart';
 import 'side_drawer.dart';
 
 /// Bottom nav + drawer wrapper. The four tabs are locked: Home, Earnings,
@@ -20,12 +21,21 @@ class AppShell extends StatelessWidget {
   final int currentIndex;
   final VoidCallback? onLogout;
 
+  /// The live route, so the shell can decide what belongs around it: the
+  /// tab pill disappears on a trip (the job IS the screen — the way out is
+  /// the trip's own back control), and the offer banner skips Home where
+  /// the full card already lives.
+  final String currentPath;
+
   const AppShell({
     super.key,
     required this.child,
     required this.currentIndex,
+    required this.currentPath,
     this.onLogout,
   });
+
+  bool get _onTrip => currentPath.startsWith(Routes.trip);
 
   /// The shell owns the only drawer in the tree. Screens inside it build
   /// their own Scaffold for an app bar, so `Scaffold.of(context)` from a
@@ -53,41 +63,56 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        key: scaffoldKey,
-        backgroundColor: AppColors.background,
-        drawer: SideDrawer(onLogout: onLogout),
-        // The pill floats over the content rather than reserving a strip of
-        // it, which is how the design shows it sitting on the page ground.
-        extendBody: true,
-        body: child,
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 18),
-            // heightFactor pins the Center to its child's height —
-            // bottomNavigationBar hands out loose constraints, and a bare
-            // Center expands into them, parking the pill mid-screen.
-            child: Center(
-              heightFactor: 1,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                  child: Material(
-                    color: AppColors.navPill.withValues(alpha: 0.82),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (var i = 0; i < _tabs.length; i++)
-                            _TabButton(
-                              tab: _tabs[i],
-                              selected: i == currentIndex,
-                              onTap: () => context.go(Routes.tabs[i]),
-                            ),
-                        ],
+    key: scaffoldKey,
+    backgroundColor: AppColors.background,
+    drawer: SideDrawer(onLogout: onLogout),
+    // The pill floats over the content rather than reserving a strip of
+    // it, which is how the design shows it sitting on the page ground.
+    extendBody: true,
+    body: Stack(
+      children: [
+        Positioned.fill(child: child),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: OfferBanner(currentPath: currentPath),
+        ),
+      ],
+    ),
+    bottomNavigationBar: _onTrip
+        ? null
+        : SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              // heightFactor pins the Center to its child's height —
+              // bottomNavigationBar hands out loose constraints, and a bare
+              // Center expands into them, parking the pill mid-screen.
+              child: Center(
+                heightFactor: 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: Material(
+                      color: AppColors.navPill.withValues(alpha: 0.82),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (var i = 0; i < _tabs.length; i++)
+                              _TabButton(
+                                tab: _tabs[i],
+                                selected: i == currentIndex,
+                                onTap: () => context.go(Routes.tabs[i]),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -95,8 +120,7 @@ class AppShell extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      );
+  );
 }
 
 class _Tab {

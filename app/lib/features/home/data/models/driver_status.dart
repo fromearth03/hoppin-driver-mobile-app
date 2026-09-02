@@ -30,6 +30,21 @@ class DriverStatus {
 
   bool get isBlocked => blockedReason != null;
 
+  /// What Home assumes when `/status` cannot be reached at all.
+  ///
+  /// Offline is the only honest guess: whatever the server thinks, an app
+  /// that cannot talk to it is not receiving offers. It is deliberately not
+  /// blocked — nothing is known to be wrong with this driver, and inventing
+  /// a blocker would send them off to fix paperwork that is in order.
+  ///
+  /// The alternative was rendering a full-screen error, which hid the very
+  /// toggle that would have recovered the session.
+  static const unreachable = DriverStatus(
+    presence: Presence.offline,
+    staleAfterSeconds: 90,
+    dispatchable: false,
+  );
+
   factory DriverStatus.fromJson(Map<String, dynamic> json) => DriverStatus(
         presence: switch (json['presence'] as String?) {
           'online' => Presence.online,

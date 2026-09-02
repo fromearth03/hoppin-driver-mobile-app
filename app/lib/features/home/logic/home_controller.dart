@@ -25,12 +25,20 @@ class HomeState {
   final bool isBusy;
   final ApiException? error;
 
+  /// When THIS session put the driver online, or null when it did not.
+  ///
+  /// A relaunch mid-shift leaves it null even though the driver is online:
+  /// nothing was started here, so there is no first fix on its way and a
+  /// stale reading is the plain truth rather than a race.
+  final DateTime? onlineSince;
+
   const HomeState({
     this.status,
     this.today,
     this.offer,
     this.isBusy = false,
     this.error,
+    this.onlineSince,
   });
 
   HomeState copyWith({
@@ -39,8 +47,10 @@ class HomeState {
     PendingOffer? offer,
     bool? isBusy,
     ApiException? error,
+    DateTime? onlineSince,
     bool clearOffer = false,
     bool clearError = false,
+    bool clearOnlineSince = false,
   }) =>
       HomeState(
         status: status ?? this.status,
@@ -48,6 +58,8 @@ class HomeState {
         offer: clearOffer ? null : (offer ?? this.offer),
         isBusy: isBusy ?? this.isBusy,
         error: clearError ? null : (error ?? this.error),
+        onlineSince:
+            clearOnlineSince ? null : (onlineSince ?? this.onlineSince),
       );
 
   /// On shift as far as the dispatcher is concerned. `stale` counts: the
@@ -62,18 +74,44 @@ class HomeState {
   bool get isDispatchable => status?.presence == Presence.online;
 
   bool get onTrip => status?.activeRideId != null;
+
+  /// Whether to tell the driver their location is missing.
+  ///
+  /// True only once a first fix has had a fair chance to land: the server
+  /// marks a driver stale the moment they go online, and warning on that
+  /// reading accused them before the GPS had answered.
+  bool get showsNoLocationWarning =>
+      status?.presence == Presence.stale &&
+      shouldWarnNoLocation(onlineSince: onlineSince, now: DateTime.now());
 }
 
 /// Overridable so tests do not wait five real seconds.
 final pollIntervalProvider =
     Provider<Duration>((ref) => const Duration(seconds: 5));
 
-/// Owns presence, blockers and the current offer.
+/// How long a driver who has just gone online is given to land a first GPS
+/// fix before the app says their location is missing.
 ///
-/// FCM is the primary path — a push wakes the app and calls [onPushWake],
-/// which fetches the authoritative offer. The 5s poll is a safety net for
-/// Android OEM battery managers that silently drop high-priority pushes; it
-/// runs only while online and off-trip, so an idle or driving app is quiet.
+/// Going online marks them stale server-side immediately — no beat has
+/// arrived yet — and the status read that follows the POST happens in the
+/// same breath. Warning on that reading blames the driver for a fix that has
+/// had no chance to arrive, and it was the first thing they saw every single
+/// time they started a shift.
+const locationGrace = Duration(seconds: 10);
+
+/// Whether "we can't see your location" is fair to show yet.
+///
+/// [onlineSince] is when this session put the driver online, or null when it
+/// did not — an app resumed mid-shift has no fix in flight of its own, so a
+/// stale reading there is the truth straight away.
+bool shouldWarnNoLocation({
+  required DateTime? onlineSince,
+  required DateTime now,
+}) {
+  if (onlineSince == null) return true;
+  return now.difference(onlineSince) >= locationGrace;
+}
+
 class HomeController extends AsyncNotifier<HomeState> {
   Timer? _timer;
   bool _disposed = false;
@@ -132,7 +170,13 @@ class HomeController extends AsyncNotifier<HomeState> {
         }
         return state;
       },
-      err: (e) async => HomeState(error: e),
+      // A cold start that cannot reach /status opens on the offline screen
+      // carrying the error, rather than on a full-screen failure. The driver
+      // is certainly not online, and the toggle is what recovers the
+      // session — putting an error page in front of it removed the one
+      // control that would have helped.
+      err: (e) async =>
+          HomeState(status: DriverStatus.unreachable, error: e),
     );
   }
 
@@ -193,7 +237,8 @@ class HomeController extends AsyncNotifier<HomeState> {
           stopPolling();
           ref.read(locationReporterProvider).stop();
           await refresh();
-          _emit(_current.copyWith(isBusy: false, clearOffer: true));
+          _emit(_current.copyWith(
+              isBusy: false, clearOffer: true, clearOnlineSince: true));
         },
         // A failed go-offline leaves the driver online and dispatchable
         // server-side. Flipping the toggle off anyway would strand them
@@ -210,7 +255,10 @@ class HomeController extends AsyncNotifier<HomeState> {
         // the truth. Reading presence out of the acknowledgement is what
         // left the toggle off until the next poll.
         await refresh();
-        _emit(_current.copyWith(isBusy: false));
+        // Stamped here, after the status read: the grace runs from the
+        // moment the driver is actually online, and refresh() is what will
+        // have reported them stale with no beat sent yet.
+        _emit(_current.copyWith(isBusy: false, onlineSince: DateTime.now()));
         startPolling();
         // The dispatcher can only work a driver it can place. Refusing
         // location does not block going online — the server will mark

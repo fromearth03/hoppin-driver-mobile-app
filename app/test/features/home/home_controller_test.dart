@@ -45,6 +45,19 @@ PendingOffer buildOffer({
       receivedAt: DateTime.now().subtract(age),
     );
 
+/// Polls [condition] until it holds, or gives up after [timeout] so a
+/// genuine failure still fails rather than hanging the suite.
+Future<void> _until(
+  bool Function() condition, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!condition()) {
+    if (DateTime.now().isAfter(deadline)) return;
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+}
+
 void main() {
   late _MockStatusRepo status;
   late _MockOfferRepo offers;
@@ -141,7 +154,10 @@ void main() {
     final c = container();
     await c.read(homeControllerProvider.future);
     c.read(homeControllerProvider.notifier).startPolling();
-    await Future<void>.delayed(const Duration(milliseconds: 80));
+    // Waits for the offer rather than for a fixed span: a loaded machine
+    // running the whole suite at once can miss an 80ms window, which failed
+    // the run for a reason that had nothing to do with polling.
+    await _until(() => c.read(homeControllerProvider).value!.offer != null);
 
     expect(c.read(homeControllerProvider).value!.offer, isNotNull);
     c.read(homeControllerProvider.notifier).stopPolling();
@@ -249,5 +265,38 @@ void main() {
     await c.read(homeControllerProvider.notifier).onPushWake();
 
     expect(c.read(homeControllerProvider).value!.offer, isNotNull);
+  });
+
+  test('a launch that cannot reach the server still opens offline, usable',
+      () async {
+    // Offline is the truthful assumption when the server cannot be reached:
+    // the driver is certainly not taking jobs. Answering a cold start with a
+    // bare "try again later" hid the toggle behind an error screen, so the
+    // one action that would have fixed it was the one they could not reach.
+    when(() => status.status()).thenAnswer(
+        (_) async => Err(ApiException('NETWORK', 'no route to host', 0)));
+
+    final c = container();
+    final state = await c.read(homeControllerProvider.future);
+
+    expect(state.isOnline, isFalse);
+    expect(state.status, isNotNull);
+    // The failure is still carried, so the screen can say the figures are
+    // not current.
+    expect(state.error, isNotNull);
+  });
+
+  test('an offline placeholder never claims the driver is dispatchable',
+      () async {
+    when(() => status.status()).thenAnswer(
+        (_) async => Err(ApiException('NETWORK', 'no route to host', 0)));
+
+    final c = container();
+    final state = await c.read(homeControllerProvider.future);
+
+    expect(state.isDispatchable, isFalse);
+    // Nothing is known to be wrong with the driver, so no blocker list is
+    // invented for them.
+    expect(state.status!.isBlocked, isFalse);
   });
 }

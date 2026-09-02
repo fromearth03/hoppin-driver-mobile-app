@@ -24,7 +24,7 @@ ProfileRepository _repo({DriverProfile? profile}) {
 Widget wrap({ProfileRepository? repo}) => ProviderScope(
       overrides: [profileRepositoryProvider.overrideWithValue(repo ?? _repo())],
       child: const MaterialApp(
-        home: AppShell(currentIndex: 0, child: Text('body')),
+        home: AppShell(currentPath: '/', currentIndex: 0, child: Text('body')),
       ),
     );
 
@@ -124,7 +124,7 @@ void main() {
     await tester.pumpWidget(ProviderScope(
       overrides: [profileRepositoryProvider.overrideWithValue(_repo())],
       child: MaterialApp(
-        home: AppShell(
+        home: AppShell(currentPath: '/', 
           currentIndex: 0,
           onLogout: () {},
           child: const Text('body'),
