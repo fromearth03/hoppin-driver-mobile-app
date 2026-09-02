@@ -148,13 +148,17 @@ PreferredSizeWidget settingsAppBar(BuildContext context, String title) => AppBar
       elevation: 0,
       centerTitle: true,
       titleSpacing: 0,
-      leading: Navigator.of(context).canPop()
-          ? IconButton(
-              icon: const Icon(Icons.arrow_back,
-                  color: AppColors.textPrimary, size: 26),
-              onPressed: () =>
-              context.canPop() ? context.pop() : context.go(Routes.home),
-            )
-          : null,
+      // Always drawn. Settings is opened from Home's gear with `go`, which
+      // replaces rather than pushes, so canPop() was false and the screen
+      // had no way back at all — the driver's only exit was the bottom bar,
+      // which Settings does not show.
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back,
+            color: AppColors.textPrimary, size: 26),
+        // Pop when there is a stack to pop, otherwise fall back to Home:
+        // both are "the way I came in" from the driver's side.
+        onPressed: () =>
+            context.canPop() ? context.pop() : context.go(Routes.home),
+      ),
       title: Text(title, style: AppText.title.copyWith(fontSize: 24)),
     );

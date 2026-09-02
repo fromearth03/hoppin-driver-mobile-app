@@ -68,4 +68,14 @@ void main() {
 
     verify(() => repo.save(any())).called(1);
   });
+
+  testWidgets('always offers a way back out', (tester) async {
+    // Settings is opened from Home's gear with `go`, which replaces rather
+    // than pushes — so a leading arrow gated on canPop() never appeared, and
+    // the screen hides the bottom bar that would otherwise be the way out.
+    await tester.pumpWidget(wrap(repo));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+  });
 }

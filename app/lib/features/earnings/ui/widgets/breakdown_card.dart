@@ -65,13 +65,16 @@ class BreakdownCard extends StatelessWidget {
       Padding(
         padding: EdgeInsets.only(bottom: emphasised ? 0 : 18),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Flexible(
+            Expanded(
               child: Text(
+                // Wraps rather than clipping. A deduction the driver cannot
+                // read the name of is one they cannot query, and these are
+                // the lines that take money off the fare.
                 label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
                 style: emphasised
                     ? AppText.heading.copyWith(fontSize: 17)
                     : AppText.body.copyWith(fontSize: 16),

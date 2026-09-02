@@ -41,50 +41,53 @@ class PayoutRow extends StatelessWidget {
                 color: colour,
               ),
               const SizedBox(width: 12),
+              // Two columns, not four. Three flex boxes competing for one
+              // row is what clipped a payout reference to "someth…" — the
+              // string a driver reads out to support when a transfer goes
+              // missing, and the one thing on the row that must survive
+              // whole.
               Expanded(
-                flex: 5,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(_reference,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
                         style: AppText.heading.copyWith(fontSize: 16)),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       payout.transferredAt == null
                           ? _statusLabel
                           : DateFormat('EEEE, d MMM yyyy')
                               .format(payout.transferredAt!.toLocal()),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
                       style: AppText.caption,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  payout.amount.format(),
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  style: AppText.heading.copyWith(
-                    fontSize: 16,
-                    color: _failed ? AppColors.negative : AppColors.textPrimary,
+              const SizedBox(width: 12),
+              // The money and its status stack on the right, each sized to
+              // itself rather than to a share of the row.
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    payout.amount.format(),
+                    maxLines: 1,
+                    style: AppText.heading.copyWith(
+                      fontSize: 16,
+                      color:
+                          _failed ? AppColors.negative : AppColors.textPrimary,
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: Text(
-                  _statusLabel,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  style: AppText.body.copyWith(fontSize: 14, color: colour),
-                ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _statusLabel,
+                    maxLines: 1,
+                    style: AppText.body.copyWith(fontSize: 14, color: colour),
+                  ),
+                ],
               ),
             ],
           ),
