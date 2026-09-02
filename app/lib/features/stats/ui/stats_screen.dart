@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_loading.dart';
 import '../logic/stats_controller.dart';
 import 'appeal_sheet.dart';
 import 'widgets/penalties_section.dart';
+import '../data/models/driver_stats.dart';
 import 'widgets/period_card.dart';
 import 'widgets/stat_tile.dart';
 
@@ -21,7 +22,23 @@ class StatsScreen extends ConsumerWidget {
     final controller = ref.read(statsControllerProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Stats')),
+      appBar: AppBar(
+        title: const Text('Stats'),
+        // The period governs every figure below, so it sits with the title
+        // rather than taking the first row of the page.
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Center(
+              child: PeriodCard(
+                compact: true,
+                period: async.value?.period ?? StatsPeriod.week,
+                onChanged: controller.setPeriod,
+              ),
+            ),
+          ),
+        ],
+      ),
       body: async.when(
         loading: () => const AppLoading(),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
@@ -44,15 +61,21 @@ class StatsScreen extends ConsumerWidget {
                   const EdgeInsets.only(bottom: AppShell.bottomClearance),
               child: Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: PeriodCard(
-                      period: state.period,
-                      from: stats?.from,
-                      to: stats?.to,
-                      onChanged: controller.setPeriod,
+                  // The window the service actually resolved. The picker in
+                  // the bar names the period; this says which days it landed
+                  // on, which is the app's only honest claim about what the
+                  // figures below cover.
+                  if (stats?.from != null && stats?.to != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          PeriodCard.rangeLabel(stats!.from!, stats.to!),
+                          style: AppText.bodySecondary,
+                        ),
+                      ),
                     ),
-                  ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                     child: GridView(

@@ -75,6 +75,9 @@ void main() {
     expect(find.text('Settings', skipOffstage: false), findsNothing);
     expect(
         find.text('Personal Information', skipOffstage: false), findsNothing);
+    // Deleting an account is not a destination; it belongs where the driver
+    // manages their account rather than one mis-tap from Trips.
+    expect(find.text('Delete account', skipOffstage: false), findsNothing);
   });
 
   testWidgets('drawer lists every account destination', (tester) async {
@@ -87,10 +90,9 @@ void main() {
     for (final label in [
       'Trips',
       'Statement',
-      'Payouts',
+      'Payment Methods',
       'Notifications',
       'Help & Support',
-      'Delete account',
       'Logout',
     ]) {
       expect(find.text(label, skipOffstage: false), findsOneWidget,
@@ -98,13 +100,17 @@ void main() {
     }
   });
 
-  testWidgets('drawer omits Payment Methods — those routes are rider-only',
+  testWidgets('drawer offers the driver their own payment methods',
       (tester) async {
+    // This used to assert the opposite: payment methods were a rider-only
+    // idea, and the driver's equivalent was called Payouts. Drivers now
+    // manage where they are paid from the same place, under the name they
+    // would look for.
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
     await openDrawer(tester);
 
-    expect(find.text('Payment Methods'), findsNothing);
+    expect(find.text('Payment Methods', skipOffstage: false), findsOneWidget);
   });
 
   testWidgets('drawer header shows the profile name and rating from the API',

@@ -33,22 +33,12 @@ class EarningsScreen extends ConsumerWidget {
         backgroundColor: AppColors.background,
         surfaceTintColor: AppColors.background,
         elevation: 0,
-        // The design has no bar — just the two controls sitting on the grey
-        // ground — so the toolbar is sized to the icons rather than left to
-        // Material's default, which squeezes them when there is no title.
         toolbarHeight: 64,
-        // Opens AppShell's drawer, not this Scaffold's — this one has none.
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: AppColors.textPrimary),
-          onPressed: () => AppShell.openDrawer(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined,
-                color: AppColors.textPrimary),
-            onPressed: () => context.go(Routes.settings),
-          ),
-        ],
+        // No drawer handle and no settings gear. Both live on Home, which is
+        // one tab away, and on a screen that exists to show money they were
+        // two controls competing with the figures for the top of the page.
+        automaticallyImplyLeading: false,
+        title: const Text('Earnings', style: AppText.title),
       ),
       body: async.when(
         loading: () => const SkeletonList(rows: 4),

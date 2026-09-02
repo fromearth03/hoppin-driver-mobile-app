@@ -62,7 +62,7 @@ class SideDrawer extends ConsumerWidget {
                   _item(context, Icons.history, 'Trips', Routes.trips),
                   _item(context, Icons.receipt_long_outlined, 'Statement',
                       Routes.statement),
-                  _item(context, Icons.account_balance_outlined, 'Payouts',
+                  _item(context, Icons.account_balance_outlined, 'Payment Methods',
                       Routes.payouts),
                   _item(context, Icons.notifications_none, 'Notifications',
                       Routes.notifications),
@@ -71,9 +71,9 @@ class SideDrawer extends ConsumerWidget {
                   // Settings has its own gear on the Home app bar, which is
                   // where a driver reaches for it. Listing it here too made
                   // the drawer a second, longer route to the same screen.
-                  _item(context, Icons.delete_outline, 'Delete account',
-                      Routes.deleteAccount,
-                      color: AppColors.negative),
+                  // Deleting an account is not a navigation destination —
+                  // it belongs where the driver manages their account, not
+                  // one mis-tap away from Trips.
                 ],
               ),
             ),

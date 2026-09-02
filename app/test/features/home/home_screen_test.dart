@@ -53,13 +53,17 @@ void main() {
 
   });
 
-  testWidgets('shows the offline toggle by default', (tester) async {
+  testWidgets('the toggle offers the action, not the state', (tester) async {
     when(() => status.status()).thenAnswer((_) async => Ok(buildStatus()));
 
     await tester.pumpWidget(wrap(status, offers));
     await tester.pumpAndSettle();
 
-    expect(find.text('Offline'), findsOneWidget);
+    // An offline driver reading "Offline" learns nothing they did not know,
+    // and the way to change it goes unsaid.
+    expect(find.text('Go online'), findsOneWidget);
+    final toggle = tester.widget<OnlineToggle>(find.byType(OnlineToggle));
+    expect(toggle.isOnline, isFalse);
   });
 
   testWidgets('shows the blocker list and disables the toggle when blocked',

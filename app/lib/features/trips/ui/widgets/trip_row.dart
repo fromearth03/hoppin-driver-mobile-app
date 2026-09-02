@@ -47,7 +47,21 @@ class TripRow extends StatelessWidget {
                   labelColour,
                   strike: false,
                 ),
-                const SizedBox(height: 10),
+                // The leg between the two stops, drawn where the route runs:
+                // inset to sit under the pin, so the pair reads as one
+                // journey rather than two stacked addresses.
+                const Padding(
+                  padding: EdgeInsets.only(left: 9, top: 4, bottom: 4),
+                  child: SizedBox(
+                    height: 14,
+                    child: VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: AppColors.border,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -68,9 +82,14 @@ class TripRow extends StatelessWidget {
                           : '+${trip.earnings.format()}',
                       style: AppText.body.copyWith(
                         fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        // Money earned is green wherever it appears in the
+                        // app. On a list that mixes completed work with
+                        // cancellations, it is also what tells the two apart
+                        // at a glance.
                         color: trip.earnings.isZero
                             ? AppColors.textSecondary
-                            : labelColour,
+                            : AppColors.positive,
                       ),
                     ),
                   ],
@@ -88,8 +107,19 @@ class TripRow extends StatelessWidget {
                     // it stays on the row rather than behind the detail.
                     if (trip.ref != null) ...[
                       const SizedBox(width: 10),
-                      Text(trip.ref!,
-                          style: AppText.caption.copyWith(fontSize: 14)),
+                      // The reference is what a driver reads out to support,
+                      // so it gets a chip of its own rather than running into
+                      // the time beside it.
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(trip.ref!,
+                            style: AppText.caption.copyWith(fontSize: 13)),
+                      ),
                     ],
                     const Spacer(),
                     // A penalty is the one thing on a row a driver will

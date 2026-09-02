@@ -29,6 +29,8 @@ import 'features/support/ui/ticket_thread_screen.dart';
 import 'features/trip/ui/chat_screen.dart';
 import 'features/trip/ui/trip_screen.dart';
 import 'features/trips/ui/trips_screen.dart';
+import 'features/gate/logic/app_gate_controller.dart';
+import 'features/gate/ui/app_gate_screen.dart';
 import 'shared/nav/app_shell.dart';
 import 'features/home/logic/home_controller.dart';
 import 'features/earnings/logic/earnings_controller.dart';
@@ -189,7 +191,34 @@ class HoppinDriverApp extends ConsumerWidget {
         debugShowCheckedModeBanner: false,
         // Wraps the navigator itself, so dialogs and sheets stay inside the
         // phone column on wide screens rather than spanning a desktop.
-        builder: (context, child) =>
-            ResponsiveFrame(child: child ?? const SizedBox.shrink()),
+        //
+        // The gate sits outside the router on purpose: maintenance has to be
+        // sayable to a driver who is not signed in, and a forced update has
+        // to hold on every route rather than on the ones someone remembered
+        // to guard.
+        builder: (context, child) => ResponsiveFrame(
+          child: _Gated(child: child ?? const SizedBox.shrink()),
+        ),
       );
+}
+
+/// Puts the maintenance or force-update wall in front of the whole app.
+///
+/// Anything other than a resolved, blocking status renders the app: a gate
+/// that is still loading, or one whose read failed, must never stop a driver
+/// working. The cost of a missed gate is one stale client; the cost of a
+/// false one is a fleet that cannot earn.
+class _Gated extends ConsumerWidget {
+  final Widget child;
+
+  const _Gated({required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(appGateProvider).value;
+    if (status != null && status.blocks) {
+      return AppGateScreen(status: status);
+    }
+    return child;
+  }
 }
