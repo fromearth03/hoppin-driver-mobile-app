@@ -7,6 +7,7 @@ import '../../../features/profile/ui/widgets/settings_card.dart';
 import '../../../shared/widgets/app_empty_state.dart';
 import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/cursor_list.dart';
 import '../data/models/ledger_entry.dart';
 import '../logic/statement_controller.dart';
@@ -34,7 +35,7 @@ class StatementScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       appBar: settingsAppBar(context, 'Statement'),
       body: async.when(
-        loading: () => const AppLoading(),
+        loading: () => const SkeletonList(rows: 4),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
         data: (state) {
           if (state.entries.isEmpty && state.error != null) {

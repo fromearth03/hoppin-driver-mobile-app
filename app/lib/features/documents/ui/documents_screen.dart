@@ -8,6 +8,7 @@ import '../../../core/theme/typography.dart';
 import '../../../shared/nav/app_shell.dart';
 import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../data/models/driver_document.dart';
 import '../logic/documents_controller.dart';
 import '../logic/upload_controller.dart';
@@ -39,7 +40,7 @@ class DocumentsScreen extends ConsumerWidget {
         ],
       ),
       body: async.when(
-        loading: () => const AppLoading(),
+        loading: () => const SkeletonList(rows: 4),
         error: (e, _) => AppErrorState(
           error: e is ApiException ? e : ApiException('INTERNAL', '', 500),
           onRetry: controller.refresh,

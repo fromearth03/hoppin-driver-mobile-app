@@ -8,6 +8,7 @@ import '../../../core/theme/typography.dart';
 import '../../../shared/nav/app_shell.dart';
 import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../data/models/driver_promotion.dart';
 import '../logic/earnings_controller.dart';
 import 'widgets/balance_cards.dart';
@@ -52,7 +53,7 @@ class EarningsScreen extends ConsumerWidget {
         ],
       ),
       body: async.when(
-        loading: () => const AppLoading(),
+        loading: () => const SkeletonList(rows: 4),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
         data: (state) {
           if (state.summaries.isEmpty && state.error != null) {

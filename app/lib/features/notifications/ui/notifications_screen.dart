@@ -10,6 +10,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_empty_state.dart';
 import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/cursor_list.dart';
 import '../data/models/app_notification.dart';
 import '../logic/notifications_controller.dart';
@@ -57,7 +58,7 @@ class NotificationsScreen extends ConsumerWidget {
         ],
       ),
       body: async.when(
-        loading: () => const AppLoading(),
+        loading: () => const SkeletonList(rows: 6),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
         data: (state) {
           final visible = switch (filter) {

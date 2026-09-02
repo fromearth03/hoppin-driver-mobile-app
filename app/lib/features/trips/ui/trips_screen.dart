@@ -7,6 +7,7 @@ import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_empty_state.dart';
 import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/cursor_list.dart';
 import '../data/models/driver_trip.dart';
 import '../logic/trips_controller.dart';
@@ -55,7 +56,7 @@ class TripsScreen extends ConsumerWidget {
           _dateBar(context, async.value, controller),
           Expanded(
             child: async.when(
-              loading: () => const AppLoading(),
+              loading: () => const SkeletonList(rows: 5),
               error: (e, _) => Center(child: Text('$e', style: AppText.body)),
               data: (state) {
                 if (state.trips.isEmpty && state.error != null) {
