@@ -10,6 +10,8 @@ PendingOffer buildOffer({
   int? durationSeconds = 900,
   double? miles = 4.7,
   String? category = 'standard',
+  int expiresInSec = 60,
+  Duration age = Duration.zero,
 }) =>
     PendingOffer(
       id: 'o1',
@@ -21,8 +23,8 @@ PendingOffer buildOffer({
       estimatedDurationSeconds: durationSeconds,
       estimatedMiles: miles,
       pickupEtaSeconds: etaSeconds,
-      expiresInSec: 60,
-      receivedAt: DateTime.now(),
+      expiresInSec: expiresInSec,
+      receivedAt: DateTime.now().subtract(age),
     );
 
 Widget wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
@@ -143,5 +145,47 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.textContaining('s'), findsWidgets);
+  });
+
+  testWidgets('holds the countdown once accept is in flight', (tester) async {
+    // The accept POST is away and the offer is no longer the driver's to
+    // lose. A pill that keeps racing to zero — and then says "Offer
+    // expired" — is lying about a decision already taken.
+    //
+    // The clock is moved by backdating receivedAt rather than by pumping:
+    // secondsRemaining reads the wall clock, which a fake-async pump does
+    // not advance.
+    final card = OfferCard(
+      offer: buildOffer(expiresInSec: 30, age: const Duration(seconds: 28)),
+      isBusy: true,
+    );
+    await tester.pumpWidget(wrap(card));
+
+    expect(find.text('2s'), findsOneWidget);
+
+    // Same offer, four seconds older: live, this pill would read 0s and the
+    // button would flip to "Offer expired" under the driver's finger.
+    await tester.pumpWidget(
+      wrap(OfferCard(
+        offer: buildOffer(expiresInSec: 30, age: const Duration(seconds: 32)),
+        isBusy: true,
+      )),
+    );
+    await tester.pump();
+
+    // A busy AppButton renders its spinner in place of the label, so the
+    // absence of the expired copy is what proves the window was held.
+    expect(find.text('Offer expired'), findsNothing);
+    expect(find.text('Dismiss'), findsNothing);
+  });
+
+  testWidgets('still expires when the offer is untouched', (tester) async {
+    await tester.pumpWidget(
+      wrap(OfferCard(
+        offer: buildOffer(expiresInSec: 30, age: const Duration(seconds: 32)),
+      )),
+    );
+
+    expect(find.text('Offer expired'), findsOneWidget);
   });
 }

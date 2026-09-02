@@ -45,6 +45,11 @@ const _copy = <String, String>{
   // Offers
   'OFFER_EXPIRED': 'This offer has lapsed.',
   'OFFER_NOT_FOUND': 'This offer is no longer available.',
+  // The accept landed but dispatch sent no ride to open. The driver may well
+  // be assigned, so the copy points at the job rather than inviting a retry
+  // that would answer OFFER_EXPIRED.
+  'NO_RIDE_ID': 'That ride was accepted but could not be opened. Check '
+      'Trips, or contact support.',
   // Trip lifecycle
   'ILLEGAL_TRANSITION':
       "This ride isn't in a state that allows that. Refreshing now.",

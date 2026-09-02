@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exception.dart';
 import '../../../core/result.dart';
 import 'models/pending_offer.dart';
 
@@ -37,7 +38,18 @@ class OfferRepository {
   Future<Result<String>> accept(String offerId,
       {required String rideId}) async {
     final r = await _api.post<Map<String, dynamic>>('/offers/$offerId/accept');
-    return r.when(ok: (_) => Ok(rideId), err: (e) => Err(e));
+    return r.when(
+      // `ride_id` is optional on the offer payload and defaults to empty, so
+      // a dispatch record missing it would otherwise route the driver to
+      // `/trip/` - a path that matches nothing. They would land back on Home
+      // with the offer already cleared and no word of what went wrong, while
+      // the server holds them assigned to the job.
+      ok: (_) => rideId.isEmpty
+          ? Err(ApiException('NO_RIDE_ID',
+              'the accept succeeded but carried no ride to open', 0))
+          : Ok(rideId),
+      err: (e) => Err(e),
+    );
   }
 
   Future<Result<void>> decline(String offerId) async {

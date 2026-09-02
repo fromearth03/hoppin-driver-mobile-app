@@ -45,6 +45,15 @@ class OfferCard extends StatefulWidget {
 class _OfferCardState extends State<OfferCard> {
   Timer? _ticker;
 
+  /// The countdown frozen at the moment Accept was tapped.
+  ///
+  /// Once the accept is in flight the window is no longer the driver's to
+  /// lose: the server either honours the tap or answers OFFER_EXPIRED. A
+  /// pill that kept running would tick to zero under their finger and flip
+  /// the button to "Offer expired" - telling them they missed a ride they
+  /// had in fact already taken.
+  int? _heldRemaining;
+
   @override
   void initState() {
     super.initState();
@@ -52,9 +61,23 @@ class _OfferCardState extends State<OfferCard> {
       if (!mounted) return;
       // Nothing left to count; rebuilding once a second forever would burn
       // battery on a card that can no longer change.
-      if (widget.offer.hasExpired) timer.cancel();
+      if (widget.offer.hasExpired || widget.isBusy) timer.cancel();
       setState(() {});
     });
+  }
+
+  @override
+  void didUpdateWidget(OfferCard old) {
+    super.didUpdateWidget(old);
+    // Latch on the transition into busy, so the held value is the one that
+    // was on screen when the driver committed.
+    if (widget.isBusy && !old.isBusy) {
+      _heldRemaining = widget.offer.secondsRemaining;
+      _ticker?.cancel();
+    } else if (!widget.isBusy && old.isBusy) {
+      // The accept failed and the offer is live again - release the latch.
+      _heldRemaining = null;
+    }
   }
 
   @override
@@ -71,11 +94,18 @@ class _OfferCardState extends State<OfferCard> {
   @override
   Widget build(BuildContext context) {
     final offer = widget.offer;
-    final remaining = offer.secondsRemaining;
+    // A card built straight into the busy state (a rebuild mid-accept) has
+    // no latched value yet, so fall back to the live figure rather than to
+    // zero.
+    final remaining = widget.isBusy
+        ? (_heldRemaining ?? offer.secondsRemaining)
+        : offer.secondsRemaining;
     // The server drops a lapsed offer on its next poll, but the card is on
     // screen in between. Accepting here would fail with OFFER_EXPIRED, so
-    // the button says so rather than inviting the tap.
-    final expired = offer.hasExpired;
+    // the button says so rather than inviting the tap. An accept already in
+    // flight is exempt: that decision is made, and the answer is the
+    // server's to give.
+    final expired = !widget.isBusy && offer.hasExpired;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -170,6 +200,21 @@ class _OfferCardState extends State<OfferCard> {
               label: offer.pickupLabel,
               rail: true,
             ),
+            // The mid points of a multi-stop job, in travel order — a
+            // driver deciding on an offer is deciding on the WHOLE route.
+            for (final (i, label) in offer.waypointLabels.indexed) ...[
+              const Padding(
+                padding: EdgeInsets.only(left: 34, top: 12, bottom: 12),
+                child: Divider(height: 1, color: AppColors.border),
+              ),
+              _stop(
+                ring: AppColors.warning,
+                title: 'Stop ${i + 1}',
+                detail: null,
+                label: label,
+                rail: true,
+              ),
+            ],
             const Padding(
               padding: EdgeInsets.only(left: 34, top: 12, bottom: 12),
               child: Divider(height: 1, color: AppColors.border),

@@ -18,6 +18,7 @@ import '../logic/trip_controller.dart';
 import 'widgets/cancel_sheet.dart';
 import 'widgets/emergency_sheet.dart';
 import 'widgets/map_pills.dart';
+import 'widgets/ride_ended_card.dart';
 import 'widgets/rider_card.dart';
 import 'widgets/stops_card.dart';
 import 'widgets/trip_map.dart';
@@ -46,7 +47,9 @@ class TripScreen extends ConsumerWidget {
           final ride = state.ride;
           if (ride == null) {
             return AppErrorState(
-                error: state.error!, onRetry: controller.refresh);
+              error: state.error!,
+              onRetry: controller.refresh,
+            );
           }
 
           // A completed trip replaces the map entirely: the driver's question
@@ -54,6 +57,17 @@ class TripScreen extends ConsumerWidget {
           if (ride.phase == TripPhase.completed) {
             return TripSummary(
               ride: ride,
+              onDone: () => context.go(Routes.home),
+            );
+          }
+
+          // A ride cancelled out from under the driver — by the rider, by an
+          // admin, or by lapsing — takes the map away for the same reason a
+          // completed one does. Holding the live view would keep them driving
+          // to a pickup that is no longer there.
+          if (ride.phase == TripPhase.cancelled) {
+            return RideEndedCard(
+              rideRef: ride.ref,
               onDone: () => context.go(Routes.home),
             );
           }
@@ -77,26 +91,39 @@ class TripScreen extends ConsumerWidget {
                 // an interceptor, drags on these pills fall through and pan
                 // the map. Physical shield, exactly as it looks.
                 child: PointerInterceptor(
-                child: Column(
-                  children: [
-                    // A poll that keeps failing leaves the driver looking at
-                    // a ride that may already have been cancelled underneath
-                    // them. Stale data is the right fallback; silence is not.
-                    if (state.error != null) _staleBanner(),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: TripStatusPill(phase: ride.phase),
-                    ),
-                    const SizedBox(height: 10),
-                    // The turn-by-turn banner the design stacks directly
-                    // under the status pill. Empty on a finished trip and
-                    // whenever OSRM had nothing, so it costs no height then.
-                    TripNavBanner(steps: ride.geo.steps),
-                    if (ride.geo.steps.isNotEmpty) const SizedBox(height: 10),
-                    TripEtaPill(etaSeconds: ride.pickupEtaSeconds),
-                  ],
-                ),
+                  child: Column(
+                    children: [
+                      // A poll that keeps failing leaves the driver looking at
+                      // a ride that may already have been cancelled underneath
+                      // them. Stale data is the right fallback; silence is not.
+                      if (state.error != null) _staleBanner(),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            // The shell hides the tab pill on a trip — this is
+                            // the way back out. Home keeps the active-trip
+                            // banner, so leaving never loses the job.
+                            _mapButton(
+                              icon: Icons.arrow_back,
+                              tooltip: 'Back to Home',
+                              onPressed: () => context.go(Routes.home),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(child: TripStatusPill(phase: ride.phase)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      // The turn-by-turn banner the design stacks directly
+                      // under the status pill. Empty on a finished trip and
+                      // whenever OSRM had nothing, so it costs no height then.
+                      TripNavBanner(steps: ride.geo.steps),
+                      if (ride.geo.steps.isNotEmpty) const SizedBox(height: 10),
+                      TripEtaPill(etaSeconds: ride.pickupEtaSeconds),
+                    ],
+                  ),
                 ),
               ),
               // Cancelling is a real action mid-job, but it is not the one
@@ -111,43 +138,34 @@ class TripScreen extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.only(right: 12),
                       child: PointerInterceptor(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Every phase: a driver in trouble must never hunt
-                          // for help. Red, first in the stack.
-                          _mapButton(
-                            icon: Icons.sos,
-                            tooltip: 'Emergency',
-                            color: AppColors.negative,
-                            onPressed: () => EmergencySheet.show(context,
-                                rideId: ride.id),
-                          ),
-                          const SizedBox(height: 10),
-                          // Cancelling is a pre-trip act: wrong pickup, or a
-                          // passenger who never showed. Once the ride starts
-                          // there is a passenger in the car and the button
-                          // goes away.
-                          if (ride.phase != TripPhase.inTrip)
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Every phase: a driver in trouble must never hunt
+                            // for help. Red, first in the stack.
                             _mapButton(
-                              icon: Icons.close,
-                              tooltip: 'Cancel ride',
-                              onPressed: () => _cancel(context, ref, state),
+                              icon: Icons.sos,
+                              tooltip: 'Emergency',
+                              color: AppColors.negative,
+                              onPressed: () =>
+                                  EmergencySheet.show(context, rideId: ride.id),
                             ),
-                          // Adding a stop is only possible while the ride is
-                          // live; the handler answers 409 RIDE_CLOSED
-                          // otherwise. Offered from the trip proper, once
-                          // the rider is aboard and can ask for one.
-                          if (ride.phase == TripPhase.inTrip) ...[
                             const SizedBox(height: 10),
-                            _mapButton(
-                              icon: Icons.add_location_alt_outlined,
-                              tooltip: 'Add a stop',
-                              onPressed: () => _addStop(context, ref, ride),
-                            ),
+                            // Cancelling is a pre-trip act: wrong pickup, or a
+                            // passenger who never showed. Once the ride starts
+                            // there is a passenger in the car and the button
+                            // goes away.
+                            if (ride.phase != TripPhase.inTrip)
+                              _mapButton(
+                                icon: Icons.close,
+                                tooltip: 'Cancel ride',
+                                onPressed: () => _cancel(context, ref, state),
+                              ),
+                            // No add-stop control: stops are the RIDER's to
+                            // request (and pay for) — a driver-added stop
+                            // would change the fare from the front seat.
                           ],
-                        ],
-                      ),
+                        ),
                       ),
                     ),
                   ),
@@ -166,13 +184,15 @@ class TripScreen extends ConsumerWidget {
                   child: Container(
                     decoration: const BoxDecoration(
                       color: AppColors.background,
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(26)),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(26),
+                      ),
                       boxShadow: [
                         BoxShadow(
-                            color: Color(0x33000000),
-                            blurRadius: 14,
-                            offset: Offset(0, -3)),
+                          color: Color(0x33000000),
+                          blurRadius: 14,
+                          offset: Offset(0, -3),
+                        ),
                       ],
                     ),
                     child: SafeArea(
@@ -191,18 +211,22 @@ class TripScreen extends ConsumerWidget {
                           // Pinned: at the peek size the driver still sees
                           // the waiting clock / passenger and the CTA.
                           Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(20, 6, 20, 8),
+                            padding: const EdgeInsets.fromLTRB(20, 6, 20, 8),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Expanded(child: _sheetStatus(state, ride)),
                                 const SizedBox(width: 14),
                                 Expanded(
-                                  child: _action(context, ref, state, ride,
-                                      ref.read(
-                                          tripControllerProvider(rideId)
-                                              .notifier)),
+                                  child: _action(
+                                    context,
+                                    ref,
+                                    state,
+                                    ride,
+                                    ref.read(
+                                      tripControllerProvider(rideId).notifier,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -210,8 +234,7 @@ class TripScreen extends ConsumerWidget {
                           Expanded(
                             child: ListView(
                               controller: scrollController,
-                              padding:
-                                  const EdgeInsets.fromLTRB(0, 4, 0, 12),
+                              padding: const EdgeInsets.fromLTRB(0, 4, 0, 12),
                               children: [
                                 if (ride.phase == TripPhase.waiting)
                                   WaitingCancelCard(
@@ -224,11 +247,11 @@ class TripScreen extends ConsumerWidget {
                                   busy: state.isBusy,
                                   onArrive: ride.phase == TripPhase.inTrip
                                       ? (stop) =>
-                                          _arriveAtStop(context, ref, stop)
+                                            _arriveAtStop(context, ref, stop)
                                       : null,
                                   onDepart: ride.phase == TripPhase.inTrip
                                       ? (stop) =>
-                                          _departStop(context, ref, stop)
+                                            _departStop(context, ref, stop)
                                       : null,
                                 ),
                                 if (state.stops.multiStop)
@@ -236,15 +259,17 @@ class TripScreen extends ConsumerWidget {
                                 if (ride.phase == TripPhase.inTrip &&
                                     state.stops.nextStop == null)
                                   TripDestinationPlate(
-                                      label: ride.geo.dropoff.label),
+                                    label: ride.geo.dropoff.label,
+                                  ),
                                 if (ride.rider != null)
                                   RiderCard(
                                     rider: ride.rider!,
                                     rideRef: ride.ref,
                                     chatUnread: ride.chatUnread,
                                     onCall: () => _call(ride.rider!.phone),
-                                    onChat: () => context
-                                        .push('${Routes.trip}/$rideId/chat'),
+                                    onChat: () => context.push(
+                                      '${Routes.trip}/$rideId/chat',
+                                    ),
                                   ),
                               ],
                             ),
@@ -269,19 +294,17 @@ class TripScreen extends ConsumerWidget {
     required String tooltip,
     required VoidCallback onPressed,
     Color? color,
-  }) =>
-      Container(
-        decoration: BoxDecoration(
-          color: color ?? Colors.black.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: IconButton(
-          icon: Icon(icon, color: Colors.white),
-          tooltip: tooltip,
-          onPressed: onPressed,
-        ),
-      );
-
+  }) => Container(
+    decoration: BoxDecoration(
+      color: color ?? Colors.black.withValues(alpha: 0.45),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: IconButton(
+      icon: Icon(icon, color: Colors.white),
+      tooltip: tooltip,
+      onPressed: onPressed,
+    ),
+  );
 
   /// The left column of the sheet: the waiting clock while waiting, and who
   /// is aboard once under way — the two things the design puts there.
@@ -324,8 +347,13 @@ class TripScreen extends ConsumerWidget {
     return const SizedBox.shrink();
   }
 
-  Widget _action(BuildContext context, WidgetRef ref, TripState state, Ride ride,
-      TripController controller) {
+  Widget _action(
+    BuildContext context,
+    WidgetRef ref,
+    TripState state,
+    Ride ride,
+    TripController controller,
+  ) {
     final (label, action) = switch (ride.phase) {
       TripPhase.headingToPickup => ('Arrived at Pickup', controller.arrive),
       TripPhase.waiting => ('Start Trip', controller.start),
@@ -341,13 +369,17 @@ class TripScreen extends ConsumerWidget {
         ride.phase == TripPhase.waiting || ride.phase == TripPhase.inTrip;
     final style = AppButtons.primary().copyWith(
       backgroundColor: WidgetStatePropertyAll(
-          chargeMoment ? AppColors.accent : AppColors.buttonPrimary),
+        chargeMoment ? AppColors.accent : AppColors.buttonPrimary,
+      ),
       // ButtonStyle.textStyle replaces the theme's labelLarge wholesale, so
       // the family must ride along or the CTA falls back to the system font.
-      textStyle: const WidgetStatePropertyAll(TextStyle(
+      textStyle: const WidgetStatePropertyAll(
+        TextStyle(
           fontFamily: AppText.fontFamily,
           fontSize: 19,
-          fontWeight: FontWeight.w600)),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
 
     if (action == null) {
@@ -367,8 +399,9 @@ class TripScreen extends ConsumerWidget {
         if (!context.mounted) return;
         result.when(
           ok: (_) {},
-          err: (e) => ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(errorCopy(e)))),
+          err: (e) => ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(errorCopy(e)))),
         );
       },
     );
@@ -378,22 +411,22 @@ class TripScreen extends ConsumerWidget {
   /// date — the driver needs to know that before they keep driving to a
   /// pickup that could already have been cancelled.
   Widget _staleBanner() => Container(
-        width: double.infinity,
-        color: AppColors.warning.withValues(alpha: 0.15),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: const Row(
-          children: [
-            Icon(Icons.cloud_off, size: 18, color: AppColors.warning),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                "We've lost contact with the server — this may be out of date.",
-                style: AppText.caption,
-              ),
-            ),
-          ],
+    width: double.infinity,
+    color: AppColors.warning.withValues(alpha: 0.15),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    child: const Row(
+      children: [
+        Icon(Icons.cloud_off, size: 18, color: AppColors.warning),
+        SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            "We've lost contact with the server — this may be out of date.",
+            style: AppText.caption,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   /// Where the map should look. While stops remain, the driver is heading
   /// for the next stop — pointing at the final dropoff would send them past
@@ -406,21 +439,30 @@ class TripScreen extends ConsumerWidget {
   }
 
   Future<void> _arriveAtStop(
-      BuildContext context, WidgetRef ref, RideStop stop) async {
-    final result =
-        await ref.read(tripControllerProvider(rideId).notifier).arriveAtStop(stop.seq);
+    BuildContext context,
+    WidgetRef ref,
+    RideStop stop,
+  ) async {
+    final result = await ref
+        .read(tripControllerProvider(rideId).notifier)
+        .arriveAtStop(stop.seq);
     if (!context.mounted) return;
     result.when(
       ok: (_) {},
-      err: (e) => ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorCopy(e)))),
+      err: (e) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorCopy(e)))),
     );
   }
 
   Future<void> _departStop(
-      BuildContext context, WidgetRef ref, RideStop stop) async {
-    final result =
-        await ref.read(tripControllerProvider(rideId).notifier).departStop(stop.seq);
+    BuildContext context,
+    WidgetRef ref,
+    RideStop stop,
+  ) async {
+    final result = await ref
+        .read(tripControllerProvider(rideId).notifier)
+        .departStop(stop.seq);
     if (!context.mounted) return;
     result.when(
       // The waiting charge is the server's answer to this call, and it is
@@ -428,47 +470,24 @@ class TripScreen extends ConsumerWidget {
       // noticed on the summary.
       ok: (waiting) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(waiting.isZero
-              ? 'Departed. No waiting charge at this stop.'
-              : 'Departed. ${waiting.format()} waiting added to the fare.'),
+          content: Text(
+            waiting.isZero
+                ? 'Departed. No waiting charge at this stop.'
+                : 'Departed. ${waiting.format()} waiting added to the fare.',
+          ),
         ),
       ),
-      err: (e) => ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorCopy(e)))),
-    );
-  }
-
-  /// Adds a stop at the ride's current dropoff coordinates.
-  ///
-  /// The service inserts the new stop before the dropoff and re-prices every
-  /// leg. It takes a lat/lng and rejects zeroes, and the driver has no way to
-  /// pick a point on this screen — so the coordinates come from where the
-  /// ride is already headed, and the label is what makes it meaningful.
-  Future<void> _addStop(BuildContext context, WidgetRef ref, Ride ride) async {
-    final label = await AddStopSheet.show(context);
-    if (label == null || !context.mounted) return;
-
-    final result =
-        await ref.read(tripControllerProvider(rideId).notifier).addStop(
-              lat: ride.geo.dropoff.lat,
-              lng: ride.geo.dropoff.lng,
-              label: label.isEmpty ? 'Stop' : label,
-            );
-    if (!context.mounted) return;
-
-    result.when(
-      ok: (added) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Stop added. Fare is now ${added.total.format()}.'),
-        ),
-      ),
-      err: (e) => ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorCopy(e)))),
+      err: (e) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorCopy(e)))),
     );
   }
 
   Future<void> _cancel(
-      BuildContext context, WidgetRef ref, TripState state) async {
+    BuildContext context,
+    WidgetRef ref,
+    TripState state,
+  ) async {
     final choice = await CancelSheet.show(
       context,
       freeCancelRemaining: state.freeCancelSecondsRemaining,
@@ -502,20 +521,25 @@ class TripScreen extends ConsumerWidget {
                 rideId: rideId,
               )
               .then((r) {
-            if (!r.isOk) {
-              messenger.showSnackBar(const SnackBar(
-                content: Text("Your note to support didn't send — please "
-                    'refile it from Help & Support.'),
-              ));
-            }
-          });
+                if (!r.isOk) {
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        "Your note to support didn't send — please "
+                        'refile it from Help & Support.',
+                      ),
+                    ),
+                  );
+                }
+              });
         }
         context.go(Routes.home);
       },
       // NO_SHOW_TOO_EARLY renders as a countdown rather than a bare refusal,
       // so the driver knows how long to keep waiting.
-      err: (e) => ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorCopy(e)))),
+      err: (e) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorCopy(e)))),
     );
   }
 

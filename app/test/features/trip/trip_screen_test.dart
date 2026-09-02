@@ -178,4 +178,34 @@ void main() {
 
     expect(find.textContaining('2 min'), findsOneWidget);
   });
+
+  testWidgets('replaces the map when the ride is cancelled underneath the '
+      'driver', (tester) async {
+    // A rider cancellation, an admin cancellation and a lapsed ride all
+    // arrive as `cancelled`. Leaving the live map up sends the driver on to
+    // a pickup that no longer exists.
+    when(() => trip.ride('r1'))
+        .thenAnswer((_) async => Ok(buildRide('cancelled')));
+
+    await tester.pumpWidget(wrap(trip, reasons));
+    await settle(tester);
+
+    expect(find.textContaining('cancelled'), findsWidgets);
+    // The phase actions belong to a live job and must all be gone.
+    expect(find.text('Arrived at Pickup'), findsNothing);
+    expect(find.text('Start Trip'), findsNothing);
+    expect(find.text('Finish Trip'), findsNothing);
+    expect(find.byIcon(Icons.sos), findsNothing);
+    expect(find.byIcon(Icons.close), findsNothing);
+  });
+
+  testWidgets('a cancelled ride offers the way back to Home', (tester) async {
+    when(() => trip.ride('r1'))
+        .thenAnswer((_) async => Ok(buildRide('cancelled')));
+
+    await tester.pumpWidget(wrap(trip, reasons));
+    await settle(tester);
+
+    expect(find.text('Back to Home'), findsOneWidget);
+  });
 }
