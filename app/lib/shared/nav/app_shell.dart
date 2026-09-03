@@ -1,10 +1,9 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app_router.dart';
 import '../../core/theme/colors.dart';
+import '../widgets/app_glass.dart';
 import '../widgets/offer_banner.dart';
 import '../widgets/push_alert_listener.dart';
 import 'side_drawer.dart';
@@ -95,28 +94,26 @@ class AppShell extends StatelessWidget {
               // Center expands into them, parking the pill mid-screen.
               child: Center(
                 heightFactor: 1,
-                child: ClipRRect(
+                child: AppGlass(
                   borderRadius: BorderRadius.circular(28),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                    child: Material(
-                      color: AppColors.navPill.withValues(alpha: 0.82),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (var i = 0; i < _tabs.length; i++)
-                              _TabButton(
-                                tab: _tabs[i],
-                                selected: i == currentIndex,
-                                onTap: () => context.go(Routes.tabs[i]),
-                              ),
-                          ],
-                        ),
+                  tint: AppColors.navPill,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (var i = 0; i < _tabs.length; i++)
+                            _TabButton(
+                              tab: _tabs[i],
+                              selected: i == currentIndex,
+                              onTap: () => context.go(Routes.tabs[i]),
+                            ),
+                        ],
                       ),
                     ),
                   ),
