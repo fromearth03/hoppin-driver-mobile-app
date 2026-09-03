@@ -39,6 +39,13 @@ const _copy = <String, String>{
       'This account signed in on another device. Tap again to use it here.',
   'EXPIRED_LINK': 'This link has expired. Please request a new one.',
   'AUTH_FAILED': "We couldn't sign you in. Please try again.",
+  // 🔴 THE MOST COMMON 401 THERE IS, AND IT HAD NO COPY. The service answers
+  // `AUTH_REQUIRED` for an absent, expired or rejected token — so every
+  // screen in a stale session fell through to "Something went wrong. Please
+  // try again", which names no cause and points at no fix. A driver reads
+  // that as the app being broken and retries forever; the actual remedy is
+  // to sign in again.
+  'AUTH_REQUIRED': 'Your session has ended. Please sign in again.',
   // Going online
   'NOT_ELIGIBLE': "You're not cleared to go online yet.",
   'PAYOUT_NOT_READY': 'Payment setup is incomplete. Please contact support.',

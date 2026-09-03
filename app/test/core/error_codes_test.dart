@@ -71,4 +71,21 @@ void main() {
           notEligibleCopy('UNKNOWN').title);
     });
   });
+
+  group('a stale session says so', () {
+    // 🔴 THE MOST COMMON 401 THERE IS. The service answers `AUTH_REQUIRED`
+    // for an absent, expired or rejected token — verified against
+    // api.hoppin.tech, which returns {"code":"AUTH_REQUIRED"} on every
+    // guarded route. It had no copy, so every screen in a stale session fell
+    // through to the generic fallback: a driver was told the app was broken
+    // when the fix was to sign in again.
+    test('AUTH_REQUIRED names the cause and the remedy', () {
+      final copy = errorCopy(ApiException('AUTH_REQUIRED', 'unauthorized', 401));
+
+      expect(copy, isNot(contains('Something went wrong')),
+          reason: 'the generic fallback names no cause and no fix');
+      expect(copy.toLowerCase(), contains('sign in'),
+          reason: 'the remedy is the point — retrying forever is not');
+    });
+  });
 }

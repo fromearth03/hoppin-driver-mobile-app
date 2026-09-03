@@ -92,4 +92,48 @@ void main() {
     expect(r.isOk, isFalse);
     expect(r.errorOrNull!.isRetryable, isTrue);
   });
+
+  group('parseError falls back on the STATUS, not on NOT_FOUND', () {
+    Response<dynamic> bodyless(int status) => Response<dynamic>(
+          requestOptions: RequestOptions(path: '/x'),
+          statusCode: status,
+          // A gateway page, a truncated body, a cold start: anything that is
+          // not the service's own JSON envelope.
+          data: '<html>502 Bad Gateway</html>',
+        );
+
+    test('🔴 a bodiless 401 is AUTH_REQUIRED, never NOT_FOUND', () {
+      // This was the defect: every non-500 without a parseable body became
+      // NOT_FOUND — so a stale session was reported as "That record no longer
+      // exists", which is wrong AND points the driver away from the fix.
+      expect(ApiClient.parseError(bodyless(401)).code, 'AUTH_REQUIRED');
+    });
+
+    test('a bodiless 403 is FORBIDDEN', () {
+      expect(ApiClient.parseError(bodyless(403)).code, 'FORBIDDEN');
+    });
+
+    test('a bodiless 5xx stays INTERNAL, and stays retryable', () {
+      final e = ApiClient.parseError(bodyless(503));
+      expect(e.code, 'INTERNAL');
+      expect(e.isRetryable, isTrue);
+    });
+
+    test('a genuine 404 is still NOT_FOUND', () {
+      expect(ApiClient.parseError(bodyless(404)).code, 'NOT_FOUND');
+    });
+
+    test("the server's own code always wins over the status guess", () {
+      final r = Response<dynamic>(
+        requestOptions: RequestOptions(path: '/x'),
+        statusCode: 401,
+        data: {'code': 'SESSION_REPLACED', 'error': 'signed in elsewhere'},
+      );
+
+      expect(ApiClient.parseError(r).code, 'SESSION_REPLACED',
+          reason: 'the status fallback must never override a stated code — '
+              'SESSION_REPLACED arrives as a 401 and means something the '
+              'app handles differently');
+    });
+  });
 }
