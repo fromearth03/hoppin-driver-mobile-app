@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/session_lost.dart';
 import '../auth/token_store.dart';
 import '../device/device_identity.dart';
 import '../result.dart';
@@ -17,7 +18,12 @@ class ApiClient {
   final Dio _dio;
   final TokenStore _tokens;
 
-  ApiClient(this._dio, this._tokens) {
+  /// Raised when the account signs in somewhere else and this device loses
+  /// the single live session. Optional so the client stays constructible in
+  /// tests that care about nothing else.
+  final void Function()? onSessionLost;
+
+  ApiClient(this._dio, this._tokens, {this.onSessionLost}) {
     _dio.options.baseUrl = baseUrl;
     _dio.options.connectTimeout = const Duration(seconds: 15);
     _dio.options.receiveTimeout = const Duration(seconds: 20);
@@ -90,7 +96,11 @@ class ApiClient {
       if (status >= 200 && status < 300) {
         return Ok<T>(response.data as T);
       }
-      return Err<T>(parseError(response));
+      final error = parseError(response);
+      // Every call from here answers the same way, so the app has to say so
+      // once rather than let each failure become its own snackbar.
+      if (error.code == 'SESSION_REPLACED') onSessionLost?.call();
+      return Err<T>(error);
     } on DioException catch (e) {
       // Timeouts and connection failures are transient; INTERNAL is
       // retryable, which is the honest classification for "no network".
@@ -111,22 +121,42 @@ class ApiClient {
       }
     }
     if (data is! Map) {
-      return ApiException(status >= 500 ? 'INTERNAL' : 'NOT_FOUND', '', status);
+      return ApiException(_codeForStatus(status), '', status);
     }
     final map = Map<String, dynamic>.from(data);
     final extras = Map<String, dynamic>.from(map)
       ..remove('code')
       ..remove('error');
     return ApiException(
-      (map['code'] as String?) ?? (status >= 500 ? 'INTERNAL' : 'NOT_FOUND'),
+      (map['code'] as String?) ?? _codeForStatus(status),
       (map['error'] as String?) ?? '',
       status,
       fields: extras,
     );
   }
+
+  /// The code to assume when the body did not carry one.
+  ///
+  /// 🔴 EVERY NON-500 USED TO BECOME `NOT_FOUND`. A 401 whose body was empty,
+  /// truncated or HTML (a gateway, a proxy, a cold start) was therefore
+  /// reported as "That record no longer exists" — an answer that is not only
+  /// wrong but points the driver AWAY from the fix, which is to sign in
+  /// again. The status line is the one thing we always have; a 401/403 says
+  /// what it is regardless of what the body did or did not contain.
+  static String _codeForStatus(int status) {
+    if (status >= 500) return 'INTERNAL';
+    if (status == 401) return 'AUTH_REQUIRED';
+    if (status == 403) return 'FORBIDDEN';
+    return 'NOT_FOUND';
+  }
 }
 
 final dioProvider = Provider<Dio>((ref) => Dio());
 
-final apiClientProvider = Provider<ApiClient>(
-    (ref) => ApiClient(ref.watch(dioProvider), ref.watch(tokenStoreProvider)));
+final apiClientProvider = Provider<ApiClient>((ref) => ApiClient(
+      ref.watch(dioProvider),
+      ref.watch(tokenStoreProvider),
+      // The client itself never navigates — it raises the fact, and the app
+      // root decides what to show for it.
+      onSessionLost: () => ref.read(sessionLostProvider.notifier).raise(),
+    ));

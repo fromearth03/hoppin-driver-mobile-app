@@ -25,6 +25,11 @@ class Routes {
   static const resetPassword = '/reset-password';
   static const expiredLink = '/expired-link';
 
+  /// Where a driver lands when their session is taken over elsewhere. Its
+  /// own route rather than a dialog, because every call is 401 by then and
+  /// whatever screen they were on can no longer load anything.
+  static const sessionTaken = '/session-taken';
+
   // Onboarding — a self-registered driver's route to their first trip.
   static const onboarding = '/onboarding';
   static const onboardingLicense = '/onboarding/licence';

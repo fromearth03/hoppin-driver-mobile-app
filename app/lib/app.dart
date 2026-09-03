@@ -29,6 +29,8 @@ import 'features/support/ui/ticket_thread_screen.dart';
 import 'features/trip/ui/chat_screen.dart';
 import 'features/trip/ui/trip_screen.dart';
 import 'features/trips/ui/trips_screen.dart';
+import 'core/auth/session_lost.dart';
+import 'features/auth/ui/session_taken_screen.dart';
 import 'features/gate/logic/app_gate_controller.dart';
 import 'features/gate/ui/app_gate_screen.dart';
 import 'shared/nav/app_shell.dart';
@@ -106,6 +108,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: Routes.expiredLink,
           builder: (_, __) => const ExpiredLinkScreen()),
+      GoRoute(
+          path: Routes.sessionTaken,
+          builder: (_, __) => const SessionTakenScreen()),
       ShellRoute(
         builder: (context, state, child) => Consumer(
           builder: (context, ref, _) => AppShell(
@@ -219,6 +224,11 @@ class _Gated extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Losing the session outranks the launch gate: nothing can load once
+    // every call is 401, so there is no point showing a maintenance notice
+    // over a driver who is no longer signed in.
+    if (ref.watch(sessionLostProvider)) return const SessionTakenScreen();
+
     final status = ref.watch(appGateProvider).value;
     if (status != null && status.blocks) {
       return AppGateScreen(status: status);
