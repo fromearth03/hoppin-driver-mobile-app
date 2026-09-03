@@ -13,7 +13,12 @@ import 'waiting_timer.dart';
 ///
 /// Renders nothing on an ordinary single-leg ride, so the trip screen can
 /// include it unconditionally.
-class StopsCard extends StatelessWidget {
+///
+/// It COLLAPSES, because a four-leg route is a tall card on a screen whose
+/// other job is showing the road. Folded, it keeps the two things a driver
+/// needs at a glance — how many stops and what the trip pays — and hides the
+/// per-leg breakdown, which is reading material for a standstill.
+class StopsCard extends StatefulWidget {
   final RideStops stops;
 
   /// Null until the trip is under way. Arrive and depart only mean anything
@@ -22,13 +27,30 @@ class StopsCard extends StatelessWidget {
   final void Function(RideStop stop)? onDepart;
   final bool busy;
 
+  /// Whether the leg list starts open. Open by default: on a trip the driver
+  /// has just accepted, the breakdown is the thing they want to check.
+  final bool initiallyExpanded;
+
   const StopsCard({
     super.key,
     required this.stops,
     this.onArrive,
     this.onDepart,
     this.busy = false,
+    this.initiallyExpanded = true,
   });
+
+  @override
+  State<StopsCard> createState() => _StopsCardState();
+}
+
+class _StopsCardState extends State<StopsCard> {
+  late bool _expanded = widget.initiallyExpanded;
+
+  RideStops get stops => widget.stops;
+  bool get busy => widget.busy;
+  void Function(RideStop)? get onArrive => widget.onArrive;
+  void Function(RideStop)? get onDepart => widget.onDepart;
 
   @override
   Widget build(BuildContext context) {
@@ -47,69 +69,119 @@ class StopsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.alt_route,
-                  color: AppColors.textPrimary, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  stops.stopCount == 1
-                      ? '1 stop on this trip'
-                      : '${stops.stopCount} stops on this trip',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
+          // The header IS the toggle. A separate chevron button would be a
+          // second small target on a screen tapped from the driver's seat;
+          // the whole summary row is the affordance instead.
+          Semantics(
+            button: true,
+            label: _expanded
+                ? 'Hide the leg breakdown'
+                : 'Show the leg breakdown',
+            child: InkWell(
+              key: const Key('stops-card-toggle'),
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.alt_route,
+                      color: AppColors.textPrimary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        stops.stopCount == 1
+                            ? '1 stop on this trip'
+                            : '${stops.stopCount} stops on this trip',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      stops.total.format(),
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      _expanded ? Icons.expand_less : Icons.expand_more,
+                      color: AppColors.textSecondary,
+                      size: 20,
+                    ),
+                  ],
                 ),
               ),
+            ),
+          ),
+          if (!_expanded) ...[
+            // 🔴 THE NEXT STOP SURVIVES THE FOLD. Everything else in this card
+            // is reference; this line is the instruction — where to drive now.
+            // Hiding it would make the collapse cost the driver the one fact
+            // they opened the card for.
+            if (stops.nextStop case final next?) ...[
+              const SizedBox(height: 6),
               Text(
-                stops.total.format(),
+                'Next: ${next.label}',
+                key: const Key('stops-card-next'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  fontSize: 15,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 4),
-          // The one thing a driver will get wrong unprompted: assuming the
-          // platform's cut comes off each leg. It comes off the total, once.
-          const Text(
-            'Legs are priced separately and added up. Fees come off the total '
-            'once, not per leg.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 14),
-          for (final stop in stops.stops)
-            _StopRow(
-              stop: stop,
-              isNext: stop.seq == stops.nextStop?.seq,
-              busy: busy,
-              onArrive: onArrive == null ? null : () => onArrive!(stop),
-              onDepart: onDepart == null ? null : () => onDepart!(stop),
+          ],
+          if (_expanded) ...[
+            const SizedBox(height: 4),
+            // The one thing a driver will get wrong unprompted: assuming the
+            // platform's cut comes off each leg. It comes off the total, once.
+            const Text(
+              'Legs are priced separately and added up. Fees come off the total '
+              'once, not per leg.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
-          if (!stops.waitingTotal.isZero) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text('Waiting so far',
+            const SizedBox(height: 14),
+            for (final stop in stops.stops)
+              _StopRow(
+                stop: stop,
+                isNext: stop.seq == stops.nextStop?.seq,
+                busy: busy,
+                onArrive: onArrive == null ? null : () => onArrive!(stop),
+                onDepart: onDepart == null ? null : () => onDepart!(stop),
+              ),
+            if (!stops.waitingTotal.isZero) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Waiting so far',
                       style: TextStyle(
-                          fontSize: 15, color: AppColors.textSecondary)),
-                ),
-                Text(
-                  stops.waitingTotal.format(),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                        fontSize: 15,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                  Text(
+                    stops.waitingTotal.format(),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ],
       ),
@@ -137,84 +209,82 @@ class _StopRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _marker(),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight:
-                              isNext ? FontWeight.w600 : FontWeight.w500,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _subtitle,
-                        style: const TextStyle(
-                            fontSize: 13, color: AppColors.textSecondary),
-                      ),
-                    ],
+            _marker(),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: isNext ? FontWeight.w600 : FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  stop.fare.format(),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                  const SizedBox(height: 2),
+                  Text(
+                    _subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            // The live wait clock, ticking against the server's arrival stamp
-            // rather than a timer started on the handset.
-            if (stop.isWaiting) ...[
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.only(left: 32),
-                child: Ticking(
-                  builder: (context) {
-                    final waited = DateTime.now()
-                        .toUtc()
-                        .difference(stop.arrivedAt!.toUtc())
-                        .inSeconds;
-                    return Text(
-                      'Waiting ${clockOf(waited < 0 ? 0 : waited)}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    );
-                  },
-                ),
+            const SizedBox(width: 10),
+            Text(
+              stop.fare.format(),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
-            ],
-            if (stop.canWait && (onArrive != null || onDepart != null)) ...[
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.only(left: 32),
-                child: _action(),
-              ),
-            ],
+            ),
           ],
         ),
-      );
+        // The live wait clock, ticking against the server's arrival stamp
+        // rather than a timer started on the handset.
+        if (stop.isWaiting) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 32),
+            child: Ticking(
+              builder: (context) {
+                final waited = DateTime.now()
+                    .toUtc()
+                    .difference(stop.arrivedAt!.toUtc())
+                    .inSeconds;
+                return Text(
+                  'Waiting ${clockOf(waited < 0 ? 0 : waited)}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+        if (stop.canWait && (onArrive != null || onDepart != null)) ...[
+          const SizedBox(height: 8),
+          Padding(padding: const EdgeInsets.only(left: 32), child: _action()),
+        ],
+      ],
+    ),
+  );
 
   String get _title {
     if (stop.label.isNotEmpty) return stop.label;
@@ -222,17 +292,19 @@ class _StopRow extends StatelessWidget {
   }
 
   String get _subtitle => [
-        stop.distanceLabel,
-        if (!stop.waiting.isZero) 'waited ${stop.waiting.format()}',
-        // A stop added after accept is worth calling out: it is not the job
-        // the driver agreed to.
-        if (stop.addedMidTrip) 'added mid-trip',
-      ].join(' · ');
+    stop.distanceLabel,
+    if (!stop.waiting.isZero) 'waited ${stop.waiting.format()}',
+    // A stop added after accept is worth calling out: it is not the job
+    // the driver agreed to.
+    if (stop.addedMidTrip) 'added mid-trip',
+  ].join(' · ');
 
   Widget _action() {
     if (stop.isDone) {
-      return const Text('Departed',
-          style: TextStyle(fontSize: 14, color: AppColors.textDisabled));
+      return const Text(
+        'Departed',
+        style: TextStyle(fontSize: 14, color: AppColors.textDisabled),
+      );
     }
     final arrived = stop.isWaiting;
     return SizedBox(
@@ -243,12 +315,15 @@ class _StopRow extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textPrimary,
           side: const BorderSide(color: AppColors.border),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 16),
         ),
-        child: Text(arrived ? 'Depart' : 'Arrived at stop',
-            style: const TextStyle(fontSize: 14)),
+        child: Text(
+          arrived ? 'Depart' : 'Arrived at stop',
+          style: const TextStyle(fontSize: 14),
+        ),
       ),
     );
   }
@@ -307,46 +382,45 @@ class _AddStopSheetState extends State<AddStopSheet> {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
-          bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
+    padding: EdgeInsets.only(
+      left: 20,
+      right: 20,
+      top: 20,
+      bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text('Add a stop', style: AppText.title),
+        const SizedBox(height: 6),
+        const Text(
+          'The stop is added at your current location, and every leg is '
+          're-priced. The rider is told the fare changed.',
+          style: AppText.bodySecondary,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('Add a stop', style: AppText.title),
-            const SizedBox(height: 6),
-            const Text(
-              'The stop is added at your current location, and every leg is '
-              're-priced. The rider is told the fare changed.',
-              style: AppText.bodySecondary,
-            ),
-            const SizedBox(height: 18),
-            TextField(
-              key: const Key('add_stop_label'),
-              controller: _label,
-              textCapitalization: TextCapitalization.words,
-              decoration: InputDecoration(
-                labelText: 'What is this stop? (optional)',
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 18),
-            FilledButton(
-              key: const Key('add_stop_confirm'),
-              onPressed: () => Navigator.of(context).pop(_label.text.trim()),
-              child: const Text('Add stop'),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Never mind'),
-            ),
-          ],
+        const SizedBox(height: 18),
+        TextField(
+          key: const Key('add_stop_label'),
+          controller: _label,
+          textCapitalization: TextCapitalization.words,
+          decoration: InputDecoration(
+            labelText: 'What is this stop? (optional)',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         ),
-      );
+        const SizedBox(height: 18),
+        FilledButton(
+          key: const Key('add_stop_confirm'),
+          onPressed: () => Navigator.of(context).pop(_label.text.trim()),
+          child: const Text('Add stop'),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Never mind'),
+        ),
+      ],
+    ),
+  );
 }

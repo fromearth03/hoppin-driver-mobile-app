@@ -429,5 +429,63 @@ void main() {
 
       expect(find.byKey(const Key('stop_action_0')), findsNothing);
     });
+
+    // ── The fold ───────────────────────────────────────────────────────────
+    // A four-leg route is a tall card on a screen whose other job is showing
+    // the road. It collapses — but not at the cost of the instruction.
+
+    testWidgets('collapsing hides the breakdown and keeps the summary',
+        (tester) async {
+      await tester.pumpWidget(host(RideStops.fromJson(stopsPayload())));
+      expect(find.text('Tesco'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('stops-card-toggle')));
+      await tester.pump();
+
+      expect(find.text('Tesco'), findsNothing,
+          reason: 'the per-leg rows are reference, and they fold away');
+      expect(find.text('2 stops on this trip'), findsOneWidget,
+          reason: 'how many stops stays readable at a glance');
+      expect(find.text('£140.00'), findsOneWidget,
+          reason: 'so does what the trip pays');
+    });
+
+    testWidgets('🔴 the NEXT STOP survives the fold', (tester) async {
+      await tester.pumpWidget(host(RideStops.fromJson(stopsPayload())));
+
+      await tester.tap(find.byKey(const Key('stops-card-toggle')));
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('stops-card-next')),
+        findsOneWidget,
+        reason: 'everything else on this card is reference; the next stop is '
+            'the INSTRUCTION — where to drive now. A collapse that hid it '
+            'would cost the driver the one fact they opened the card for',
+      );
+      expect(find.textContaining('Tesco'), findsOneWidget);
+    });
+
+    testWidgets('it opens again', (tester) async {
+      await tester.pumpWidget(host(RideStops.fromJson(stopsPayload())));
+
+      final toggle = find.byKey(const Key('stops-card-toggle'));
+      await tester.tap(toggle);
+      await tester.pump();
+      expect(find.text('£30.00'), findsNothing);
+
+      await tester.tap(toggle);
+      await tester.pump();
+      expect(find.text('£30.00'), findsOneWidget);
+    });
+
+    testWidgets('the toggle is a driving-sized target', (tester) async {
+      await tester.pumpWidget(host(RideStops.fromJson(stopsPayload())));
+
+      // Tapped from the driver's seat: the whole summary row is the
+      // affordance, not a chevron the size of a fingernail.
+      final size = tester.getSize(find.byKey(const Key('stops-card-toggle')));
+      expect(size.height, greaterThanOrEqualTo(44));
+    });
   });
 }
