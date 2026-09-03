@@ -9,7 +9,8 @@ import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_buttons.dart';
-import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/app_skeleton.dart';
+import '../../../shared/widgets/async_view.dart';
 import '../../../shared/widgets/authed_avatar.dart';
 import '../data/models/driver_profile.dart';
 import '../data/profile_repository.dart';
@@ -73,8 +74,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _seed(DriverProfile? profile) {
     if (_seeded || profile == null) return;
     _seeded = true;
-    _phone.text = profile.phoneNumber ?? '';
-    _committed = _phone.text;
+    // 🔴 SEEDED WITHOUT NOTIFYING. This runs from `build`, and assigning
+    // `.text` fires the controller's listeners — which is `_onFieldChanged`,
+    // which calls `setState`. Setting state during build is an error, and it
+    // is not hypothetical: it threw the moment the screen started rendering
+    // its held value instead of a spinner. Writing the value straight onto
+    // the controller seeds the field without pretending the driver typed it,
+    // which is also more honest — a seed is not an edit.
+    final seeded = profile.phoneNumber ?? '';
+    _phone.removeListener(_onFieldChanged);
+    _phone.text = seeded;
+    _phone.addListener(_onFieldChanged);
+    _committed = seeded;
   }
 
   /// Whether there is anything to save. Trimmed on both sides, so trailing
@@ -160,10 +171,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         title: Text('Personal Information',
             style: AppText.title.copyWith(fontSize: 24)),
       ),
-      body: async.when(
-        loading: () => const AppLoading(),
+      body: AsyncView(
+        value: async,
+        loading: () => const SkeletonList(),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
-        data: (profile) {
+        data: (profile, _) {
           _seed(profile);
           final (first, last) = _splitName(profile?.fullName ?? '');
 

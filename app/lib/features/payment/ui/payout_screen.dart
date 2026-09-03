@@ -8,7 +8,8 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../features/profile/ui/widgets/settings_card.dart';
 import '../../../shared/widgets/app_buttons.dart';
-import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/app_skeleton.dart';
+import '../../../shared/widgets/async_view.dart';
 import '../data/models/payout_status.dart';
 import '../data/payout_repository.dart';
 
@@ -77,10 +78,11 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: settingsAppBar(context, 'Payments'),
-      body: async.when(
-        loading: () => const AppLoading(),
+      body: AsyncView(
+        value: async,
+        loading: () => const SkeletonList(),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
-        data: _body,
+        data: (v, _) => _body(v),
       ),
     );
   }

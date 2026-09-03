@@ -6,6 +6,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_empty_state.dart';
 import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/async_view.dart';
 import '../data/models/ride_message.dart';
 import '../logic/chat_controller.dart';
 
@@ -64,12 +65,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           child: Column(
         children: [
           Expanded(
-            child: async.when(
+            child: AsyncView(
+              value: async,
               loading: () => const AppLoading(),
               error: (_, __) => const AppEmptyState(
                   icon: Icons.chat_bubble_outline,
                   title: "Messages aren't available right now"),
-              data: (messages) => messages.isEmpty
+              data: (messages, _) => messages.isEmpty
                   ? const AppEmptyState(
                       icon: Icons.chat_bubble_outline,
                       title: 'No messages yet',

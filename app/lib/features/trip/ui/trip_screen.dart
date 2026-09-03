@@ -12,6 +12,7 @@ import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_buttons.dart';
 import '../../../shared/widgets/app_error_state.dart';
 import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/async_view.dart';
 import '../data/models/ride.dart';
 import '../data/models/ride_stop.dart';
 import '../logic/trip_controller.dart';
@@ -40,10 +41,15 @@ class TripScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: async.when(
+      // 🔴 A TRIP SCREEN MAY NOT BLANK MID-JOB. This polls, and `.when` routes
+      // on the CURRENT state — so every tick over a driver mid-trip took the
+      // loading branch and threw away the map, the rider card and the action
+      // button. Value first: the trip stays up while the next poll lands.
+      body: AsyncView(
+        value: async,
         loading: () => const AppLoading(),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
-        data: (state) {
+        data: (state, _) {
           final ride = state.ride;
           if (ride == null) {
             return AppErrorState(

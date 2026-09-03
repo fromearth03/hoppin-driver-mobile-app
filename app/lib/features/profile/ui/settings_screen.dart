@@ -6,7 +6,8 @@ import '../../../shared/nav/app_shell.dart';
 import '../../../app_router.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
-import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/app_skeleton.dart';
+import '../../../shared/widgets/async_view.dart';
 import '../data/notification_settings.dart';
 import '../logic/profile_controller.dart';
 import 'widgets/logout_dialog.dart';
@@ -30,12 +31,13 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: settingsAppBar(context, 'Settings'),
-      body: async.when(
-        loading: () => const AppLoading(),
+      body: AsyncView(
+        value: async,
+        loading: () => const SkeletonList(lines: 1),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
         // A fixed set of rows, not a feed: a lazy list would leave the
         // later rows out of the tree entirely on a short viewport.
-        data: (prefs) => SingleChildScrollView(
+        data: (prefs, _) => SingleChildScrollView(
           padding: const EdgeInsets.only(
               top: 8, bottom: AppShell.bottomClearance),
           child: Column(

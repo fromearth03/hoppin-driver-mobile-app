@@ -7,11 +7,11 @@ import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/nav/app_shell.dart';
-import '../../../shared/widgets/app_loading.dart';
-import '../data/models/driver_status.dart';
+import '../../../shared/widgets/async_view.dart';
 import '../logic/home_controller.dart';
 import 'widgets/active_trip_banner.dart';
 import 'widgets/blocker_list.dart';
+import 'widgets/home_skeleton.dart';
 import 'widgets/offer_card.dart';
 import 'widgets/offline_hero.dart';
 import 'widgets/online_toggle.dart';
@@ -57,10 +57,15 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: async.when(
-        loading: () => const AppLoading(),
+      // 🔴 THE HOME SCREEN MUST NOT BLANK. `.when` routes on the CURRENT
+      // state, so every poll tick and every return to this tab took the
+      // loading branch and threw away a screen the driver was reading. Value
+      // first: a held state stays up while the next one is fetched.
+      body: AsyncView<HomeState>(
+        value: async,
+        loading: () => const HomeSkeleton(),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
-        data: (state) {
+        data: (state, _) {
           // No full-screen failure here any more. A cold start that cannot
           // reach /status opens on the offline screen carrying the error,
           // because the toggle is what recovers the session and an error

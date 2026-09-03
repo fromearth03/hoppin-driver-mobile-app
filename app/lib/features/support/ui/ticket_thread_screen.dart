@@ -7,6 +7,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_empty_state.dart';
 import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/async_view.dart';
 import '../data/models/support_ticket.dart';
 import '../logic/ticket_thread_controller.dart';
 
@@ -78,12 +79,13 @@ class _TicketThreadScreenState extends ConsumerState<TicketThreadScreen> {
         child: Column(
           children: [
             Expanded(
-              child: async.when(
+              child: AsyncView(
+              value: async,
                 loading: () => const AppLoading(),
                 error: (e, _) => const AppEmptyState(
                     icon: Icons.forum_outlined,
                     title: "This ticket isn't available right now"),
-                data: (thread) => thread.messages.isEmpty
+                data: (thread, _) => thread.messages.isEmpty
                     ? const AppEmptyState(
                         icon: Icons.forum_outlined,
                         title: 'No messages yet',

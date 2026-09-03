@@ -5,7 +5,8 @@ import '../../../shared/nav/app_shell.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_error_state.dart';
-import '../../../shared/widgets/app_loading.dart';
+import '../../../shared/widgets/app_skeleton.dart';
+import '../../../shared/widgets/async_view.dart';
 import '../logic/stats_controller.dart';
 import 'appeal_sheet.dart';
 import 'widgets/penalties_section.dart';
@@ -39,10 +40,11 @@ class StatsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: async.when(
-        loading: () => const AppLoading(),
+      body: AsyncView(
+        value: async,
+        loading: () => const SkeletonList(),
         error: (e, _) => Center(child: Text('$e', style: AppText.body)),
-        data: (state) {
+        data: (state, _) {
           final stats = state.stats;
           if (stats == null && state.error != null) {
             return AppErrorState(
