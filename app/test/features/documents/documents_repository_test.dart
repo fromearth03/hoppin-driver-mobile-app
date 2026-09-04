@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoppin_driver/core/api/api_client.dart';
@@ -140,10 +142,42 @@ void main() {
       when(() => adapter.fetch(any(), any(), any())).thenAnswer((_) async =>
           body('{"code":"STORAGE_DISABLED","error":"bucket down"}', 503));
 
-      final r = await repo.uploadUrl('vehicle_insurance', 'image/jpeg');
+      final r = await repo.upload(
+        documentType: 'vehicle_insurance',
+        bytes: Uint8List.fromList([1, 2, 3]),
+        filename: 'insurance.jpg',
+        contentType: 'image/jpeg',
+      );
 
       expect(r.errorOrNull!.code, 'STORAGE_DISABLED');
       expect(r.errorOrNull!.isRetryable, isTrue);
+    });
+
+    test('uploads to the multipart route, through a real Dio encode',
+        () async {
+      when(() => adapter.fetch(any(), any(), any())).thenAnswer((_) async =>
+          body(
+              '{"id":"d1","document_type":"vehicle_insurance",'
+              '"verification_status":"pending_review"}',
+              201));
+
+      final r = await repo.upload(
+        documentType: 'vehicle_insurance',
+        bytes: Uint8List.fromList([1, 2, 3]),
+        filename: 'insurance.jpg',
+        contentType: 'image/jpeg',
+      );
+
+      expect(r.valueOrNull!.id, 'd1');
+      final sent = verify(() => adapter.fetch(captureAny(), any(), any()))
+          .captured
+          .single as RequestOptions;
+      expect(sent.path, '/drivers/me/documents/upload');
+      expect(sent.method, 'POST');
+      expect(
+        sent.headers[Headers.contentTypeHeader].toString(),
+        contains('multipart/form-data'),
+      );
     });
   });
 }

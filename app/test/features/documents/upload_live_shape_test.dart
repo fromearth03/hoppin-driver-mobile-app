@@ -1,159 +1,155 @@
 import 'dart:typed_data';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoppin_driver/core/api/api_client.dart';
+import 'package:hoppin_driver/core/api/api_exception.dart';
 import 'package:hoppin_driver/core/result.dart';
 import 'package:hoppin_driver/features/documents/data/documents_repository.dart';
 import 'package:hoppin_driver/features/documents/data/models/driver_document.dart';
-import 'package:hoppin_driver/features/documents/logic/upload_controller.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockApi extends Mock implements ApiClient {}
 
-class MockUploader extends Mock implements FileUploader {}
+class _FakeFormData extends Fake implements FormData {}
 
-/// These tests assert against the shapes the deployed ride-service really
-/// sends and requires, read from its Go source rather than the handover doc.
+/// These tests assert against the shape the deployed ride-service really
+/// accepts, confirmed by posting a real file to production on 2026-09-04
+/// (HTTP 201, `verification_status: pending_review`).
 ///
-/// Every step of the upload was wrong against it: presign 400d without a
-/// content_type, the response carries `key` (never `file_url`), and confirm
-/// takes `key` — which the service prefix-checks against
-/// `driver-docs/{uid}/{type}/`. A document could not be submitted at all, so
-/// no driver could clear compliance.
+/// The upload was a three-call presign → PUT → confirm sequence until then.
+/// The presigned URL pointed at `http://minio:9000`, an internal Docker
+/// hostname no device outside the server can resolve, so the PUT never
+/// connected and no driver could submit a document. The service now accepts
+/// the bytes directly on one multipart route and stores them itself.
 void main() {
-  setUpAll(() => registerFallbackValue(Uint8List(0)));
+  setUpAll(() => registerFallbackValue(_FakeFormData()));
 
   late MockApi api;
-  late MockUploader uploader;
 
-  setUp(() {
-    api = MockApi();
-    uploader = MockUploader();
-  });
+  setUp(() => api = MockApi());
 
   final bytes = Uint8List.fromList([1, 2, 3]);
 
-  test('presign sends the content_type the service requires', () async {
-    when(() => api.post<Map<String, dynamic>>(any(), body: any(named: 'body')))
-        .thenAnswer((_) async => const Ok({'upload_url': 'u', 'key': 'k'}));
-
-    await DocumentsRepository(api)
-        .uploadUrl('insurance_policy', 'application/pdf');
-
-    final body = verify(() => api.post<Map<String, dynamic>>(
-            '/drivers/me/documents/upload-url',
-            body: captureAny(named: 'body')))
-        .captured
-        .single as Map<String, dynamic>;
-    // Without content_type the handler answers
-    // "document_type and content_type are required" with a 400.
-    expect(body['content_type'], 'application/pdf');
-    expect(body['document_type'], 'insurance_policy');
-  });
-
-  test('confirm sends key, not a bucket url', () async {
-    when(() => api.post<Map<String, dynamic>>(any(), body: any(named: 'body')))
+  void stubOk() {
+    when(() => api.postMultipart<Map<String, dynamic>>(any(), any()))
         .thenAnswer((_) async => const Ok({
               'id': 'd1',
               'document_type': 'insurance_policy',
               'verification_status': 'pending_review',
             }));
+  }
 
-    await DocumentsRepository(api).confirm(
-      documentType: 'insurance_policy',
-      key: 'driver-docs/u1/insurance_policy/abc.pdf',
+  FormData captureForm() =>
+      verify(() => api.postMultipart<Map<String, dynamic>>(
+              '/drivers/me/documents/upload', captureAny()))
+          .captured
+          .single as FormData;
+
+  Future<Result<DriverDocument>> upload({DateTime? expiresAt}) =>
+      DocumentsRepository(api).upload(
+        documentType: 'insurance_policy',
+        bytes: bytes,
+        filename: 'policy.pdf',
+        contentType: 'application/pdf',
+        expiresAt: expiresAt,
+      );
+
+  test('posts multipart to the upload route', () async {
+    stubOk();
+
+    await upload();
+
+    // The old presign/confirm routes must not be called at all — the whole
+    // point of the change is that the client never touches object storage.
+    verifyNever(() => api.post<Map<String, dynamic>>(any(),
+        body: any(named: 'body')));
+    captureForm();
+  });
+
+  test('sends document_type as a form field', () async {
+    stubOk();
+
+    await upload();
+
+    final fields = {
+      for (final f in captureForm().fields) f.key: f.value,
+    };
+    expect(fields['document_type'], 'insurance_policy');
+  });
+
+  test('sends the bytes under the field name the handler reads', () async {
+    stubOk();
+
+    await upload();
+
+    final file = captureForm().files.single;
+    // The handler reads the part named exactly "file"; anything else is a
+    // 400 with no file found.
+    expect(file.key, 'file');
+    expect(file.value.length, bytes.length);
+  });
+
+  test('labels the part with its content type', () async {
+    stubOk();
+
+    await upload();
+
+    // A part with no content type makes the service sniff the bytes. Sending
+    // it means the stored object is labelled from what the app knows.
+    expect(
+      captureForm().files.single.value.contentType.toString(),
+      'application/pdf',
     );
-
-    final body = verify(() => api.post<Map<String, dynamic>>(
-            '/drivers/me/documents', body: captureAny(named: 'body')))
-        .captured
-        .single as Map<String, dynamic>;
-    expect(body['key'], 'driver-docs/u1/insurance_policy/abc.pdf');
-    // The service has no bucket_file_url field, and prefix-checks the key
-    // against driver-docs/{uid}/{type}/ — a URL can never satisfy that.
-    expect(body.containsKey('bucket_file_url'), isFalse);
   });
 
-  test('the whole upload runs on the key the presign returned', () async {
-    final repo = MockDocsRepo();
-    when(() => repo.uploadUrl(any(), any())).thenAnswer((_) async => const Ok({
-          'upload_url': 'https://storage/put',
-          'key': 'driver-docs/u1/insurance_policy/abc.pdf',
-          'content_type': 'application/pdf',
-        }));
-    when(() => uploader.put(any(), any(), any()))
-        .thenAnswer((_) async => const Ok(null));
-    when(() => repo.confirm(
-            documentType: any(named: 'documentType'),
-            key: any(named: 'key'),
-            expiresAt: any(named: 'expiresAt')))
-        .thenAnswer((_) async => const Ok(DriverDocument(
-            id: 'd1',
-            documentType: 'insurance_policy',
-            status: DocumentStatus.pending)));
+  test('omits expires_at when the type does not carry one', () async {
+    stubOk();
 
-    final c = ProviderContainer(overrides: [
-      documentsRepositoryProvider.overrideWithValue(repo),
-      fileUploaderProvider.overrideWithValue(uploader),
-    ]);
-    addTearDown(c.dispose);
+    await upload();
 
-    final r = await c
-        .read(uploadControllerProvider.notifier)
-        .upload('insurance_policy', bytes, 'policy.pdf');
-
-    expect(r.isOk, isTrue);
-    verifyInOrder([
-      // The content type is settled before the presign so the PUT header,
-      // the presigned signature and the stored extension all agree.
-      () => repo.uploadUrl('insurance_policy', 'application/pdf'),
-      () => uploader.put('https://storage/put', bytes, 'application/pdf'),
-      () => repo.confirm(
-          documentType: 'insurance_policy',
-          key: 'driver-docs/u1/insurance_policy/abc.pdf',
-          expiresAt: any(named: 'expiresAt')),
-    ]);
+    final keys = captureForm().fields.map((f) => f.key);
+    expect(keys, isNot(contains('expires_at')));
   });
 
-  test('an unsupported file type never reaches the network', () async {
-    final repo = MockDocsRepo();
-    final c = ProviderContainer(overrides: [
-      documentsRepositoryProvider.overrideWithValue(repo),
-      fileUploaderProvider.overrideWithValue(uploader),
-    ]);
-    addTearDown(c.dispose);
+  test('sends expires_at as UTC ISO-8601 when given', () async {
+    stubOk();
 
-    // The service accepts only pdf, jpeg and png. Guessing image/jpeg for a
-    // .docx would presign a key ending .jpg and store a mislabelled object.
-    final r = await c
-        .read(uploadControllerProvider.notifier)
-        .upload('insurance_policy', bytes, 'policy.docx');
+    await upload(expiresAt: DateTime.utc(2027, 3, 4, 5, 6, 7));
 
-    expect(r.isOk, isFalse);
-    expect(r.errorOrNull!.code, 'VALIDATION_FAILED');
-    verifyNever(() => repo.uploadUrl(any(), any()));
-    verifyNever(() => uploader.put(any(), any(), any()));
+    final fields = {
+      for (final f in captureForm().fields) f.key: f.value,
+    };
+    expect(fields['expires_at'], '2027-03-04T05:06:07.000Z');
   });
 
-  test('a presign missing its key fails instead of throwing', () async {
-    final repo = MockDocsRepo();
-    when(() => repo.uploadUrl(any(), any()))
-        .thenAnswer((_) async => const Ok({'upload_url': 'https://storage/put'}));
+  test('parses the created document out of the response', () async {
+    stubOk();
 
-    final c = ProviderContainer(overrides: [
-      documentsRepositoryProvider.overrideWithValue(repo),
-      fileUploaderProvider.overrideWithValue(uploader),
-    ]);
-    addTearDown(c.dispose);
+    final r = await upload();
 
-    final r = await c
-        .read(uploadControllerProvider.notifier)
-        .upload('insurance_policy', bytes, 'policy.pdf');
+    expect(r.valueOrNull!.id, 'd1');
+    expect(r.valueOrNull!.status, DocumentStatus.pending);
+  });
 
-    expect(r.isOk, isFalse);
-    verifyNever(() => uploader.put(any(), any(), any()));
+  test('surfaces FILE_TOO_LARGE from the service', () async {
+    when(() => api.postMultipart<Map<String, dynamic>>(any(), any()))
+        .thenAnswer((_) async =>
+            Err(ApiException('FILE_TOO_LARGE', 'over 10MB', 413)));
+
+    final r = await upload();
+
+    expect(r.errorOrNull!.code, 'FILE_TOO_LARGE');
+  });
+
+  test('surfaces STORAGE_DISABLED as retryable', () async {
+    when(() => api.postMultipart<Map<String, dynamic>>(any(), any()))
+        .thenAnswer((_) async =>
+            Err(ApiException('STORAGE_DISABLED', 'bucket down', 503)));
+
+    final r = await upload();
+
+    expect(r.errorOrNull!.code, 'STORAGE_DISABLED');
+    expect(r.errorOrNull!.isRetryable, isTrue);
   });
 }
-
-class MockDocsRepo extends Mock implements DocumentsRepository {}

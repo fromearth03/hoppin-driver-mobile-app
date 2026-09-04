@@ -11,23 +11,16 @@ import 'package:mocktail/mocktail.dart';
 
 class MockDocsRepo extends Mock implements DocumentsRepository {}
 
-class MockUploader extends Mock implements FileUploader {}
-
 void main() {
   setUpAll(() => registerFallbackValue(Uint8List(0)));
 
   late MockDocsRepo repo;
-  late MockUploader uploader;
 
-  setUp(() {
-    repo = MockDocsRepo();
-    uploader = MockUploader();
-  });
+  setUp(() => repo = MockDocsRepo());
 
   ProviderContainer container() {
     final c = ProviderContainer(overrides: [
       documentsRepositoryProvider.overrideWithValue(repo),
-      fileUploaderProvider.overrideWithValue(uploader),
     ]);
     addTearDown(c.dispose);
     return c;
@@ -35,45 +28,99 @@ void main() {
 
   final bytes = Uint8List.fromList([1, 2, 3]);
 
-  test('presigns, uploads, then confirms — in that order', () async {
-    when(() => repo.uploadUrl(any(), any())).thenAnswer((_) async => const Ok({
-          'upload_url': 'https://storage/put',
-          'key': 'driver-docs/u1/vehicle_insurance/abc.jpg',
-        }));
-    when(() => uploader.put(any(), any(), any()))
-        .thenAnswer((_) async => const Ok(null));
-    when(() => repo.confirm(
-            documentType: any(named: 'documentType'),
-            key: any(named: 'key'),
-            expiresAt: any(named: 'expiresAt')))
-        .thenAnswer((_) async => const Ok(DriverDocument(
-            id: 'd1',
-            documentType: 'vehicle_insurance',
-            status: DocumentStatus.pending)));
+  final document = DriverDocument.fromJson(const {
+    'id': 'doc-1',
+    'document_type': 'vehicle_insurance',
+    'verification_status': 'pending_review',
+  });
 
-    final c = container();
-    final r = await c
+  void stubUpload() {
+    when(() => repo.upload(
+          documentType: any(named: 'documentType'),
+          bytes: any(named: 'bytes'),
+          filename: any(named: 'filename'),
+          contentType: any(named: 'contentType'),
+          expiresAt: any(named: 'expiresAt'),
+        )).thenAnswer((_) async => Ok(document));
+  }
+
+  test('posts the bytes in a single call', () async {
+    stubUpload();
+
+    final r = await container()
         .read(uploadControllerProvider.notifier)
         .upload('vehicle_insurance', bytes, 'insurance.jpg');
 
     expect(r.isOk, isTrue);
-    verifyInOrder([
-      () => repo.uploadUrl('vehicle_insurance', 'image/jpeg'),
-      () => uploader.put('https://storage/put', bytes, any()),
-      () => repo.confirm(
+    expect(r.valueOrNull!.id, 'doc-1');
+    verify(() => repo.upload(
           documentType: 'vehicle_insurance',
-          key: 'driver-docs/u1/vehicle_insurance/abc.jpg',
-          expiresAt: any(named: 'expiresAt')),
-    ]);
+          bytes: bytes,
+          filename: 'insurance.jpg',
+          contentType: 'image/jpeg',
+          expiresAt: null,
+        )).called(1);
   });
 
-  test('does not confirm when the file never reached storage', () async {
-    when(() => repo.uploadUrl(any(), any())).thenAnswer((_) async => const Ok({
-          'upload_url': 'https://storage/put',
-          'key': 'driver-docs/u1/vehicle_insurance/abc.jpg',
-        }));
-    when(() => uploader.put(any(), any(), any()))
-        .thenAnswer((_) async => Err(ApiException('INTERNAL', 'network', 0)));
+  test('derives the content type from the extension', () async {
+    stubUpload();
+
+    await container()
+        .read(uploadControllerProvider.notifier)
+        .upload('vehicle_insurance', bytes, 'policy.PDF');
+
+    verify(() => repo.upload(
+          documentType: any(named: 'documentType'),
+          bytes: any(named: 'bytes'),
+          filename: any(named: 'filename'),
+          contentType: 'application/pdf',
+          expiresAt: any(named: 'expiresAt'),
+        )).called(1);
+  });
+
+  test('rejects an unsupported extension without calling the service',
+      () async {
+    final r = await container()
+        .read(uploadControllerProvider.notifier)
+        .upload('vehicle_insurance', bytes, 'scan.heic');
+
+    expect(r.errorOrNull!.code, 'VALIDATION_FAILED');
+    verifyNever(() => repo.upload(
+          documentType: any(named: 'documentType'),
+          bytes: any(named: 'bytes'),
+          filename: any(named: 'filename'),
+          contentType: any(named: 'contentType'),
+          expiresAt: any(named: 'expiresAt'),
+        ));
+  });
+
+  test('rejects a file over 10 MB before uploading it', () async {
+    final huge = Uint8List(10 * 1024 * 1024 + 1);
+
+    final r = await container()
+        .read(uploadControllerProvider.notifier)
+        .upload('vehicle_insurance', huge, 'big.jpg');
+
+    expect(r.errorOrNull!.code, 'FILE_TOO_LARGE');
+    verifyNever(() => repo.upload(
+          documentType: any(named: 'documentType'),
+          bytes: any(named: 'bytes'),
+          filename: any(named: 'filename'),
+          contentType: any(named: 'contentType'),
+          expiresAt: any(named: 'expiresAt'),
+        ));
+  });
+
+  test('surfaces a failure on the state so the screen can render it',
+      () async {
+    when(() => repo.upload(
+          documentType: any(named: 'documentType'),
+          bytes: any(named: 'bytes'),
+          filename: any(named: 'filename'),
+          contentType: any(named: 'contentType'),
+          expiresAt: any(named: 'expiresAt'),
+        )).thenAnswer(
+        (_) async => Err(ApiException('FILE_TOO_LARGE', 'too big', 413)));
 
     final c = container();
     final r = await c
@@ -81,52 +128,24 @@ void main() {
         .upload('vehicle_insurance', bytes, 'insurance.jpg');
 
     expect(r.isOk, isFalse);
-    // Confirming a file that is not there would leave the driver looking
-    // compliant with nothing uploaded.
-    verifyNever(() => repo.confirm(
-        documentType: any(named: 'documentType'),
-        key: any(named: 'key'),
-        expiresAt: any(named: 'expiresAt')));
+    expect(c.read(uploadControllerProvider).error!.code, 'FILE_TOO_LARGE');
   });
 
-  test('surfaces STORAGE_DISABLED without attempting an upload', () async {
-    when(() => repo.uploadUrl(any(), any()))
-        .thenAnswer((_) async => Err(ApiException('STORAGE_DISABLED', '', 503)));
+  test('passes an expiry through when the type needs one', () async {
+    stubUpload();
+    final expires = DateTime.utc(2027, 1, 1);
 
-    final c = container();
-    final r = await c
+    await container()
         .read(uploadControllerProvider.notifier)
-        .upload('vehicle_insurance', bytes, 'insurance.jpg');
+        .upload('vehicle_insurance', bytes, 'insurance.jpg',
+            expiresAt: expires);
 
-    expect(r.errorOrNull!.code, 'STORAGE_DISABLED');
-    verifyNever(() => uploader.put(any(), any(), any()));
-  });
-
-  test('passes an expiry date through to the confirm call', () async {
-    final expires = DateTime.utc(2027, 6, 1);
-    when(() => repo.uploadUrl(any(), any())).thenAnswer((_) async => const Ok({
-          'upload_url': 'https://storage/put',
-          'key': 'driver-docs/u1/vehicle_insurance/abc.jpg',
-        }));
-    when(() => uploader.put(any(), any(), any()))
-        .thenAnswer((_) async => const Ok(null));
-    when(() => repo.confirm(
-            documentType: any(named: 'documentType'),
-            key: any(named: 'key'),
-            expiresAt: any(named: 'expiresAt')))
-        .thenAnswer((_) async => const Ok(DriverDocument(
-            id: 'd1',
-            documentType: 'vehicle_insurance',
-            status: DocumentStatus.pending)));
-
-    final c = container();
-    await c
-        .read(uploadControllerProvider.notifier)
-        .upload('vehicle_insurance', bytes, 'insurance.jpg', expiresAt: expires);
-
-    verify(() => repo.confirm(
-        documentType: 'vehicle_insurance',
-        key: 'driver-docs/u1/vehicle_insurance/abc.jpg',
-        expiresAt: expires)).called(1);
+    verify(() => repo.upload(
+          documentType: any(named: 'documentType'),
+          bytes: any(named: 'bytes'),
+          filename: any(named: 'filename'),
+          contentType: any(named: 'contentType'),
+          expiresAt: expires,
+        )).called(1);
   });
 }

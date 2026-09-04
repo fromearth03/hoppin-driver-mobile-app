@@ -1,50 +1,11 @@
 import 'dart:typed_data';
 
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/result.dart';
 import '../data/documents_repository.dart';
 import '../data/models/driver_document.dart';
-
-/// PUTs bytes to a presigned URL. Separate from [ApiClient] because the
-/// destination is object storage, not the ride service — no auth header, no
-/// error envelope.
-abstract class FileUploader {
-  Future<Result<void>> put(String url, Uint8List bytes, String contentType);
-}
-
-class DioFileUploader implements FileUploader {
-  final Dio _dio;
-  DioFileUploader(this._dio);
-
-  @override
-  Future<Result<void>> put(
-      String url, Uint8List bytes, String contentType) async {
-    try {
-      final response = await _dio.put<void>(
-        url,
-        data: Stream.fromIterable([bytes]),
-        options: Options(
-          headers: {
-            Headers.contentTypeHeader: contentType,
-            Headers.contentLengthHeader: bytes.length,
-          },
-          validateStatus: (_) => true,
-        ),
-      );
-      final status = response.statusCode ?? 500;
-      if (status >= 200 && status < 300) return const Ok(null);
-      return Err(ApiException('INTERNAL', 'storage rejected the file', status));
-    } on DioException catch (e) {
-      return Err(ApiException('INTERNAL', e.message ?? 'upload failed', 0));
-    }
-  }
-}
-
-final fileUploaderProvider =
-    Provider<FileUploader>((ref) => DioFileUploader(Dio()));
 
 class UploadState {
   final bool isUploading;
@@ -78,10 +39,16 @@ class UploadController extends Notifier<UploadState> {
     return _contentTypes[filename.substring(dot + 1).toLowerCase()];
   }
 
-  /// Presign, PUT, then confirm — strictly in that order.
+  /// The largest file the service accepts. Checked here so a driver who
+  /// photographs a document at full resolution is told why before waiting
+  /// out the upload of bytes the server will refuse.
+  static const _maxBytes = 10 * 1024 * 1024;
+
+  /// Post the bytes in one call and let the service store them.
   ///
-  /// Confirming before the bytes have landed would mark the driver compliant
-  /// with nothing in storage, so a failed PUT stops the sequence.
+  /// Previously this presigned a URL, PUT the bytes to object storage, then
+  /// confirmed. The presigned host was only resolvable inside the server's
+  /// Docker network, so the PUT could never connect from a real device.
   Future<Result<DriverDocument>> upload(
     String documentType,
     Uint8List bytes,
@@ -90,53 +57,30 @@ class UploadController extends Notifier<UploadState> {
   }) async {
     final contentType = _contentType(filename);
     if (contentType == null) {
-      final failure = ApiException('VALIDATION_FAILED',
-          'Only PDF, JPG and PNG files can be uploaded.', 0);
-      if (!_disposed) state = UploadState(error: failure);
-      return Err(failure);
+      return _fail(ApiException('VALIDATION_FAILED',
+          'Only PDF, JPG and PNG files can be uploaded.', 0));
+    }
+    if (bytes.length > _maxBytes) {
+      return _fail(ApiException('FILE_TOO_LARGE',
+          'That file is over 10 MB. Try a smaller photo.', 0));
     }
 
     if (!_disposed) state = const UploadState(isUploading: true);
-    final repo = ref.read(documentsRepositoryProvider);
 
-    // The same content type goes to the presign, the PUT header and the
-    // stored extension. Sending a different one on the PUT than the URL was
-    // signed for makes storage reject the bytes.
-    final presigned = await repo.uploadUrl(documentType, contentType);
-    if (!presigned.isOk) {
-      if (!_disposed) state = UploadState(error: presigned.errorOrNull);
-      return Err(presigned.errorOrNull!);
-    }
+    final result = await ref.read(documentsRepositoryProvider).upload(
+          documentType: documentType,
+          bytes: bytes,
+          filename: filename,
+          contentType: contentType,
+          expiresAt: expiresAt,
+        );
+    if (!_disposed) state = UploadState(error: result.errorOrNull);
+    return result;
+  }
 
-    final destination = presigned.valueOrNull!;
-    // Read nullably: a hard cast on a key the server renamed or omitted
-    // would throw inside this method and escape Result entirely, reaching
-    // the driver as an unhandled async error rather than a failure the
-    // documents screen can render.
-    final uploadUrl = destination['upload_url'] as String?;
-    final key = destination['key'] as String?;
-    if (uploadUrl == null || key == null) {
-      final failure =
-          ApiException('INTERNAL', 'upload destination missing', 0);
-      if (!_disposed) state = UploadState(error: failure);
-      return Err(failure);
-    }
-
-    final put = await ref
-        .read(fileUploaderProvider)
-        .put(uploadUrl, bytes, contentType);
-    if (!put.isOk) {
-      if (!_disposed) state = UploadState(error: put.errorOrNull);
-      return Err(put.errorOrNull!);
-    }
-
-    final confirmed = await repo.confirm(
-      documentType: documentType,
-      key: key,
-      expiresAt: expiresAt,
-    );
-    if (!_disposed) state = UploadState(error: confirmed.errorOrNull);
-    return confirmed;
+  Result<DriverDocument> _fail(ApiException failure) {
+    if (!_disposed) state = UploadState(error: failure);
+    return Err(failure);
   }
 }
 

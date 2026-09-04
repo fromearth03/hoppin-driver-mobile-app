@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -43,36 +46,34 @@ class DocumentsRepository {
         .toList());
   }
 
-  /// Step one of the upload: ask for a presigned destination.
+  /// Post the bytes straight to the ride service, which stores them itself.
   ///
-  /// [contentType] is not optional on the service — the handler rejects the
-  /// request outright without it, and the extension of the storage key it
-  /// mints is derived from it, so the PUT must send the same value back.
-  Future<Result<Map<String, dynamic>>> uploadUrl(
-          String documentType, String contentType) =>
-      _api.post<Map<String, dynamic>>('/drivers/me/documents/upload-url',
-          body: {
-            'document_type': documentType,
-            'content_type': contentType,
-          });
-
-  /// Step two: tell the server the file landed.
+  /// This replaces the older presign → PUT → confirm sequence. That flow
+  /// handed the client a URL on MinIO's internal Docker hostname, which no
+  /// device outside the server can resolve, so every upload failed at the
+  /// PUT. The service now takes the bytes and keeps object storage private.
   ///
-  /// [key] is the storage key from step one, echoed back verbatim. The service
-  /// checks it starts with `driver-docs/{driver}/{type}/` so one driver can
-  /// never confirm a document sitting under another's prefix; anything else,
-  /// a bucket URL included, is refused.
-  Future<Result<DriverDocument>> confirm({
+  /// The filename matters: the service derives the stored extension from it
+  /// when the multipart part carries no content type of its own.
+  Future<Result<DriverDocument>> upload({
     required String documentType,
-    required String key,
+    required Uint8List bytes,
+    required String filename,
+    required String contentType,
     DateTime? expiresAt,
   }) async {
-    final r =
-        await _api.post<Map<String, dynamic>>('/drivers/me/documents', body: {
+    final form = FormData.fromMap({
       'document_type': documentType,
-      'key': key,
-      if (expiresAt != null) 'expires_at': expiresAt.toUtc().toIso8601String(),
+      if (expiresAt != null)
+        'expires_at': expiresAt.toUtc().toIso8601String(),
+      'file': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: DioMediaType.parse(contentType),
+      ),
     });
+    final r = await _api.postMultipart<Map<String, dynamic>>(
+        '/drivers/me/documents/upload', form);
     return r.when(
       ok: (json) => Ok(DriverDocument.fromJson(json)),
       err: (e) => Err(e),
