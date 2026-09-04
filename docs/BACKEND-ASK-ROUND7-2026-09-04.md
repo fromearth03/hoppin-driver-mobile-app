@@ -1,5 +1,18 @@
 # Backend asks — driver app (round 7)
 
+> **ANSWERED AND CLOSED, 2026-09-04.** Both items were fixed and deployed the
+> same day — reply in `BACKEND-REPLY-DRIVER-APP-2026-09-04.md`.
+>
+> - **Item 1:** the backend took **option A**. `POST /drivers/me/documents/upload`
+>   (multipart) is live. Verified from here: HTTP 201, real document id,
+>   `pending_review`, and it persists on `GET /drivers/me/documents`. The app
+>   was rewired to it in `c5e32d7`.
+> - **Item 2:** `GET /rides/:id/geo` now routes leg by leg with labels
+>   preserved. `7be6895` was **not** merged and should not be pushed.
+>
+> Kept as the record of what was asked and why. The queued items from round 6
+> and the round 5 carry-overs are tracked in the reply, not here.
+
 Raised 2026-09-04. Two items. Both are backend-side; the app needs no change
 for either.
 
