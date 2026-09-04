@@ -11,7 +11,7 @@ Flutter app in `app/`, package `hoppin_driver`.
 
 ```sh
 cd app
-flutter test                                              # ~604 tests, all should pass
+flutter test                                              # 618 tests, all should pass
 flutter analyze lib/<path>                                # scoped is much faster than whole-project
 flutter build apk --release --dart-define-from-file=config/dev.json
 flutter build web --profile   --dart-define-from-file=config/dev.json
@@ -105,19 +105,32 @@ curl -H "User-Agent: Mozilla/5.0 (Linux; Android 13) Chrome/120 Mobile Safari/53
 
 ---
 
-## Known live outage
+## Document upload — fixed 2026-09-04, do not re-diagnose
 
-**Document upload is broken on every device.** The presign returns
-`http://minio:9000/...` — an internal Docker hostname, over cleartext. The
-app's flow is correct; step 2 cannot connect. Full write-up and both fix
-options: `docs/BACKEND-ASK-ROUND6-2026-09-03.md`.
+Uploads were broken on every device for two days: the presign returned
+`http://minio:9000/...`, an internal Docker hostname over cleartext, so the
+PUT could never connect from a handset.
+
+**Resolved.** The backend took the proxy option and shipped
+`POST /drivers/me/documents/upload` (multipart, JPG/PNG/PDF, 10 MB cap). The
+app posts the bytes in one call and never touches object storage; the old
+presign → PUT → confirm chain and its `FileUploader` are deleted. Verified
+against production: HTTP 201, `pending_review`, and the document persists on
+`GET /drivers/me/documents`.
+
+Anything still describing this as broken is stale — including
+`docs/BACKEND-ASK-ROUND6-2026-09-03.md`, kept as a record of the diagnosis.
 
 ---
 
 ## Where things are written down
 
-- `HANDOFF-2026-09-03.md` — current state, what is half-done, what is open.
-- `docs/BACKEND-ASK-ROUND6-2026-09-03.md` — what the backend owes the app,
-  each marked BUILT / PARTLY BUILT / NOT BUILT with exact payloads.
-- `docs/backend-asks.md` and `docs/BACKEND-*ROUND5*` — earlier rounds, several
-  still open.
+- `HANDOFF-2026-09-04.md` — **start here.** Current state, what is open, and
+  what is deliberately not built.
+- `docs/BACKEND-REPLY-DRIVER-APP-2026-09-04.md` — the backend's answer to
+  rounds 6 and 7. The authoritative list of what is built, queued, and still
+  unbuilt. Read this before asking them for anything.
+- `docs/BACKEND-ASK-ROUND7-2026-09-04.md` — closed; both items shipped.
+- `docs/BACKEND-ASK-ROUND6-2026-09-03.md`, `docs/backend-asks.md`,
+  `docs/BACKEND-*ROUND5*` — earlier rounds. Round 5's five carry-overs are
+  still unbuilt; the rest is superseded by the reply above.

@@ -1,5 +1,9 @@
 # Hoppin Driver App — Handoff
 
+> **Current state: `HANDOFF-2026-09-04.md`.** Read that first — it has what
+> shipped, what is open, and what is deliberately not built. This file is the
+> durable orientation; the dated files are snapshots.
+
 Flutter app for Hoppin drivers (package `tech.hoppin.driver`). Targets: web
 (primary during development), Android, iOS. Built against the **live** backend
 at `https://api.hoppin.tech/api/v1` — there is no staging environment, so use
