@@ -1,23 +1,28 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme/colors.dart';
 
 /// The ground the app's glass refracts.
 ///
-/// 🔴 GLASS OVER A FLAT COLOUR IS NOT GLASS. A `BackdropFilter` blurs whatever
-/// is painted behind it, so a frosted card over a single flat grey blurs grey
-/// into grey and reads as a plain translucent box. The material only becomes
-/// legible as glass when there is something varied behind it to bend.
+/// 🔴 A BLUR OF A FLAT THING LOOKS LIKE THE FLAT THING. This is why the first
+/// attempt at glass here read as "just layers": a `BackdropFilter` samples
+/// what is painted behind it, and behind every card was one smooth gradient.
+/// Blurring a smooth gradient returns very nearly the same smooth gradient, so
+/// the surface had nothing to show for the filter it was paying for.
 ///
-/// This lays that something down once, behind the whole app: a pale wash with
-/// two soft colour pools drifting through it, drawn from the brand's own
-/// indigo and orange. It is deliberately faint — this is the ground a driver
-/// reads white text and dark figures against all shift, so it stays close to
-/// the old flat background in value and only varies in hue.
+/// The nav pill and the presence pill look like glass for a reason the cards
+/// did not share: **content scrolls underneath them**. Hard edges — a photo,
+/// a number, a row of text — smear as they pass, and that smear is the whole
+/// effect.
 ///
-/// Painted once at the shell, not per screen: every card, sheet and pill above
-/// it then has a real backdrop, and the cost is one gradient rather than one
-/// per surface.
+/// So the ground is no longer smooth. It carries high-contrast structure at a
+/// scale the blur can actually chew on: saturated colour pools with hard
+/// falloff, and a fine diagonal grille whose lines are thin enough to dissolve
+/// into a sheen under an 18px blur but wide enough to modulate it. Combined
+/// with cards that let real content pass beneath them, the material finally
+/// has something to bend.
 class AppAmbience extends StatelessWidget {
   const AppAmbience({super.key, required this.child});
 
@@ -26,7 +31,8 @@ class AppAmbience extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // A driver who asked the OS to cut transparency gets the flat ground: the
-    // pools exist to be refracted, and nothing above them will be blurring.
+    // structure below exists to be refracted, and nothing above it will be
+    // blurring.
     if (MediaQuery.highContrastOf(context)) {
       return ColoredBox(color: AppColors.background, child: child);
     }
@@ -46,56 +52,67 @@ class _Ground extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
         decoration: const BoxDecoration(
-          // The base wash: a touch cooler at the top, warmer at the foot, so a
-          // long scroll never sits on one dead value.
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFFEDE9F7), // indigo cast
-              Color(0xFFF0EFF2), // near the app's established ground
-              Color(0xFFF9F0E9), // warm cast
+              Color(0xFFE8E2F6), // indigo cast
+              Color(0xFFF1EFF3),
+              Color(0xFFFBEFE4), // warm cast
             ],
-            stops: [0.0, 0.55, 1.0],
+            stops: [0.0, 0.5, 1.0],
           ),
         ),
         child: Stack(
           children: [
-            // Two pools of brand colour at very low alpha. These are what a
-            // blurred surface actually picks up and smears — without them the
-            // glass has nothing to say.
+            // Colour pools. Deliberately strong: what survives an 18px blur
+            // and a 1.6× saturation is a fraction of what goes in, and a wash
+            // faint enough to look tasteful bare is invisible once filtered.
             Positioned(
-              top: -120,
-              left: -80,
+              top: -140,
+              left: -90,
               child: _Pool(
-                color: AppColors.primary.withValues(alpha: 0.22),
+                color: AppColors.primary.withValues(alpha: 0.30),
+                size: 360,
+              ),
+            ),
+            Positioned(
+              top: 220,
+              right: -170,
+              child: _Pool(
+                color: AppColors.primaryLight.withValues(alpha: 0.26),
                 size: 340,
               ),
             ),
             Positioned(
-              top: 260,
-              right: -160,
+              bottom: 120,
+              left: -120,
               child: _Pool(
-                color: AppColors.primaryLight.withValues(alpha: 0.16),
-                size: 320,
+                color: AppColors.info.withValues(alpha: 0.20),
+                size: 300,
               ),
             ),
             Positioned(
-              bottom: -140,
-              right: -100,
+              bottom: -160,
+              right: -110,
               child: _Pool(
-                color: AppColors.accent.withValues(alpha: 0.20),
-                size: 380,
+                color: AppColors.accent.withValues(alpha: 0.28),
+                size: 400,
               ),
+            ),
+            // The grille. Thin diagonal lines at very low alpha: invisible as
+            // lines, but they give the blur a high-frequency signal to smear
+            // into the soft sheen that reads as thickness in the glass above.
+            const Positioned.fill(
+              child: IgnorePointer(child: _Grille()),
             ),
           ],
         ),
       );
 }
 
-/// One soft radial bloom. A plain circle with a blur would cost a second
-/// filter pass; a radial gradient fading to transparent is free and reads the
-/// same at this softness.
+/// One soft radial bloom. A radial gradient fading to transparent costs
+/// nothing next to a second blur pass and reads the same at this softness.
 class _Pool extends StatelessWidget {
   const _Pool({required this.color, required this.size});
 
@@ -112,9 +129,40 @@ class _Pool extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [color, color.withValues(alpha: 0)],
+                stops: const [0.0, 1.0],
               ),
             ),
           ),
         ),
       );
+}
+
+class _Grille extends StatelessWidget {
+  const _Grille();
+
+  @override
+  Widget build(BuildContext context) =>
+      CustomPaint(painter: _GrillePainter(), size: Size.infinite);
+}
+
+class _GrillePainter extends CustomPainter {
+  static const _spacing = 14.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.30)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    // Diagonals rather than verticals: a vertical grille aligns with the edges
+    // of every card and reads as banding, while a diagonal one never lines up
+    // with anything and dissolves into texture.
+    for (var x = -size.height; x < size.width; x += _spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x + size.height, size.height), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GrillePainter oldDelegate) => false;
 }

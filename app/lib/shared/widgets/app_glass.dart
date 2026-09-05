@@ -62,14 +62,20 @@ class AppGlass extends StatelessWidget {
 
   /// The blur radius per tier. Chrome sees more of what is behind it.
   double get _sigma => switch (tier) {
-        GlassTier.chrome => 16,
-        GlassTier.panel => 24,
+        GlassTier.chrome => 20,
+        GlassTier.panel => 28,
       };
 
   /// How opaque the fill is. A panel carries readable copy, so it is denser.
+  /// 🔴 LOWER IS GLASSIER, AND THIS WAS THE MISTAKE. A panel at 0.86 alpha is
+  /// 86% opaque paint — whatever the blur produced underneath is almost
+  /// entirely hidden, so the surface reads as a flat card that happens to sit
+  /// on a tinted page. Thinning the fill is what lets the refraction show;
+  /// legibility is bought back by the saturation boost and the sheen instead
+  /// of by opacity. Contrast is verified over the strongest pool.
   double get _fill => switch (tier) {
-        GlassTier.chrome => 0.72,
-        GlassTier.panel => 0.86,
+        GlassTier.chrome => 0.58,
+        GlassTier.panel => 0.70,
       };
 
   /// How much the backdrop's colour is pushed under the glass.
@@ -80,8 +86,8 @@ class AppGlass extends StatelessWidget {
   /// is sitting on. A blur alone averages colour toward grey, which is exactly
   /// why a plain BackdropFilter reads as frosted plastic.
   double get _saturation => switch (tier) {
-        GlassTier.chrome => 1.9,
-        GlassTier.panel => 1.6,
+        GlassTier.chrome => 2.2,
+        GlassTier.panel => 1.9,
       };
 
   @override
@@ -163,11 +169,16 @@ class AppGlass extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.white.withValues(alpha: 0.28),
-                            Colors.white.withValues(alpha: 0.06),
+                            Colors.white.withValues(alpha: 0.45),
+                            Colors.white.withValues(alpha: 0.10),
                             Colors.transparent,
+                            // The bounce: light that entered the top of the
+                            // slab and scatters back out of its foot. Without
+                            // it the surface fades to nothing and reads as a
+                            // gradient rather than a solid with two faces.
+                            Colors.white.withValues(alpha: 0.12),
                           ],
-                          stops: const [0.0, 0.35, 0.72],
+                          stops: const [0.0, 0.28, 0.68, 1.0],
                         ),
                       ),
                     ),

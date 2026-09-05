@@ -44,14 +44,17 @@ class _ScrollEdgeBlurState extends State<ScrollEdgeBlur> {
   /// page continues, not a scrim, and the rows under it stay readable.
   static const _maxSigma = 6.0;
 
-  static const _height = 168.0;
+  static const _height = 230.0;
 
   /// How many graded bands make up the ramp. Enough that the steps are below
   /// the eye's threshold at this height; few enough that the frame cost stays
   /// reasonable on a mid-range handset.
-  static const _bands = 7;
+  static const _bands = 12;
 
-  static double _curve(double t) => t * t;
+  /// Cubic rather than quadratic: the ramp starts flatter, so the top of the
+  /// strip is imperceptibly soft and the depth only gathers near the foot.
+  /// A quadratic still began too abruptly to read as continuous.
+  static double _curve(double t) => t * t * t;
 
   bool _onMetrics(ScrollMetrics metrics) {
     if (metrics.axis != Axis.vertical) return false;

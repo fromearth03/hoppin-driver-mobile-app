@@ -57,21 +57,15 @@ class StatsScreen extends ConsumerWidget {
             // A fixed two-section page, not a feed. A lazy ListView would
             // leave the penalties section unbuilt below the fold — and that
             // section is the one a driver opens this screen to read.
-            // 🔴 The page has to FILL the viewport. With four tiles and one
-            // section the content is shorter than the screen, and the
-            // leftover ground read as a hole punched between the grid and
-            // Penalties. A viewport-height minimum lets the section below
-            // take up the slack instead of leaving it stranded in the middle.
-            child: LayoutBuilder(
-              builder: (context, viewport) => SingleChildScrollView(
+            // Content sits at its natural height. Forcing it to fill the
+            // viewport only moved the empty ground from between the sections
+            // to below them — a short page is short, and padding it out does
+            // not make it look fuller.
+            child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding:
                   const EdgeInsets.only(bottom: AppShell.bottomClearance),
-              child: ConstrainedBox(
-                constraints:
-                    BoxConstraints(minHeight: viewport.maxHeight -
-                        AppShell.bottomClearance),
-                child: Column(
+              child: Column(
                 children: [
                   // The window the service actually resolved. The picker in
                   // the bar names the period; this says which days it landed
@@ -163,8 +157,6 @@ class StatsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              ),
-            ),
             ),
           );
         },

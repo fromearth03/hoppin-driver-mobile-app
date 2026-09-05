@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
+import '../../../../shared/widgets/glass_card.dart';
 import '../../../../core/theme/typography.dart';
 import '../../data/models/driver_document.dart';
 
@@ -94,13 +95,16 @@ class DocumentCard extends StatelessWidget {
     return Semantics(
       button: canUpload,
       label: '${slot.type.label}, $label',
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: canUpload ? onTap : null,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
+      // An opaque Material painted over the ground, which is why this screen
+      // showed no glass at all. GlassCard carries the blur; the ink for the
+      // tap ripple goes inside it so the ripple is still clipped to the round
+      // without a solid rectangle covering the filter.
+      child: GlassCard(
+        padding: EdgeInsets.zero,
+        radius: 16,
+        onTap: canUpload ? onTap : null,
+        child: Builder(
+          builder: (context) => Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
