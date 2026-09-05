@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app_router.dart';
+import '../../../core/api/api_exception.dart';
 import '../../../core/api/error_codes.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
@@ -90,7 +91,7 @@ class HomeScreen extends ConsumerWidget {
                 // the server at all is the disconnected one, and only the
                 // second means the figures on screen cannot be trusted.
                 if (state.error != null)
-                  _disconnectedBanner(controller)
+                  _disconnectedBanner(controller, state.error!)
                 else if (state.showsNoLocationWarning)
                   _staleBanner(),
                 // Above everything: a driver with a passenger in the car
@@ -186,7 +187,10 @@ class HomeScreen extends ConsumerWidget {
   /// shown as offline because an app that cannot talk to dispatch is not
   /// taking work, and the day's figures are simply absent. Both facts have
   /// to be said out loud, with the retry beside them.
-  Widget _disconnectedBanner(HomeController controller) => Container(
+  Widget _disconnectedBanner(
+    HomeController controller,
+    ApiException error,
+  ) => Container(
     margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
     padding: const EdgeInsets.fromLTRB(12, 12, 6, 12),
     decoration: BoxDecoration(
@@ -197,17 +201,37 @@ class HomeScreen extends ConsumerWidget {
       children: [
         const Icon(Icons.cloud_off, color: AppColors.warning),
         const SizedBox(width: 12),
-        const Expanded(
-          child: Text(
-            "We can't reach the server, so today's figures aren't showing. "
-            'Going online will try again.',
-            style: AppText.caption,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "We can't reach the server, so today's figures aren't "
+                'showing.',
+                style: AppText.caption,
+              ),
+              // The cause, verbatim. A driver reads past it, but it is the
+              // difference between "it is broken" and a report anyone can
+              // act on — and without it the same generic sentence covered a
+              // dead radio, a DNS failure and a rejected certificate alike.
+              const SizedBox(height: 2),
+              Text(
+                errorCopy(error),
+                style: AppText.caption.copyWith(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
         ),
-        TextButton(
-          onPressed: controller.refresh,
-          child: const Text('Retry'),
-        ),
+        // 🔴 Retry has to SAY something. It re-ran and failed the same way,
+        // which is indistinguishable from a dead button: the banner it would
+        // update was already on screen saying the same sentence. A driver
+        // tapping it three times and seeing nothing move concluded the app
+        // was frozen.
+        _RetryButton(onRetry: controller.refresh),
       ],
     ),
   );
@@ -232,4 +256,53 @@ class HomeScreen extends ConsumerWidget {
       ],
     ),
   );
+}
+
+/// Retry, with the outcome made visible.
+///
+/// Shows a spinner while the call is in flight and reports the result, so a
+/// retry that fails again is distinguishable from a button that does nothing.
+class _RetryButton extends StatefulWidget {
+  const _RetryButton({required this.onRetry});
+
+  final Future<void> Function() onRetry;
+
+  @override
+  State<_RetryButton> createState() => _RetryButtonState();
+}
+
+class _RetryButtonState extends State<_RetryButton> {
+  bool _busy = false;
+
+  Future<void> _run() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    await widget.onRetry();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    // The banner disappearing IS the success signal, so only failure needs
+    // saying — otherwise a working retry would fire a pointless snackbar.
+    final failed = ProviderScope.containerOf(context)
+            .read(homeControllerProvider)
+            .value
+            ?.error !=
+        null;
+    if (failed && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Still cannot reach the server.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => TextButton(
+        onPressed: _busy ? null : _run,
+        child: _busy
+            ? const SizedBox(
+                height: 14,
+                width: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Retry'),
+      );
 }

@@ -79,7 +79,7 @@ class ApiClient {
       }
       return Err(parseError(response));
     } on DioException catch (e) {
-      return Err(ApiException('INTERNAL', e.message ?? 'network error', 0));
+      return Err(ApiException('INTERNAL', _describe(e), 0));
     }
   }
 
@@ -104,8 +104,36 @@ class ApiClient {
     } on DioException catch (e) {
       // Timeouts and connection failures are transient; INTERNAL is
       // retryable, which is the honest classification for "no network".
-      return Err<T>(ApiException('INTERNAL', e.message ?? 'network error', 0));
+      //
+      // 🔴 KEEP THE CAUSE. `e.message` is frequently null on a connection
+      // failure, and collapsing every DioException into "network error"
+      // threw away the one fact needed to tell a dead radio from a DNS
+      // failure from a rejected certificate — which left a driver on a
+      // generic banner and nobody able to say why.
+      return Err<T>(ApiException('INTERNAL', _describe(e), 0));
     }
+  }
+
+  /// A cause a human can act on, for a failure that never reached the API.
+  ///
+  /// The type is what matters: a timeout means the server was found and did
+  /// not answer, a connection error means it was never reached at all, and a
+  /// certificate failure means it was reached and refused. Those are three
+  /// different problems and they were all reported identically.
+  static String _describe(DioException e) {
+    final detail = e.message ?? e.error?.toString() ?? '';
+    final kind = switch (e.type) {
+      DioExceptionType.connectionTimeout => 'connect timed out',
+      DioExceptionType.sendTimeout => 'send timed out',
+      DioExceptionType.receiveTimeout => 'server did not answer in time',
+      DioExceptionType.badCertificate => 'certificate rejected',
+      DioExceptionType.connectionError => 'could not reach the server',
+      DioExceptionType.cancel => 'cancelled',
+      DioExceptionType.badResponse => 'bad response',
+      DioExceptionType.unknown => 'network error',
+      _ => 'network error',
+    };
+    return detail.isEmpty ? kind : '$kind: $detail';
   }
 
   /// Reads `{"error": ..., "code": ...}`, keeping any extra top-level keys

@@ -21,7 +21,8 @@ void main() {
     expect(taps, 0);
     // The driver is waiting on a round trip, so the pill names the state it
     // is moving to rather than the one it has left.
-    expect(find.text('Going online…'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.textContaining('Going'), findsNothing);
   });
 
   testWidgets('going offline names that direction', (tester) async {
@@ -30,7 +31,8 @@ void main() {
       isBusy: true,
     )));
 
-    expect(find.text('Going offline…'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.textContaining('Going'), findsNothing);
   });
 
   testWidgets('a busy toggle is dimmed further than a merely blocked one',

@@ -29,37 +29,42 @@ void main() {
     return p.width;
   }
 
-  testWidgets('the busy label is painted in full, not ellipsised',
-      (tester) async {
+  testWidgets('busy shows a spinner and no words', (tester) async {
     await tester.pumpWidget(host(
       const OnlineToggle(isOnline: false, isBusy: true),
     ));
     await tester.pump();
 
-    final finder = find.text('Going online…');
-    expect(finder, findsOneWidget);
+    // The words and the trailing ellipsis said nothing the spinner does not,
+    // and the ellipsis read as truncated text rather than as motion.
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.textContaining('Going'), findsNothing);
+    expect(find.textContaining('…'), findsNothing);
+  });
 
+  testWidgets('the resting label is painted in full, not ellipsised',
+      (tester) async {
+    await tester.pumpWidget(host(
+      OnlineToggle(isOnline: false, onChanged: (_) {}),
+    ));
+    await tester.pump();
+
+    final finder = find.text('Go online');
     final style = tester.widget<Text>(finder).style!;
-    final painted = tester.getSize(finder).width;
-    final needed = naturalWidth('Going online…', style);
-
-    // If the chip were too small the RenderParagraph would be laid out
-    // narrower than the string needs and would paint an ellipsis.
-    expect(painted, greaterThanOrEqualTo(needed - 0.5),
-        reason: 'label was squeezed to ${painted}px but needs ${needed}px — '
-            'it will render truncated');
+    expect(tester.getSize(finder).width,
+        greaterThanOrEqualTo(naturalWidth('Go online', style) - 0.5));
   });
 
   testWidgets('going offline is painted in full too', (tester) async {
     await tester.pumpWidget(host(
-      const OnlineToggle(isOnline: true, isBusy: true),
+      OnlineToggle(isOnline: true, onChanged: (_) {}),
     ));
     await tester.pump();
 
-    final finder = find.text('Going offline…');
+    final finder = find.text('Go offline');
     final style = tester.widget<Text>(finder).style!;
     expect(tester.getSize(finder).width,
-        greaterThanOrEqualTo(naturalWidth('Going offline…', style) - 0.5));
+        greaterThanOrEqualTo(naturalWidth('Go offline', style) - 0.5));
   });
 
   testWidgets('the chip fits within its track in every state', (tester) async {
@@ -104,17 +109,19 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: MediaQuery(
         data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
-        child: const Scaffold(
-          body: Center(child: OnlineToggle(isOnline: false, isBusy: true)),
+        child: Scaffold(
+          body: Center(
+            child: OnlineToggle(isOnline: false, onChanged: (_) {}),
+          ),
         ),
       ),
     ));
     await tester.pump();
 
-    final finder = find.text('Going online…');
+    final finder = find.text('Go online');
     final style = tester.widget<Text>(finder).style!;
     final needed = TextPainter(
-      text: TextSpan(text: 'Going online…', style: style),
+      text: TextSpan(text: 'Go online', style: style),
       textDirection: TextDirection.ltr,
       textScaler: const TextScaler.linear(1.3),
     )..layout();

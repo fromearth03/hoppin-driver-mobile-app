@@ -38,13 +38,20 @@ class _ScrollEdgeBlurState extends State<ScrollEdgeBlur> {
   /// How much remaining content counts as "plenty more". Roughly the height
   /// of the strip itself, so the cue has faded out by the time the last rows
   /// are on screen and never covers the final one.
-  static const _fadeDistance = 120.0;
+  static const _fadeDistance = 420.0;
 
   /// The deepest the blur goes. Deliberately gentle: this is a hint that the
   /// page continues, not a scrim, and the rows under it stay readable.
-  static const _maxSigma = 3.5;
+  static const _maxSigma = 6.0;
 
-  static const _height = 96.0;
+  static const _height = 168.0;
+
+  /// How many graded bands make up the ramp. Enough that the steps are below
+  /// the eye's threshold at this height; few enough that the frame cost stays
+  /// reasonable on a mid-range handset.
+  static const _bands = 7;
+
+  static double _curve(double t) => t * t;
 
   bool _onMetrics(ScrollMetrics metrics) {
     if (metrics.axis != Axis.vertical) return false;
@@ -79,33 +86,61 @@ class _ScrollEdgeBlurState extends State<ScrollEdgeBlur> {
                     child: Opacity(
                       key: ScrollEdgeBlur.stripKey,
                       opacity: _strength,
-                      child: ClipRect(
-                        child: BackdropFilter(
-                          // The sigma rides the same curve as the opacity, so
-                          // the blur grows and recedes with the scroll rather
-                          // than snapping to full depth the moment it shows.
-                          filter: ImageFilter.blur(
-                            sigmaX: _maxSigma * _strength,
-                            sigmaY: _maxSigma * _strength,
-                          ),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  AppColors.background.withValues(alpha: 0),
-                                  AppColors.background.withValues(alpha: 0.42),
-                                ],
+                      // 🔴 A SINGLE BackdropFilter HAS A HARD TOP EDGE. One
+                      // filter blurs its whole rectangle uniformly, so the
+                      // boundary between blurred and unblurred content is a
+                      // visible seam sliding up the page as you scroll.
+                      //
+                      // Stacking bands, each blurring a little more than the
+                      // one above and each masked to fade in, ramps the blur
+                      // instead of switching it on. The eye reads a gradient;
+                      // there is no line to catch.
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < _bands; i++)
+                            Expanded(
+                              child: _BlurBand(
+                                // Quadratic so the top band is nearly clear
+                                // and the depth gathers toward the bottom
+                                // edge, the way a real depth-of-field falls
+                                // off rather than stepping.
+                                sigma: _maxSigma *
+                                    _strength *
+                                    _curve((i + 1) / _bands),
+                                veil: 0.30 * _curve((i + 1) / _bands),
                               ),
                             ),
-                          ),
-                        ),
+                        ],
                       ),
                     ),
                   ),
                 ),
             ],
+          ),
+        ),
+      );
+}
+
+/// One horizontal slice of the ramp: a blur plus a matching veil.
+///
+/// Separated so each band clips its own filter — a BackdropFilter samples what
+/// is painted behind it, so bands must not nest or the lower ones would blur
+/// an already-blurred layer and the ramp would compound instead of grade.
+class _BlurBand extends StatelessWidget {
+  const _BlurBand({required this.sigma, required this.veil});
+
+  final double sigma;
+  final double veil;
+
+  @override
+  Widget build(BuildContext context) => ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.background.withValues(alpha: veil),
+            ),
+            child: const SizedBox.expand(),
           ),
         ),
       );

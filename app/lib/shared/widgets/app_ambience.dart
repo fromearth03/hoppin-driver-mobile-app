@@ -52,9 +52,9 @@ class _Ground extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFFF3F1F8), // faint indigo cast
-              Color(0xFFEFEFEF), // the app's established ground
-              Color(0xFFF7F2EE), // faint warm cast
+              Color(0xFFEDE9F7), // indigo cast
+              Color(0xFFF0EFF2), // near the app's established ground
+              Color(0xFFF9F0E9), // warm cast
             ],
             stops: [0.0, 0.55, 1.0],
           ),
@@ -68,15 +68,23 @@ class _Ground extends StatelessWidget {
               top: -120,
               left: -80,
               child: _Pool(
-                color: AppColors.primary.withValues(alpha: 0.10),
+                color: AppColors.primary.withValues(alpha: 0.22),
                 size: 340,
+              ),
+            ),
+            Positioned(
+              top: 260,
+              right: -160,
+              child: _Pool(
+                color: AppColors.primaryLight.withValues(alpha: 0.16),
+                size: 320,
               ),
             ),
             Positioned(
               bottom: -140,
               right: -100,
               child: _Pool(
-                color: AppColors.accent.withValues(alpha: 0.09),
+                color: AppColors.accent.withValues(alpha: 0.20),
                 size: 380,
               ),
             ),

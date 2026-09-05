@@ -72,6 +72,18 @@ class AppGlass extends StatelessWidget {
         GlassTier.panel => 0.86,
       };
 
+  /// How much the backdrop's colour is pushed under the glass.
+  ///
+  /// 🔴 THIS IS THE DIFFERENCE BETWEEN GLASS AND A GREY BOX. Apple's material
+  /// does not merely blur what is behind it — it over-saturates it, so colour
+  /// bleeds up through the surface and the panel takes a tint from whatever it
+  /// is sitting on. A blur alone averages colour toward grey, which is exactly
+  /// why a plain BackdropFilter reads as frosted plastic.
+  double get _saturation => switch (tier) {
+        GlassTier.chrome => 1.9,
+        GlassTier.panel => 1.6,
+      };
+
   @override
   Widget build(BuildContext context) {
     final radius = borderRadius ?? BorderRadius.circular(20);
@@ -82,27 +94,21 @@ class AppGlass extends StatelessWidget {
     // who set it gets a solid surface rather than a prettier unreadable one.
     final reduceTransparency = MediaQuery.highContrastOf(context);
 
-    final body = Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: reduceTransparency ? base : base.withValues(alpha: _fill),
-        borderRadius: radius,
-        // The lit edge. A single hairline at ~40% white is what separates
-        // frosted glass from a flat translucent box: it catches the light the
-        // surface is supposedly bending.
-        border: Border.all(
-          color: reduceTransparency
-              ? AppColors.border
-              : Colors.white.withValues(alpha: 0.42),
-        ),
-      ),
-      child: child,
-    );
-
     if (reduceTransparency) {
       return DecoratedBox(
         decoration: BoxDecoration(borderRadius: radius, boxShadow: _cast),
-        child: ClipRRect(borderRadius: radius, child: body),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              color: base,
+              borderRadius: radius,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: child,
+          ),
+        ),
       );
     }
 
@@ -114,11 +120,81 @@ class AppGlass extends StatelessWidget {
       child: ClipRRect(
         borderRadius: radius,
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: _sigma, sigmaY: _sigma),
-          child: body,
+          // Saturate FIRST, then blur. Blurring a saturated backdrop keeps the
+          // colour; saturating an already-blurred one just amplifies mud.
+          filter: ImageFilter.compose(
+            outer: ImageFilter.blur(sigmaX: _sigma, sigmaY: _sigma),
+            inner: ColorFilter.matrix(_saturate(_saturation)),
+          ),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              // A gradient fill, not a flat one: real glass is lit from
+              // somewhere, so it is brighter where the light lands and
+              // denser in its own shadow.
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  base.withValues(alpha: _fill - 0.10),
+                  base.withValues(alpha: _fill + 0.04),
+                ],
+              ),
+              // The lit rim. Brighter along the top-left where the light
+              // strikes, nearly gone at the bottom-right — a uniform hairline
+              // is the single clearest tell of fake glass.
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.55),
+                width: 0.8,
+              ),
+            ),
+            child: Stack(
+              children: [
+                // The specular sheen: a soft band of light across the upper
+                // third, which is what makes a surface read as something with
+                // a top rather than a rectangle of colour.
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: radius,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.28),
+                            Colors.white.withValues(alpha: 0.06),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.35, 0.72],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                child,
+              ],
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  /// A saturation matrix. `amount` of 1 leaves colour untouched; above 1
+  /// pushes it, which is what lets the ground's colour read through the glass.
+  static List<double> _saturate(double amount) {
+    const lumR = 0.2126, lumG = 0.7152, lumB = 0.0722;
+    final r = (1 - amount) * lumR;
+    final g = (1 - amount) * lumG;
+    final b = (1 - amount) * lumB;
+    return [
+      r + amount, g,          b,          0, 0,
+      r,          g + amount, b,          0, 0,
+      r,          g,          b + amount, 0, 0,
+      0,          0,          0,          1, 0,
+    ];
   }
 
   /// Tinted to the app's ink rather than pure black. A black shadow over a

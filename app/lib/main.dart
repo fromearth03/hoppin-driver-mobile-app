@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter_android/google_maps_flutter_android.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,6 +16,17 @@ const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Portrait only. Every screen is laid out as a phone column and nothing is
+  // designed for a landscape driver — rotating produced a broken screen, not
+  // a wide one. The Android manifest locks this too; this covers iOS and any
+  // platform that ignores the manifest.
+  //
+  // TODO: lift once landscape has a real layout of its own.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   await DeviceIdentity.init();
   await PushService.boot();

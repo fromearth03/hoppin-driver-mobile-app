@@ -45,15 +45,18 @@ class OnlineToggle extends StatelessWidget {
 
   /// The chip has to hold whichever label is showing, so it is measured
   /// rather than guessed. A fixed width that fitted "Go online" clipped
-  /// "Going online…" and its spinner.
+  /// the spinner it shows while busy.
   static double _chipWidth(String label, bool busy, TextScaler scaler) {
+    // Busy shows the spinner alone — no words, no trailing dots. The words
+    // said nothing the spinner does not, and the ellipsis read as broken
+    // text rather than as motion.
+    if (busy) return _spinnerSize + _chipTextPadding * 2;
     final painter = TextPainter(
       text: TextSpan(text: label, style: _labelStyle),
       textDirection: TextDirection.ltr,
       textScaler: scaler,
     )..layout();
-    final spinner = busy ? _spinnerSize + _spinnerGap : 0.0;
-    return painter.width + spinner + _chipTextPadding * 2;
+    return painter.width + _chipTextPadding * 2;
   }
 
   /// Wide enough for the longest state the pill can reach, so the track never
@@ -62,7 +65,7 @@ class OnlineToggle extends StatelessWidget {
   static double _widestChip(bool online, TextScaler scaler) {
     final candidates = [
       _chipWidth(online ? 'Go offline' : 'Go online', false, scaler),
-      _chipWidth(online ? 'Going offline…' : 'Going online…', true, scaler),
+      _chipWidth('', true, scaler),
     ];
     return candidates.reduce((a, b) => a > b ? a : b);
   }
@@ -79,7 +82,7 @@ class OnlineToggle extends StatelessWidget {
   /// change it — is unsaid. Naming the action makes the control explain
   /// itself: "Go online" is a button, "Offline" is a label.
   String get _label {
-    if (isBusy) return isOnline ? 'Going offline…' : 'Going online…';
+    if (isBusy) return isOnline ? 'Going offline' : 'Going online';
     return isOnline ? 'Go offline' : 'Go online';
   }
 
@@ -153,21 +156,19 @@ class OnlineToggle extends StatelessWidget {
                     color: _shown ? AppColors.positive : AppColors.negative,
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isBusy) ...[
-                        const SizedBox(
-                          height: 13,
-                          width: 13,
+                  child: isBusy
+                      ? const SizedBox(
+                          height: _spinnerSize,
+                          width: _spinnerSize,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor:
                                 AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
+                        )
+                      : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Flexible(
                         child: Text(
                           _label,
