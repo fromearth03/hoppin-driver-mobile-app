@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../../shared/widgets/glass_card.dart';
 
 /// One figure from the driver's record.
 ///
@@ -40,64 +41,85 @@ class StatTile extends StatelessWidget {
     this.stars,
   });
 
+  /// The tile's real height, so the grid reserves exactly what it draws.
+  ///
+  /// A grid row taller than its tiles is invisible until it adds up: four
+  /// tiles over two rows left a band of empty ground above the section
+  /// beneath. Measured rather than guessed, and only the text scales — the
+  /// badge and the padding are fixed.
+  static double heightFor(BuildContext context) {
+    final scaler = MediaQuery.textScalerOf(context);
+    const badge = 38.0 + 10.0; // badge and its gap
+    const padding = 14.0 * 2; // GlassCard's own inset
+    final label = scaler.scale(13) * 1.3;
+    final value = scaler.scale(24) * 1.1;
+    // Every tile on this screen carries a third line (stars or a note), so
+    // reserving it keeps the two rows the same height.
+    final third = scaler.scale(11.5) * 1.3 + 4;
+    return badge + padding + label + value + third + 6;
+  }
+
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => GlassCard(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        radius: 18,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Badge on its own row rather than beside the text. Sharing the
+            // row cost the label ~56pt of a half-width tile, which is what
+            // broke "Cancellation Rate" across a line mid-word.
             Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
-              child: Icon(icon, color: AppColors.surface, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: AppText.caption.copyWith(
-                      fontSize: 13.5,
-                      color: AppColors.textPrimary,
-                    ),
-                    // "Acceptance Rate" does not fit a half-width tile on one
-                    // line at phone widths; wrapping beats "Acceptance R…".
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: tint,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: tint.withValues(alpha: 0.32),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: AppText.title.copyWith(fontSize: 21),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (stars != null) ...[
-                    const SizedBox(height: 3),
-                    _Stars(rating: stars!),
-                  ] else if (note != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      note!,
-                      style: AppText.caption.copyWith(
-                        fontSize: 12,
-                        color: noteColour ?? AppColors.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
                 ],
               ),
+              child: Icon(icon, color: AppColors.surface, size: 20),
             ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: AppText.caption.copyWith(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+              // Full tile width now, so one line holds every label the
+              // screen actually uses.
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: AppText.title.copyWith(fontSize: 24, height: 1.1),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (stars != null) ...[
+              const SizedBox(height: 4),
+              _Stars(rating: stars!),
+            ] else if (note != null) ...[
+              const SizedBox(height: 3),
+              Text(
+                note!,
+                style: AppText.caption.copyWith(
+                  fontSize: 11.5,
+                  color: noteColour ?? AppColors.textSecondary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ],
         ),
       );

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_router.dart';
 import '../../core/theme/colors.dart';
+import '../widgets/app_ambience.dart';
 import '../widgets/app_glass.dart';
 import '../widgets/offer_banner.dart';
 import '../widgets/push_alert_listener.dart';
@@ -62,9 +63,14 @@ class AppShell extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => AppAmbience(child: _scaffold(context));
+
+  Widget _scaffold(BuildContext context) => Scaffold(
     key: scaffoldKey,
-    backgroundColor: AppColors.background,
+    // Transparent so the ambient ground below shows through. The Scaffold
+    // painting its own flat colour would cover the wash every glass surface
+    // in the app relies on having something to refract.
+    backgroundColor: Colors.transparent,
     drawer: SideDrawer(onLogout: onLogout, currentPath: currentPath),
     // The pill floats over the content rather than reserving a strip of
     // it, which is how the design shows it sitting on the page ground.

@@ -32,6 +32,41 @@ class OnlineToggle extends StatelessWidget {
 
   bool get _enabled => onChanged != null && !isBusy;
 
+  static const _trackPadding = 4.0;
+  static const _spinnerSize = 13.0;
+  static const _spinnerGap = 8.0;
+  static const _chipTextPadding = 16.0;
+
+  static const _labelStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+  );
+
+  /// The chip has to hold whichever label is showing, so it is measured
+  /// rather than guessed. A fixed width that fitted "Go online" clipped
+  /// "Going online…" and its spinner.
+  static double _chipWidth(String label, bool busy, TextScaler scaler) {
+    final painter = TextPainter(
+      text: TextSpan(text: label, style: _labelStyle),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+    )..layout();
+    final spinner = busy ? _spinnerSize + _spinnerGap : 0.0;
+    return painter.width + spinner + _chipTextPadding * 2;
+  }
+
+  /// Wide enough for the longest state the pill can reach, so the track never
+  /// resizes underneath the chip as it slides — a track that grew mid-animation
+  /// would make the whole control jump on tap.
+  static double _widestChip(bool online, TextScaler scaler) {
+    final candidates = [
+      _chipWidth(online ? 'Go offline' : 'Go online', false, scaler),
+      _chipWidth(online ? 'Going offline…' : 'Going online…', true, scaler),
+    ];
+    return candidates.reduce((a, b) => a > b ? a : b);
+  }
+
   /// Where the chip sits mid-flight: the state being moved TO, so the pill
   /// animates in the direction the driver asked for.
   bool get _shown => isBusy ? !isOnline : isOnline;
@@ -53,7 +88,21 @@ class OnlineToggle extends StatelessWidget {
   String get _stateLabel => isOnline ? 'Online' : 'Offline';
 
   @override
-  Widget build(BuildContext context) => Semantics(
+  Widget build(BuildContext context) {
+    final scaler = MediaQuery.textScalerOf(context);
+    final chip = _widestChip(isOnline, scaler);
+    // The chip slides within the track, so the track is the chip plus the
+    // travel it needs. Too little travel and the two rest states look
+    // identical; too much and the pill sprawls across the app bar.
+    final trackWidth = chip + _chipTravel + _trackPadding * 2;
+    return _build(context, chip, trackWidth);
+  }
+
+  /// How far the chip moves between offline and online.
+  static const _chipTravel = 34.0;
+
+  Widget _build(BuildContext context, double chipWidth, double trackWidth) =>
+      Semantics(
         button: true,
         enabled: _enabled,
         toggled: _shown,
@@ -71,9 +120,14 @@ class OnlineToggle extends StatelessWidget {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                 child: Container(
-              width: 168,
+              // 🔴 Sized to the longest label rather than a round number.
+              // "Going online…" plus its spinner needs ~131px of chip, and a
+              // 168px track left the chip overflowing its own glass: the text
+              // ellipsised to "Going online…" cut short and the green pill
+              // bled past the track's rounded end.
+              width: trackWidth,
               height: 42,
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(_trackPadding),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(30),
@@ -93,7 +147,7 @@ class OnlineToggle extends StatelessWidget {
                 alignment:
                     _shown ? Alignment.centerRight : Alignment.centerLeft,
                 child: Container(
-                  width: isBusy ? 122 : 88,
+                  width: chipWidth,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: _shown ? AppColors.positive : AppColors.negative,
@@ -118,12 +172,11 @@ class OnlineToggle extends StatelessWidget {
                         child: Text(
                           _label,
                           maxLines: 1,
+                          // The chip is measured to fit this text, so an
+                          // ellipsis here would mean the measurement was
+                          // wrong rather than the label being too long.
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: _labelStyle,
                         ),
                       ),
                     ],

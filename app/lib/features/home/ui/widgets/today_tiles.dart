@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/colors.dart';
+import '../../../../shared/widgets/glass_card.dart';
 import '../../data/models/driver_today.dart';
 
 /// Earnings, trips and time online for the day so far.
@@ -16,13 +17,11 @@ class TodayTiles extends StatelessWidget {
   const TodayTiles({super.key, required this.today});
 
   @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: GlassCard(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-        ),
+        radius: 16,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -51,6 +50,7 @@ class TodayTiles extends StatelessWidget {
             ),
           ],
         ),
+      ),
       );
 
   Widget _tile(String label, String value) => Column(

@@ -5,6 +5,7 @@ import '../../../../app_router.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../../shared/widgets/glass_card.dart';
 
 /// The white rounded panel the profile, settings and support designs group
 /// their rows into: one card, hairline dividers between rows, nothing
@@ -41,13 +42,15 @@ class SettingsCard extends StatelessWidget {
       rows.add(children[i]);
     }
 
-    return Container(
-      margin: margin,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+    return Padding(
+      padding: margin,
+      // Glass rather than a flat white fill, so the panel picks up the
+      // ambient ground behind it like every other surface in the app.
+      child: GlassCard(
+        padding: EdgeInsets.zero,
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch, children: rows),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows),
     );
   }
 }

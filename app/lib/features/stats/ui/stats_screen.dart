@@ -83,19 +83,21 @@ class StatsScreen extends ConsumerWidget {
                     child: GridView(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      // Fixed tile height: the content (two-line label,
-                      // value, note) is constant in text lines, so deriving
-                      // height from width via an aspect ratio overflowed on
-                      // narrow phones and left dead space on wide ones. The
-                      // extent scales with the system font setting — 118
-                      // logical pixels only fits the lines at scale 1.0.
+                      // 🔴 The extent is the tile's real content height, not a
+                      // round number. It was 118pt scaled by the font setting,
+                      // which reserved more row than the tiles filled and left
+                      // a visible band of dead ground between this grid and
+                      // the section beneath it.
+                      //
+                      // Now: badge (38) + gap (10) + label + value + an
+                      // optional third line, plus the card's own padding. The
+                      // text parts scale with the system font; the badge and
+                      // the padding do not, so only the text is multiplied.
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
                         mainAxisSpacing: 12,
                         crossAxisSpacing: 12,
-                        mainAxisExtent: 118 *
-                            MediaQuery.textScalerOf(context).scale(14) /
-                            14,
+                        mainAxisExtent: StatTile.heightFor(context),
                       ),
                       children: [
                         StatTile(

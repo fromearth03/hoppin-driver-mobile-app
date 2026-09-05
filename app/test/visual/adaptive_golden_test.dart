@@ -48,17 +48,20 @@ void main() {
     onlineTime: Duration(hours: 13, minutes: 42),
   );
 
-  Widget statGrid() => Padding(
+  Widget statGrid() => Builder(
+      builder: (context) => Padding(
         padding: const EdgeInsets.all(16),
         child: GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          // Mirrors the stats screen's real delegate.
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          // Takes the extent from the tile itself, exactly as the stats
+          // screen does. A hardcoded number here drifted from production and
+          // the goldens then pinned a layout the app had stopped using.
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            mainAxisExtent: 118,
+            mainAxisExtent: StatTile.heightFor(context),
           ),
           children: const [
             StatTile(
@@ -76,7 +79,7 @@ void main() {
             ),
           ],
         ),
-      );
+      ));
 
   for (final width in const [320.0, 430.0]) {
     final w = width.toInt();

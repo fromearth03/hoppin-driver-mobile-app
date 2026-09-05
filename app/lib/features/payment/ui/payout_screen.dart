@@ -155,20 +155,36 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
                         ],
                       ),
                     ),
-                    if (!status.isReady && !status.connected) ...[
-                      const SizedBox(height: 20),
-                      AppButton(
-                        label: 'Set up payouts',
-                        busy: _busy,
-                        onPressed: _onboard,
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'You will be taken to Stripe to enter your bank '
-                        'details securely.',
-                        style: AppText.caption,
-                      ),
+                    // The account reference, so a driver on the phone to
+                    // support can say WHICH account, and so a connected
+                    // screen shows something concrete rather than only a
+                    // green tick.
+                    if (status.accountId != null) ...[
+                      const SizedBox(height: 16),
+                      _AccountRow(accountId: status.accountId!),
                     ],
+                    const SizedBox(height: 20),
+                    // Always offered, in both directions. A connected driver
+                    // previously got a status page with no actions at all —
+                    // no way to change the bank account their money lands in,
+                    // which is the one thing this screen exists to control.
+                    AppButton(
+                      label: status.connected
+                          ? 'Manage payout account'
+                          : 'Set up payouts',
+                      busy: _busy,
+                      onPressed: _onboard,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      status.connected
+                          ? 'Opens Stripe, where you can change your bank '
+                              'account, update your details or check what '
+                              'they still need from you.'
+                          : 'You will be taken to Stripe to enter your bank '
+                              'details securely.',
+                      style: AppText.caption,
+                    ),
                   ],
                 ),
               ),
@@ -226,6 +242,53 @@ class _InfoRow extends StatelessWidget {
                   Text(label, style: AppText.body.copyWith(fontSize: 17)),
                   const SizedBox(height: 4),
                   Text(detail, style: AppText.caption),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// The connected Stripe account, shown as a reference rather than a secret.
+///
+/// The id is not sensitive — it identifies the account, it does not authorise
+/// anything — and support asks for it, so a driver who can read it off their
+/// own screen is not stuck on a call trying to describe which account they
+/// mean.
+class _AccountRow extends StatelessWidget {
+  const _AccountRow({required this.accountId});
+
+  final String accountId;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.account_balance_outlined,
+                size: 20, color: AppColors.textSecondary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Connected account', style: AppText.caption),
+                  const SizedBox(height: 2),
+                  Text(
+                    accountId,
+                    style: AppText.body.copyWith(
+                      fontSize: 14,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),

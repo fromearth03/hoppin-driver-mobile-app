@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/colors.dart';
+import '../../../../shared/widgets/glass_card.dart';
 
 /// The card an offline driver lands on: the reason to go online, and the
 /// button that does it.
@@ -100,13 +101,11 @@ class MoreRidesCard extends StatelessWidget {
   const MoreRidesCard({super.key});
 
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    child: GlassCard(
     padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-    ),
+    radius: 16,
     child: Row(
       children: [
         Container(
@@ -145,6 +144,7 @@ class MoreRidesCard extends StatelessWidget {
         ),
       ],
     ),
+  ),
   );
 }
 
@@ -156,13 +156,11 @@ class NoBookingsCard extends StatelessWidget {
   const NoBookingsCard({super.key, required this.isOnline});
 
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+    child: GlassCard(
     padding: const EdgeInsets.symmetric(vertical: 44, horizontal: 24),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-    ),
+    radius: 16,
     child: Column(
       children: [
         // Online, the globe becomes a radar: slow expanding rings say
@@ -197,6 +195,7 @@ class NoBookingsCard extends StatelessWidget {
         ),
       ],
     ),
+  ),
   );
 }
 

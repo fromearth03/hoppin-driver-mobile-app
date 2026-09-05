@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../../shared/widgets/glass_card.dart';
 import '../../data/models/appeal.dart';
 import '../../data/models/penalty.dart';
 
@@ -39,13 +40,11 @@ class _PenaltiesSectionState extends State<PenaltiesSection> {
     final underReview = widget.appeals.where((a) => !a.isResolved).toList();
     final resolved = widget.appeals.where((a) => a.isResolved).toList();
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      child: GlassCard(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
+      radius: 16,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -100,6 +99,7 @@ class _PenaltiesSectionState extends State<PenaltiesSection> {
               ),
           ],
         ],
+      ),
       ),
     );
   }
