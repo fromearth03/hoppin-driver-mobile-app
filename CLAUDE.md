@@ -74,6 +74,17 @@ polling providers and settle-detection never terminates.
 them; check the diff is only what you intended, then
 `flutter test test/visual/<file> --update-goldens`.
 
+**A golden proves only that output has not changed — never that it is right.**
+On 2026-09-04 `nav_tab_bar.png` was a picture of a blank grey screen with the
+nav pill on it: the shell rendered nothing inside itself, and the golden had
+recorded that as expected. 618 tests passed while the app was unusable. Before
+regenerating a golden, LOOK at the failure image in `test/visual/failures/`
+(`*_testImage.png` vs `*_masterImage.png`) and decide which one is correct.
+
+**Run the app before calling anything done.** A green suite did not catch a
+blank screen on every authed tab. `flutter build web --profile
+--dart-define-from-file=config/dev.json`, serve `build/web`, and open it.
+
 ---
 
 ## Before porting anything from the dead repo
