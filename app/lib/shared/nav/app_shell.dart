@@ -69,7 +69,14 @@ class AppShell extends StatelessWidget {
     // The pill floats over the content rather than reserving a strip of
     // it, which is how the design shows it sitting on the page ground.
     extendBody: true,
+    // 🔴 `fit: StackFit.expand` is load-bearing. A Stack sizes itself to its
+    // largest NON-positioned child, and every child here is either positioned
+    // or deliberately zero-sized (PushAlertListener only listens). Without the
+    // expand fit the Stack collapses to zero height, `Positioned.fill` fills
+    // nothing, and the driver signs in to a bottom nav bar over a blank
+    // screen — the shell renders, every screen inside it does not.
     body: Stack(
+      fit: StackFit.expand,
       children: [
         Positioned.fill(child: child),
         Positioned(

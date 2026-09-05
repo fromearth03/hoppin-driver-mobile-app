@@ -1,6 +1,7 @@
 # Change Log
-> Auto-maintained by session-exit hook. Last updated: 2026-09-03
+> Auto-maintained by session-exit hook. Last updated: 2026-09-04
 
+- **2026-09-04 02:27** [New-driver-app] — Changed: `docs\BACKEND-ASK-ROUND7-2026-09-04.md`, `app\lib\features\documents\data\documents_repository.dart`, `app\lib\features\documents\logic\upload_controller.dart`, `app\test\features\documents\upload_controller_test.dart`, `app\test\features\documents\upload_live_shape_test.dart`, `app\test\features\documents\documents_repository_test.dart`, `app\lib\features\heatmap\data\models\demand_cell.dart`, `app\lib\features\heatmap\data\heatmap_repository.dart`, `app\test\features\heatmap\heatmap_repository_test.dart`, `CLAUDE.md` (+3 more). Everything closed cleanly. ## Shut down - **Working tree clean**, `master` level with `origin/master`, nothing unpushed. - **No processes left running** — no Gradle, Dart, or Flutter. Both background 
 - **2026-09-03 00:07** [New-driver-app] — Changed: `docs\BACKEND-ASK-ROUND7-2026-09-04.md`. Both done and pushed. ## Push `5cd3998..8fdcbfc` then `8fdcbfc..001c6d7` on `master`. Working tree clean. ## Round 7 written `New-driver-app/docs/BACKEND-ASK-ROUND7-2026-09-04.md` — anchored to the SL
 - **2026-09-03 23:59** [New-driver-app]. Not fully. Two things still open — one needs you, one needs your go-ahead. ## Done - Creds verified live, saved to `app/config/test-credentials.local.json` (gitignored, kept out of `dev.json` so it ne
 - **2026-09-03 22:45** [New-driver-app]. **APK done.** Built 22:45, 58.9 MB, exit 0. ``` C:\Users\Hp\c2o\Hoppin\New-driver-app\app\build\app\outputs\flutter-apk\app-release.apk ``` Uninstall the old one first — signatures differ, Android wil
