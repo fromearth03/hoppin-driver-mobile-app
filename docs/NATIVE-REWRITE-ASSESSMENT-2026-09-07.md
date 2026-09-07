@@ -64,20 +64,35 @@ That second line is the problem for the Swift plan. Writing a new iOS app in
 has moved off. Your boss would be inheriting a codebase that is dated on
 delivery, and hiring for RxSwift is harder every year.
 
-### Uber stopped doing this themselves
+### Uber still uses RIBs — correcting an earlier overstatement
 
-The decisive finding. In Uber's own engineering post on the Freight app, they
-describe RIBs that "grew too big and complex," where it "became difficult to
-share and reuse similar pieces of the UI and logic without refactoring major
-parts of the app" — and they moved to a different, list-of-components model.
+A first pass of this assessment said Uber had "abandoned" RIBs. **That was
+wrong**, and the correction is in Uber's favour, so it belongs here plainly.
+
+What the Freight post actually says is that "many RIBs in the app's structure
+grew too big and complex" and that it "became difficult to share and reuse
+similar pieces of the UI and logic without refactoring major parts of the
+app." Their response was **not** to replace RIBs. They built a
+component-driven framework *on top of* it: "RIBs became a crucial piece in the
+framework, and developers already familiar with RIBs could now use them as
+ListView components."
+
+The Android repo backs this up — v0.16.6 shipped within the last year, and
+releases are regular. It is maintained, not abandoned.
+
+**So the honest objection is not "RIBs is dead." It is a sizing argument.**
 
 RIBs is explicitly built for "mobile apps with a large number of engineers and
-nested states." The published trade-off is that the complexity "pays off in
-large teams and apps with deep navigation stacks."
+nested states," and the published trade-off is that its complexity "pays off in
+large teams and apps with deep navigation stacks." Uber's driver app had **40
+teams working in parallel** — that is the problem RIBs solves, and it solves
+it well.
 
-**You have one engineer.** You would be paying the entire complexity cost of a
-framework whose only benefit is coordinating dozens of engineers you do not
-have.
+**This repo has one committer.** The cost is paid up front and in full; the
+benefit is proportional to the number of engineers who would otherwise collide,
+and that number is one. Uber's own experience is also a warning at your scale:
+if RIBs grew unwieldy for them *with* a platform team maintaining it, a solo
+developer has no such backstop.
 
 ---
 
@@ -231,5 +246,5 @@ months for a feeling.
 - [uber/RIBs (Android)](https://github.com/uber/RIBs) — 0.16.6, active, Compose extensions
 - [uber/ribs-ios](https://github.com/uber/ribs-ios) — separate repo, UIKit + RxSwift 6
 - [Architecting Uber's New Driver App in RIBs](https://www.uber.com/us/en/blog/driver-app-ribs-architecture/) — design intent, large-team framing
-- [Building the New Uber Freight App as Lists of Modular, Reusable Components](https://www.uber.com/us/en/blog/uber-freight-app-architecture-design/) — where RIBs stopped scaling for them
+- [Building the New Uber Freight App as Lists of Modular, Reusable Components](https://www.uber.com/us/en/blog/uber-freight-app-architecture-design/) — RIBs kept, components layered on top
 - [Review Uber/RIBs after 2 weeks of use](https://congnc-if.medium.com/uber-ribs-the-best-mobile-architecture-68bdb0a90750) — practitioner account of the learning curve
