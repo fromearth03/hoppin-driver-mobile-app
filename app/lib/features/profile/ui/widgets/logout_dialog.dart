@@ -82,7 +82,7 @@ Future<void> showLogoutDialog(BuildContext context, WidgetRef ref) async {
                     child: FilledButton(
                       style: AppButtons.primary(),
                       onPressed: () => Navigator.of(dialogContext).pop(true),
-                      child: const Text('Logout'),
+                      child: const Text('Log out'),
                     ),
                   ),
                 ),

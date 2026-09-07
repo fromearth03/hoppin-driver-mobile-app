@@ -66,7 +66,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
             context.go(Routes.onboarding);
           case SignupOutcome.needsEmailConfirmation:
             setState(() => _notice =
-                'Check your email to confirm your address, then sign in.');
+                'Check your email to confirm your address, then log in.');
           case SignupOutcome.registrationClosed:
             // The account exists, but it is a rider account. Saying so is the
             // only honest option: sending them into driver onboarding would

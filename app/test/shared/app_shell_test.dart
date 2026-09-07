@@ -93,7 +93,7 @@ void main() {
       'Payment Methods',
       'Notifications',
       'Help & Support',
-      'Logout',
+      'Log out',
     ]) {
       expect(find.text(label, skipOffstage: false), findsOneWidget,
           reason: 'missing $label');
@@ -151,7 +151,7 @@ void main() {
     await tester.pumpAndSettle();
     await openDrawer(tester);
 
-    await tester.tap(find.text('Logout'));
+    await tester.tap(find.text('Log out'));
     await tester.pumpAndSettle();
 
     // One mis-tap must not end a shift: the confirm dialog stands between

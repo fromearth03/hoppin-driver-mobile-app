@@ -107,7 +107,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       ),
                       const SizedBox(height: 20),
                       AppButton(
-                        label: 'Back to Sign In',
+                        label: 'Back to log in',
                         style: AppButtons.muted(),
                         onPressed:
                             _busy ? null : () => context.go(Routes.signIn),

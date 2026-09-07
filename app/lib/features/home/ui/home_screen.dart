@@ -206,9 +206,17 @@ class HomeScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                "We can't reach the server, so today's figures aren't "
-                'showing.',
+              // 🔴 DO NOT CLAIM A NETWORK FAULT FOR AN AUTH ONE. This banner
+              // said "we can't reach the server" for every failure including
+              // a 401, so a driver whose session had expired was told to
+              // check their signal. The cause line below already names the
+              // real reason; the headline must not contradict it.
+              Text(
+                error.code == 'AUTH_REQUIRED' ||
+                        error.code == 'SESSION_REPLACED'
+                    ? "Today's figures aren't showing."
+                    : "We can't reach the server, so today's figures aren't "
+                        'showing.',
                 style: AppText.caption,
               ),
               // The cause, verbatim. A driver reads past it, but it is the

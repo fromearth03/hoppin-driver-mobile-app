@@ -31,8 +31,42 @@ class InMemoryTokenStore implements TokenStore {
 final supabaseClientProvider =
     Provider<SupabaseClient>((ref) => Supabase.instance.client);
 
-final tokenStoreProvider = Provider<TokenStore>((ref) => CallbackTokenStore(
-    () => ref.read(supabaseClientProvider).auth.currentSession?.accessToken));
+/// Reads the access token, refreshing it first when it has expired.
+///
+/// 🔴 `currentSession?.accessToken` HANDS BACK A DEAD TOKEN. The SDK refreshes
+/// on a timer, not when you read — so a session that expired while the app was
+/// backgrounded, or whose scheduled refresh failed (no network at the moment
+/// it fired), keeps returning the stale token. Every call then 401s, forever,
+/// and the driver cannot get out of it by pulling to refresh or by signing in
+/// again, because the sign-in they perform is not what the interceptor reads.
+class SupabaseTokenStore implements TokenStore {
+  SupabaseTokenStore(this._source);
+
+  /// Resolved per call, not at construction. Reading the client eagerly makes
+  /// every test that touches the API client require a live Supabase, which is
+  /// the opposite of what this seam exists for.
+  final SupabaseClient Function() _source;
+
+  @override
+  Future<String?> read() async {
+    final client = _source();
+    final session = client.auth.currentSession;
+    if (session == null) return null;
+    if (!session.isExpired) return session.accessToken;
+    try {
+      final refreshed = await client.auth.refreshSession();
+      return refreshed.session?.accessToken;
+    } catch (_) {
+      // Refresh genuinely failed — the refresh token is spent or revoked.
+      // Returning the expired token would only produce another 401; null
+      // lets the caller treat this as signed out, which it is.
+      return null;
+    }
+  }
+}
+
+final tokenStoreProvider = Provider<TokenStore>(
+    (ref) => SupabaseTokenStore(() => ref.read(supabaseClientProvider)));
 
 /// The signed-in driver's user id, or null when signed out.
 ///

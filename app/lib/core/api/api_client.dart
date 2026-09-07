@@ -99,7 +99,14 @@ class ApiClient {
       final error = parseError(response);
       // Every call from here answers the same way, so the app has to say so
       // once rather than let each failure become its own snackbar.
-      if (error.code == 'SESSION_REPLACED') onSessionLost?.call();
+      // 🔴 A PLAIN 401 HAS TO COUNT TOO. Only SESSION_REPLACED used to raise
+      // this, so an ordinary AUTH_REQUIRED left the driver parked on a screen
+      // whose every call was rejected, reading "can't reach the server" —
+      // with no sign-out, no route to sign-in, and a Retry that could only
+      // fail the same way.
+      if (error.code == 'SESSION_REPLACED' || error.code == 'AUTH_REQUIRED') {
+        onSessionLost?.call();
+      }
       return Err<T>(error);
     } on DioException catch (e) {
       // Timeouts and connection failures are transient; INTERNAL is

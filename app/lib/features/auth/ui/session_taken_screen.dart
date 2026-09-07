@@ -81,7 +81,7 @@ class SessionTakenScreen extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             "If this wasn't you, change your password before "
-                            'signing back in — whoever signed in has your '
+                            'logging back in — whoever logged in has your '
                             'account until you do.',
                             style: AppText.caption,
                           ),
@@ -91,7 +91,7 @@ class SessionTakenScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 26),
                   AppButton(
-                    label: 'Sign in again',
+                    label: 'Log in again',
                     style: AppButtons.primary(),
                     onPressed: () => _leave(context, ref, Routes.signIn),
                   ),

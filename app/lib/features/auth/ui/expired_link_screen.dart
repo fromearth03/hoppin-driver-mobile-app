@@ -102,7 +102,7 @@ class ExpiredLinkScreen extends StatelessWidget {
                         const SizedBox(height: 8),
                         TextButton(
                           onPressed: () => context.go(Routes.signIn),
-                          child: const Text('Back to Sign In'),
+                          child: const Text('Back to log in'),
                         ),
                       ],
                     ),

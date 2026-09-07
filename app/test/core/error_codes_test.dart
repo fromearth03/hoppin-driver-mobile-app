@@ -78,13 +78,13 @@ void main() {
     // api.hoppin.tech, which returns {"code":"AUTH_REQUIRED"} on every
     // guarded route. It had no copy, so every screen in a stale session fell
     // through to the generic fallback: a driver was told the app was broken
-    // when the fix was to sign in again.
+    // when the fix was to log in again.
     test('AUTH_REQUIRED names the cause and the remedy', () {
       final copy = errorCopy(ApiException('AUTH_REQUIRED', 'unauthorized', 401));
 
       expect(copy, isNot(contains('Something went wrong')),
           reason: 'the generic fallback names no cause and no fix');
-      expect(copy.toLowerCase(), contains('sign in'),
+      expect(copy.toLowerCase(), contains('log in'),
           reason: 'the remedy is the point — retrying forever is not');
     });
   });

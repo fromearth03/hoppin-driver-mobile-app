@@ -55,7 +55,7 @@ void main() {
     await tester.pumpWidget(wrap(repo));
     await tester.pumpAndSettle();
 
-    expect(find.text('Logout'), findsOneWidget);
+    expect(find.text('Log out'), findsOneWidget);
     expect(find.text('Delete account'), findsOneWidget);
   });
 

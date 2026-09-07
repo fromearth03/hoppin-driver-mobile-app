@@ -61,8 +61,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const BrandHeader(
-                title: 'Login',
-                subtitle: 'Login using your credentials',
+                title: 'Log in',
+                subtitle: 'Log in using your credentials',
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(26, 40, 26, 24),
@@ -139,7 +139,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                   width: 22,
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2, color: Colors.white))
-                              : const Text('Login',
+                              : const Text('Log in',
                                   style: TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w600)),

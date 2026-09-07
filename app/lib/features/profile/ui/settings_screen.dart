@@ -128,7 +128,7 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   SettingsRow(
                     icon: Icons.logout,
-                    label: 'Logout',
+                    label: 'Log out',
                     onTap: () => showLogoutDialog(context, ref),
                   ),
                   SettingsRow(

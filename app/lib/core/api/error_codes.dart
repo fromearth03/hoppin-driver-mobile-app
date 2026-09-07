@@ -45,7 +45,7 @@ const _copy = <String, String>{
   // try again", which names no cause and points at no fix. A driver reads
   // that as the app being broken and retries forever; the actual remedy is
   // to sign in again.
-  'AUTH_REQUIRED': 'Your session has ended. Please sign in again.',
+  'AUTH_REQUIRED': 'Your session has ended. Please log in again.',
   // Going online
   'NOT_ELIGIBLE': "You're not cleared to go online yet.",
   'PAYOUT_NOT_READY': 'Payment setup is incomplete. Please contact support.',

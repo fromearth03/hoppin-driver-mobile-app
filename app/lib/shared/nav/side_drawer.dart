@@ -96,7 +96,7 @@ class SideDrawer extends ConsumerWidget {
             ),
             _Row(
               icon: Icons.logout,
-              label: 'Logout',
+              label: 'Log out',
               // The design's "Are you logging out?" dialog stands between
               // the tap and the sign-out — one mis-tap here otherwise dumps
               // a working driver back to the sign-in screen.
