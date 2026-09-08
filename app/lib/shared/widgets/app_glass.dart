@@ -71,11 +71,11 @@ class AppGlass extends StatelessWidget {
   /// 86% opaque paint — whatever the blur produced underneath is almost
   /// entirely hidden, so the surface reads as a flat card that happens to sit
   /// on a tinted page. Thinning the fill is what lets the refraction show;
-  /// legibility is bought back by the saturation boost and the sheen instead
-  /// of by opacity. Contrast is verified over the strongest pool.
+  /// legibility is bought back by the saturation boost instead of by opacity.
+  /// Contrast is verified over the strongest pool.
   double get _fill => switch (tier) {
-        GlassTier.chrome => 0.48,
-        GlassTier.panel => 0.62,
+        GlassTier.chrome => 0.54,
+        GlassTier.panel => 0.68,
       };
 
   /// How much the backdrop's colour is pushed under the glass.
@@ -169,33 +169,14 @@ class AppGlass extends StatelessWidget {
                     ),
                   ),
                 ),
-                // The specular sheen: a soft band of light across the upper
-                // third, which is what makes a surface read as something with
-                // a top rather than a rectangle of colour.
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: radius,
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.45),
-                            Colors.white.withValues(alpha: 0.10),
-                            Colors.transparent,
-                            // The bounce: light that entered the top of the
-                            // slab and scatters back out of its foot. Without
-                            // it the surface fades to nothing and reads as a
-                            // gradient rather than a solid with two faces.
-                            Colors.white.withValues(alpha: 0.12),
-                          ],
-                          stops: const [0.0, 0.28, 0.68, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                // 🔴 NO PAINTED SHEEN. A white gradient drawn inside the card
+                // is a big pale shape sitting on the content — it reads as an
+                // artefact, not as light, because real glass does not have a
+                // brighter rectangle floating in the middle of it. The only
+                // light that belongs here is on the EDGE, where the surface
+                // actually turns; that is the rim above. Everything else the
+                // material says comes from the blur and the saturation of
+                // what is genuinely behind it.
                 child,
               ],
             ),
@@ -257,32 +238,18 @@ class _RimPainter extends CustomPainter {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.white.withValues(alpha: 0.85),
-            Colors.white.withValues(alpha: 0.30),
-            Colors.white.withValues(alpha: 0.06),
+            Colors.white.withValues(alpha: 0.62),
+            Colors.white.withValues(alpha: 0.22),
+            Colors.white.withValues(alpha: 0.05),
           ],
           stops: const [0.0, 0.45, 1.0],
         ).createShader(rect),
     );
 
-    // Inner rim, one pixel in and darker at the foot: the thickness of the
-    // slab seen through its own face.
-    canvas.drawRRect(
-      rrect.deflate(1.6),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.white.withValues(alpha: 0.34),
-            Colors.transparent,
-            AppColors.textPrimary.withValues(alpha: 0.05),
-          ],
-          stops: const [0.0, 0.55, 1.0],
-        ).createShader(rect),
-    );
+    // 🔴 NO INNER RING. A second stroke inset from the edge is meant to read
+    // as the thickness of the slab, and on a large panel it does — but on a
+    // small tile the two rings are close enough that the inner one reads as
+    // a whole extra box drawn inside the card. One edge, once.
   }
 
   @override
