@@ -5,6 +5,20 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- The beat has to survive the driver locking their phone. Without a
+         foreground service Android stops the process within minutes and the
+         driver silently leaves the dispatch pool while believing they are
+         online.
+
+         FOREGROUND_SERVICE_LOCATION is deliberately NOT
+         ACCESS_BACKGROUND_LOCATION: this only runs while the driver is
+         online and a permanent notification is on screen saying so, which is
+         what Play expects of a driver app and avoids the background-location
+         declaration and its review. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <!-- Android 14 refuses to restart a stopped service without this. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
         android:label="Hoppin Driver"
         android:name="${applicationName}"

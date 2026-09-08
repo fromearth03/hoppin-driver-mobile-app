@@ -29,6 +29,7 @@ dependencies:
   geocoding: ^5.0.0
   firebase_core: ^4.14.0
   firebase_messaging: ^16.6.0
+  flutter_foreground_task: ^11.0.3
 
 dev_dependencies:
   flutter_test:

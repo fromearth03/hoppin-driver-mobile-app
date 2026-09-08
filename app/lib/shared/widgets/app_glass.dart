@@ -62,8 +62,8 @@ class AppGlass extends StatelessWidget {
 
   /// The blur radius per tier. Chrome sees more of what is behind it.
   double get _sigma => switch (tier) {
-        GlassTier.chrome => 20,
-        GlassTier.panel => 28,
+        GlassTier.chrome => 26,
+        GlassTier.panel => 34,
       };
 
   /// How opaque the fill is. A panel carries readable copy, so it is denser.
@@ -74,8 +74,8 @@ class AppGlass extends StatelessWidget {
   /// legibility is bought back by the saturation boost and the sheen instead
   /// of by opacity. Contrast is verified over the strongest pool.
   double get _fill => switch (tier) {
-        GlassTier.chrome => 0.58,
-        GlassTier.panel => 0.70,
+        GlassTier.chrome => 0.48,
+        GlassTier.panel => 0.62,
       };
 
   /// How much the backdrop's colour is pushed under the glass.
@@ -86,8 +86,8 @@ class AppGlass extends StatelessWidget {
   /// is sitting on. A blur alone averages colour toward grey, which is exactly
   /// why a plain BackdropFilter reads as frosted plastic.
   double get _saturation => switch (tier) {
-        GlassTier.chrome => 2.2,
-        GlassTier.panel => 1.9,
+        GlassTier.chrome => 2.6,
+        GlassTier.panel => 2.2,
       };
 
   @override
@@ -150,13 +150,25 @@ class AppGlass extends StatelessWidget {
               // The lit rim. Brighter along the top-left where the light
               // strikes, nearly gone at the bottom-right — a uniform hairline
               // is the single clearest tell of fake glass.
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.55),
-                width: 0.8,
-              ),
+              // No border here — the rim is painted as a gradient ring in the
+              // Stack below, because Border.all cannot vary along its own
+              // length and a uniform hairline is the flattest thing on a
+              // glass surface.
+              
             ),
             child: Stack(
               children: [
+                // The rim light. Real glass catches light hardest where the
+                // edge turns away from you — bright along the top-left,
+                // gone by the bottom-right. This single detail is most of
+                // what separates "pane of glass" from "translucent rectangle".
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _RimPainter(radius: radius),
+                    ),
+                  ),
+                ),
                 // The specular sheen: a soft band of light across the upper
                 // third, which is what makes a surface read as something with
                 // a top rather than a rectangle of colour.
@@ -217,4 +229,62 @@ class AppGlass extends StatelessWidget {
       offset: const Offset(0, 6),
     ),
   ];
+}
+
+/// The lit edge, painted as a ring whose brightness travels around it.
+///
+/// A `Border.all` is one colour for the whole perimeter, which is why glass
+/// built with it looks like a sticker. Light comes from somewhere: the top and
+/// left edges catch it, the bottom and right fall into shadow, and the eye
+/// reads that difference as thickness.
+class _RimPainter extends CustomPainter {
+  const _RimPainter({required this.radius});
+
+  final BorderRadius radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final rrect = radius.toRRect(rect);
+
+    // Outer rim: the highlight.
+    canvas.drawRRect(
+      rrect.deflate(0.5),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.85),
+            Colors.white.withValues(alpha: 0.30),
+            Colors.white.withValues(alpha: 0.06),
+          ],
+          stops: const [0.0, 0.45, 1.0],
+        ).createShader(rect),
+    );
+
+    // Inner rim, one pixel in and darker at the foot: the thickness of the
+    // slab seen through its own face.
+    canvas.drawRRect(
+      rrect.deflate(1.6),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withValues(alpha: 0.34),
+            Colors.transparent,
+            AppColors.textPrimary.withValues(alpha: 0.05),
+          ],
+          stops: const [0.0, 0.55, 1.0],
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _RimPainter old) => old.radius != radius;
 }

@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'core/device/device_identity.dart';
+import 'core/device/shift_service.dart';
 import 'core/push/push_service.dart';
 
 /// Injected at build time:
@@ -27,6 +28,10 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Registers the shift notification channel and the service options. Cheap,
+  // and it must happen before the driver can go online.
+  ShiftService.init();
 
   await DeviceIdentity.init();
   await PushService.boot();

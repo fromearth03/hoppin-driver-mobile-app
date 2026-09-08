@@ -34,7 +34,6 @@ class OnlineToggle extends StatelessWidget {
 
   static const _trackPadding = 4.0;
   static const _spinnerSize = 13.0;
-  static const _spinnerGap = 8.0;
   static const _chipTextPadding = 16.0;
 
   static const _labelStyle = TextStyle(
@@ -111,7 +110,7 @@ class OnlineToggle extends StatelessWidget {
         toggled: _shown,
         // The screen reader gets the state and the action, in that order —
         // the visual chip only has room for the action.
-        label: isBusy ? _label : '$_stateLabel. ${_label}',
+        label: isBusy ? _label : '$_stateLabel. $_label',
         child: GestureDetector(
           onTap: _enabled ? () => onChanged!(!isOnline) : null,
           child: Opacity(

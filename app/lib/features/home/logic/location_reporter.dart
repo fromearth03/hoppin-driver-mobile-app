@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../../../core/device/shift_service.dart';
 import '../data/driver_status_repository.dart';
 
 /// While the driver is online, their position IS the product: the dispatcher
@@ -46,6 +47,15 @@ class LocationReporter {
   /// How long to keep up the fast beat before settling down.
   static const firstFixWindow = Duration(seconds: 20);
 
+  /// Metres of movement before the platform pushes another fix.
+  ///
+  /// Ten metres is under a second of travel at 25mph and about two seconds in
+  /// slow traffic, so a moving driver's cached position is never meaningfully
+  /// behind the beat that posts it. A parked driver crosses it never, which
+  /// is the entire point: the radio sleeps instead of resampling a spot the
+  /// dispatcher already has.
+  static const _streamDistanceFilter = 10;
+
   final Ref _ref;
   Timer? _timer;
   StreamSubscription<Position>? _stream;
@@ -62,7 +72,11 @@ class LocationReporter {
   /// when the driver finally answers it.
   int _epoch = 0;
 
-  LocationReporter(this._ref);
+  LocationReporter(this._ref, {this.shift = const ShiftService()});
+
+  /// Injected so tests can assert the service follows the online switch
+  /// without a live platform channel.
+  final ShiftService shift;
 
   /// True when reporting actually started; false when permission was
   /// refused or location services are off, so the caller can tell the
@@ -87,14 +101,40 @@ class LocationReporter {
     }
 
     if (epoch != _epoch) return false; // stopped while the dialog was up
+
+    // The beat is worthless if the process does not survive the driver
+    // locking their phone, so the service comes up before the first fix.
+    // A refusal is not fatal — reporting still works while the app is
+    // foregrounded — so this does not gate going online.
+    if (await shift.canPostNotification()) {
+      await shift.start();
+    }
+    if (epoch != _epoch) return false;
+
     _stream?.cancel();
     try {
-      // distanceFilter 0: every fix updates the cache, so the beat always
-      // has something fresh even when the car is parked.
+      // 🔴 THE SINGLE BIGGEST BATTERY COST IN THE APP WAS HERE.
+      //
+      // `distanceFilter: 0` at high accuracy means the GPS radio runs flat
+      // out for the whole shift — including the hours a driver spends parked
+      // at a rank, where every fix reports the same spot. Over a ten-hour
+      // shift that is most of a battery spent on positions that never change.
+      //
+      // The beat does NOT read this stream directly: it posts `_last`, the
+      // cached fix. So the stream only has to keep something fresh in the
+      // cache, not fire continuously. A 10m filter does exactly that — a
+      // moving car crosses 10m in well under a second at any road speed, so
+      // the cache stays current while driving, and a parked one stops
+      // waking the radio at all.
+      //
+      // The platform still delivers a fix when the driver actually moves, and
+      // `_beat()` falls back to `getLastKnownPosition` and then a one-shot
+      // if the cache is somehow empty, so a stationary driver is never
+      // dropped from the pool for want of a position.
       _stream = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: 0,
+          distanceFilter: _streamDistanceFilter,
         ),
       ).listen(
         (position) {
@@ -122,6 +162,9 @@ class LocationReporter {
 
   void stop() {
     _epoch++;
+    // Fire and forget: going offline must feel instant, and the service
+    // stopping a moment later is invisible.
+    shift.stop();
     _timer?.cancel();
     _timer = null;
     _stream?.cancel();

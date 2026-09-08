@@ -68,5 +68,19 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<!-- The beat has to survive the driver locking their phone; without
+		     this iOS suspends the app and they leave the dispatch pool while
+		     still believing they are online. Paired with "when in use"
+		     authorisation, not "always" — the app reports only between going
+		     online and going offline. -->
+		<string>location</string>
+		<!-- Ride offers arrive as pushes and must wake the app to fetch the
+		     authoritative offer. -->
+		<string>remote-notification</string>
+	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Hoppin shares your location while you are online so the dispatcher can send you nearby ride offers.</string>
 </dict>
 </plist>
