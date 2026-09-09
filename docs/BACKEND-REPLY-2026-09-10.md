@@ -16,6 +16,28 @@ want to build them. But we cannot tell which of the remaining seven are stale
 observations and which are genuine regressions on our side, and guessing wrong
 means either rebuilding working features or leaving a real gap open.
 
+### We think we know how this happened, because we did it too
+
+Every wrong claim asserts absence from a grep returning nothing — "grepped
+again today: one reference", "returns nothing". **Bash `grep` gives false
+empties in this repo**, and it has burned us twice.
+
+It is written down in our own `HANDOFF-2026-09-04.md`: a search returned
+nothing, twice, for symbols that were plainly present, and a different tool
+found thirty references across three files. Trusting the blank would have
+deleted code that was still in use.
+
+It happened again while we were checking your doc. Our first search for
+`LocationReporter` came back empty; re-running it found five call sites. A
+later batch silently swallowed four of six searches because a flag was parsed
+as a filename, and two more consumed their own closing quote — all of which
+returned clean blanks that looked exactly like findings. Had we written those
+up, we would have "confirmed" that `rating` appears nowhere in the app, which
+is false twice over.
+
+So: no criticism intended. But it does mean a blank result in this repository
+is not evidence of absence, and five of your ten items rest on one.
+
 ---
 
 ## Summary
