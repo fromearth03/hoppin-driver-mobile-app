@@ -11,10 +11,11 @@ numbers and grep results quoted in the doc do not match this repository —
 `home_controller.dart:190` is error handling here, not a poll timer, and
 `driver_status_repository.dart:45` is not the definition you quote.
 
-We are not disputing this to score a point. Three of your items are real and we
-want to build them. But we cannot tell which of the remaining seven are stale
-observations and which are genuine regressions on our side, and guessing wrong
-means either rebuilding working features or leaving a real gap open.
+We are not disputing this to score a point. Several of your items are real and
+we are acting on them — see "Decided on our side" at the end. But we cannot
+tell which of the remaining ones are stale observations and which are genuine
+regressions, and guessing wrong means either rebuilding working features or
+leaving a real gap open.
 
 ### We think we know how this happened, because we did it too
 
@@ -46,8 +47,8 @@ is not evidence of absence, and five of your ten items rest on one.
 |---|---|---|
 | 1 | No push — app polls every 5 s | ❌ **False** — FCM shipped and wired |
 | 2 | Location reporting has no caller | ❌ **False** — 5 call sites plus tests |
-| 3 | Scheduled rides absent | ✅ **True** — genuinely not built |
-| 4 | No SOS / panic button | ❌ **False** — `POST /me/sos` live on the trip screen |
+| 3 | Scheduled rides absent | ✅ **True** — and staying that way; decided as backend work |
+| 4 | No SOS / panic button | ❌ **False** — `POST /me/sos` live on the trip screen. Next-of-kin contacts are a real gap, being scoped |
 | 5 | Cancellation fees not shown | ⚠️ **Mostly false** — fees are shown; the quote endpoint is not used |
 | 6 | Cancellation rate not shown | ❌ **False** — on the stats screen, and *you told us it was queued* |
 | 7 | Destination filter unused | ✅ **True** — genuinely not built |
@@ -55,7 +56,10 @@ is not evidence of absence, and five of your ten items rest on one.
 | 9 | Free-cancel countdown | ✅ **True** dependency — no app change needed |
 | 10 | Compression — do not break it | ✅ **True** — no override present |
 
-**Actionable: 3, 7, and a per-ride cancellation quote.** That is the whole list.
+**Real gaps: 3, 7, next-of-kin contacts, and a per-ride cancellation quote.**
+That is the whole list. Of those, the destination filter (7) and the quote are
+ours to build now; scheduled rides (3) has been decided as backend work, and
+next-of-kin is a feature we are scoping.
 
 ---
 
@@ -141,13 +145,14 @@ Confirmed. The only mention is the marketing string at
 `features/home/ui/widgets/offline_hero.dart:187`, which promises drivers
 scheduled bookings they cannot see. No model, no repository, no screen.
 
-We will build it. Before we do, we want the response shapes for all six
-endpoints from you directly rather than inferring them — two field-name
-mismatches this month each silently broke a whole feature, which is the same
-point you make in your closing ask.
+**We are not building the client board.** This has been decided as backend
+work rather than a driver-app feature, so the six-endpoint client
+implementation is not something we are starting. If the driver app is expected
+to present a surface once it exists, tell us what that surface is and we will
+build to it.
 
-Specifically: what does the claim hold expire after, and does the board return
-the remaining hold time so a driver can see their claim slipping away?
+We will fix the string either way — `offline_hero.dart:187` should not promise
+drivers something nothing delivers.
 
 ---
 
@@ -169,10 +174,16 @@ Emergency contacts are wired too, though from `/contacts` rather than
 WhatsApp, each shown only when the number is non-blank
 (`emergency_sheet.dart:94-124`).
 
-**Worth confirming:** if `/me/emergency-contacts` is the intended source for
-next-of-kin — a different thing from the platform's own support numbers — then
-we have a real gap, because we store no next-of-kin at all. Your doc conflates
-the two. Which did you mean?
+**On emergency contacts specifically:** your doc treats them as the same thing
+as the numbers above, and they are not. What the sheet offers is the
+platform's own support and emergency lines. Next-of-kin — somebody an SOS can
+actually call on the driver's behalf — we do not store at all.
+
+That is a real gap and you are right to raise it. We are scoping it as an
+in-app feature and will come back to `GET/POST/DELETE /me/emergency-contacts`
+with a shape in mind rather than wiring it blind. Good to know the API now
+accepts either field spelling; that is one less thing to coordinate when we
+do.
 
 ---
 
@@ -336,25 +347,50 @@ symptom is worth having on record.
 
 ## What we need from you
 
-Five questions, in the order they block us:
+Three questions, in the order they block us:
 
 1. **Re-run the audit against a current checkout** and tell us which of items
    1, 2, 4, 6 and 8 survive. We cannot tell stale observations from real
    regressions, and the difference decides whether we rebuild working code.
 
-2. **Are our location writes arriving?** If Live-Ops is empty while
-   `POST /drivers/me/location` fires every 15 s from every online driver, the
-   break is downstream of us and invisible from here. Same question for
+2. **Are our location writes arriving?** This is the one we most want closed,
+   and we are asking on both sides — we are checking with ops whether Live-Ops
+   sees the markers, and we would like you to check whether
+   `POST /drivers/me/location` is landing. Every online driver posts every
+   15 seconds; if that is arriving and the map is still empty, the break is
+   downstream of us and invisible from here. The same question applies to
    `POST /me/device` and the blacklist.
+
+   We are not treating this as answered until someone has looked. The
+   consequences you listed — mispriced mid-trip cancellations, waivers failing
+   safe against the driver — are worth confirming rather than assuming.
 
 3. **Cancellation rate — which document is current?** If the fairness fix has
    not shipped, we will keep showing "—" for the reason you gave in September.
 
-4. **Emergency contacts — next-of-kin, or platform support numbers?** We have
-   the second and none of the first.
+## Decided on our side
 
-5. **Scheduled rides: the six response shapes**, plus how long a claim hold
-   lasts and whether the board returns the time remaining on it.
+Three items from your list, so you are not waiting on us for them:
+
+**Scheduled rides — yours, not ours.** This is being built on the backend
+rather than as a driver-app board. We are not starting the six-endpoint client
+feature. Tell us what surface, if any, the driver app is expected to present
+once it exists, and we will build to that rather than to the endpoint list.
+
+Either way we will fix `offline_hero.dart:187`, which currently promises
+drivers scheduled bookings — that string should not be making a promise
+nothing keeps.
+
+**Emergency contacts — a feature we are scoping.** You are right that we have
+no next-of-kin storage; what we have is the platform's own support and
+emergency numbers, which is a different thing. We are deciding the shape of
+this as an in-app feature, so treat `GET/POST/DELETE /me/emergency-contacts`
+as ours to come back to. Useful that the API now accepts either field spelling
+— that removes one coordination step when we do.
+
+**Destination filter — ours, confirmed not built.** We will build it.
+
+---
 
 On your closing ask — yes, and we would extend it in both directions. Tell us
 when a shape changes, and we will tell you when one does not match. The three
