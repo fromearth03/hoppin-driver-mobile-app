@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoppin_driver/core/api/api_client.dart';
+import 'package:hoppin_driver/core/auth/session_lost.dart';
 import 'package:hoppin_driver/core/auth/token_store.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -28,7 +29,7 @@ void main() {
 
   setUp(() => adapter = _MockAdapter());
 
-  ApiClient client({void Function()? onLost}) {
+  ApiClient client({void Function(SessionEndReason)? onLost}) {
     final dio = Dio()..httpClientAdapter = adapter;
     return ApiClient(dio, InMemoryTokenStore('t'), onSessionLost: onLost);
   }
@@ -39,7 +40,7 @@ void main() {
     when(() => adapter.fetch(any(), any(), any())).thenAnswer((_) async =>
         body('{"code":"AUTH_REQUIRED","error":"unauthorized"}', 401));
 
-    final r = await client(onLost: () => raised = true)
+    final r = await client(onLost: (_) => raised = true)
         .get<Map<String, dynamic>>('/drivers/me/today');
 
     expect(r.errorOrNull!.code, 'AUTH_REQUIRED');
@@ -53,7 +54,7 @@ void main() {
     when(() => adapter.fetch(any(), any(), any()))
         .thenAnswer((_) async => body('', 401));
 
-    await client(onLost: () => raised = true)
+    await client(onLost: (_) => raised = true)
         .get<Map<String, dynamic>>('/drivers/me/today');
 
     expect(raised, isTrue);
@@ -64,7 +65,7 @@ void main() {
     when(() => adapter.fetch(any(), any(), any())).thenAnswer((_) async =>
         body('{"code":"SESSION_REPLACED","error":"taken"}', 401));
 
-    await client(onLost: () => raised = true)
+    await client(onLost: (_) => raised = true)
         .get<Map<String, dynamic>>('/drivers/me/today');
 
     expect(raised, isTrue);
@@ -75,7 +76,7 @@ void main() {
     when(() => adapter.fetch(any(), any(), any())).thenAnswer(
         (_) async => body('{"code":"INTERNAL","error":"boom"}', 500));
 
-    await client(onLost: () => raised = true)
+    await client(onLost: (_) => raised = true)
         .get<Map<String, dynamic>>('/drivers/me/today');
 
     expect(raised, isFalse,

@@ -227,7 +227,11 @@ class _Gated extends ConsumerWidget {
     // Losing the session outranks the launch gate: nothing can load once
     // every call is 401, so there is no point showing a maintenance notice
     // over a driver who is no longer signed in.
-    if (ref.watch(sessionLostProvider)) return const SessionTakenScreen();
+    // A null reason means the session is fine; any reason means every call
+    // from here is refused and the driver needs the screen that says why.
+    if (ref.watch(sessionLostProvider) != null) {
+      return const SessionTakenScreen();
+    }
 
     final status = ref.watch(appGateProvider).value;
     if (status != null && status.blocks) {

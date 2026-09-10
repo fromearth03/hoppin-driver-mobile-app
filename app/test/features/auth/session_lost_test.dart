@@ -55,17 +55,17 @@ void main() {
     ]);
     addTearDown(container.dispose);
 
-    expect(container.read(sessionLostProvider), isFalse);
+    expect(container.read(sessionLostProvider), isNull);
 
     final api = container.read(apiClientProvider);
     await api.get<dynamic>('/me/profile');
 
-    expect(container.read(sessionLostProvider), isTrue);
+    expect(container.read(sessionLostProvider), isNotNull);
 
     // Twenty in-flight calls all answer the same way; the screen must be
     // raised once, not twenty times.
     await api.get<dynamic>('/drivers/me/status');
-    expect(container.read(sessionLostProvider), isTrue);
+    expect(container.read(sessionLostProvider), isNotNull);
   });
 
   test('an ordinary failure leaves the session alone', () async {
@@ -85,6 +85,6 @@ void main() {
 
     // A missing ride is not a lost session. Signing the driver out for one
     // would end their shift over a bad id.
-    expect(container.read(sessionLostProvider), isFalse);
+    expect(container.read(sessionLostProvider), isNull);
   });
 }

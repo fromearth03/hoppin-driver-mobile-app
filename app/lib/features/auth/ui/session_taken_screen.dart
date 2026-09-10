@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app_router.dart';
+import '../../../core/auth/session_lost.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_buttons.dart';
@@ -23,7 +24,52 @@ class SessionTakenScreen extends ConsumerWidget {
   const SessionTakenScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 🔴 THE REASON DECIDES THE COPY. This screen said "signed in on another
+    // device" for every ended session, which sends a deleted driver hunting
+    // for a phone that does not exist, and offers a banned one a password
+    // reset that will not help. Same screen, three honest versions.
+    final reason =
+        ref.watch(sessionLostProvider) ?? SessionEndReason.replaced;
+    final replaced = reason == SessionEndReason.replaced;
+
+    final (icon, tint, title, detail) = switch (reason) {
+      SessionEndReason.replaced => (
+          Icons.phonelink_lock_outlined,
+          AppColors.warning,
+          'You were signed out',
+          'Your account signed in on another device. Only one device can be '
+              'signed in at a time, so this one was signed out.',
+        ),
+      SessionEndReason.deleted => (
+          Icons.person_off_outlined,
+          AppColors.negative,
+          'This account has been deleted',
+          'The account and its data have been erased. Logging in again will '
+              'not work. Contact support if this was not meant to happen.',
+        ),
+      SessionEndReason.blocked => (
+          Icons.block,
+          AppColors.negative,
+          'You cannot drive right now',
+          'This account or device has been blocked. Support can tell you why '
+              'and what happens next.',
+        ),
+    };
+
+    return _build(context, ref, icon, tint, title, detail, replaced);
+  }
+
+  Widget _build(
+    BuildContext context,
+    WidgetRef ref,
+    IconData icon,
+    Color tint,
+    String title,
+    String detail,
+    bool replaced,
+  ) =>
+      Scaffold(
         backgroundColor: AppColors.background,
         body: SafeArea(
           child: Center(
@@ -39,24 +85,21 @@ class SessionTakenScreen extends ConsumerWidget {
                       width: 92,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.13),
+                        color: tint.withValues(alpha: 0.13),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.phonelink_lock_outlined,
-                          size: 42, color: AppColors.warning),
+                      child: Icon(icon, size: 42, color: tint),
                     ),
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'You were signed out',
+                    title,
                     textAlign: TextAlign.center,
                     style: AppText.title.copyWith(fontSize: 23),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Your account signed in on another device. Only one '
-                    'device can be signed in at a time, so this one was '
-                    'signed out.',
+                    detail,
                     textAlign: TextAlign.center,
                     style:
                         AppText.body.copyWith(color: AppColors.textSecondary),
@@ -65,7 +108,11 @@ class SessionTakenScreen extends ConsumerWidget {
                   // The security path, stated plainly and kept quiet. Most of
                   // the time this is the driver's own second phone; leading
                   // with alarm would train them to ignore it.
-                  Container(
+                  //
+                  // Only for a replaced session: nobody took a deleted or
+                  // blocked account, so telling that driver to change their
+                  // password sends them to fix a problem they do not have.
+                  if (replaced) Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
@@ -91,17 +138,21 @@ class SessionTakenScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 26),
                   AppButton(
-                    label: 'Log in again',
+                    // A deleted or blocked account cannot log back in, so the
+                    // button says what it can actually do.
+                    label: replaced ? 'Log in again' : 'Back to log in',
                     style: AppButtons.primary(),
                     onPressed: () => _leave(context, ref, Routes.signIn),
                   ),
-                  const SizedBox(height: 12),
-                  AppButton(
-                    label: "This wasn't me — change password",
-                    style: AppButtons.outlined(),
-                    onPressed: () =>
-                        _leave(context, ref, Routes.forgotPassword),
-                  ),
+                  if (replaced) ...[
+                    const SizedBox(height: 12),
+                    AppButton(
+                      label: "This wasn't me — change password",
+                      style: AppButtons.outlined(),
+                      onPressed: () =>
+                          _leave(context, ref, Routes.forgotPassword),
+                    ),
+                  ],
                 ],
               ),
             ),

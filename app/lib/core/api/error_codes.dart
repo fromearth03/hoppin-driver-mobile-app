@@ -32,6 +32,15 @@ const _copy = <String, String>{
   'ACCOUNT_SUSPENDED': 'Your account is suspended. Please contact support.',
   'ACCOUNT_BANNED': 'Your account is banned. Please contact support.',
   'DEVICE_BLACKLISTED': 'This device has been blocked. Please contact support.',
+  // A GDPR erasure. The GoTrue login is deleted too, so signing in again
+  // fails as well — the copy must not invite a retry that cannot work.
+  'ACCOUNT_DELETED': 'This account has been deleted.',
+  // The position was accepted by the service and stored nowhere: the account
+  // has no driver profile row. Terminal, not transient — retrying the beat
+  // every 15s only re-hides it. The driver never sees this (heartbeat
+  // failures are swallowed by design); it exists so a log line can name it.
+  'NO_DRIVER_PROFILE':
+      'This account is not set up to drive yet. Please contact support.',
   // Auth
   'INVALID_CREDENTIALS': 'That email or password is incorrect.',
   'TOO_MANY_ATTEMPTS': 'Too many attempts. Please wait a minute and try again.',

@@ -17,6 +17,15 @@ tell which of the remaining ones are stale observations and which are genuine
 regressions, and guessing wrong means either rebuilding working features or
 leaving a real gap open.
 
+### ⚠️ This section was wrong — see `BACKEND-REPLY-2026-09-10-B.md`
+
+**The real cause was a branch, not a tool.** Their audit ran against `main`,
+61 commits behind `master`, where those four files genuinely do not exist.
+Their greps were correct. Our own two failures below were ordinary shell
+quoting errors, not a repo-specific fault, and the note in
+`HANDOFF-2026-09-04.md` that claimed otherwise has been corrected. Kept here
+unedited as a record of the wrong turn.
+
 ### We think we know how this happened, because we did it too
 
 Every wrong claim asserts absence from a grep returning nothing — "grepped
