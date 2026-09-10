@@ -184,8 +184,12 @@ class NoBookingsCard extends StatelessWidget {
         Text(
           isOnline
               ? 'You will be notified the moment one arrives.'
-              : 'Go online to see ride requests and scheduled bookings '
-                    'here',
+              // 🔴 DO NOT PROMISE SCHEDULED BOOKINGS. The endpoints exist and
+              // the app calls none of them, so no scheduled booking can ever
+              // appear here — a driver who goes online expecting them waits
+              // for something that cannot come. Restore the promise when the
+              // scheduled-rides list is wired, not before.
+              : 'Go online to start receiving ride requests.',
           style: const TextStyle(
             fontSize: 15,
             height: 1.35,
