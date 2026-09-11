@@ -23,6 +23,7 @@ import 'package:hoppin_driver/features/trip/data/models/ride_stop.dart';
 import 'package:hoppin_driver/features/trip/data/models/waiting_policy.dart';
 import 'package:hoppin_driver/features/trip/data/trip_repository.dart';
 import 'package:hoppin_driver/features/trip/ui/trip_screen.dart';
+import 'package:hoppin_driver/features/trip/data/models/cancellation_quote.dart';
 import 'package:hoppin_driver/features/trip/ui/widgets/cancel_sheet.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -115,6 +116,10 @@ void main() {
 
     when(() => trip.stops(any()))
         .thenAnswer((_) async => const Ok(RideStops.empty));
+    // Every live ride asks what cancelling would cost. The sheet renders the
+    // server's explain line verbatim, so the golden pins a real one.
+    when(() => trip.cancellationQuote(any()))
+        .thenAnswer((_) async => Ok(_freeQuote()));
     when(() => trip.riderContext(any())).thenAnswer(
         (_) async => Err(ApiException('NOT_FOUND', 'no rider context', 404)));
     when(() => trip.waitingPolicy(any())).thenAnswer((_) async => Ok(
@@ -227,7 +232,7 @@ void main() {
   testWidgets('5 cancel sheet', (tester) async {
     await capture(
         tester,
-        const Scaffold(body: CancelSheet(freeCancelRemaining: 157)),
+        Scaffold(body: CancelSheet(quote: _freeQuote())),
         '5_cancel_sheet');
   });
 
@@ -236,3 +241,11 @@ void main() {
     await capture(tester, const TripScreen(rideId: 'r1'), '6_finish_summary');
   });
 }
+
+/// A free quote with a live grace window, so the sheet renders the server's
+/// explain line exactly as a driver would see it mid-ride.
+CancellationQuote _freeQuote() => CancellationQuote(
+      free: true,
+      explain: 'Cancelling this trip is free.',
+      freeUntil: DateTime.now().toUtc().add(const Duration(seconds: 157)),
+    );

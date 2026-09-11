@@ -7,7 +7,7 @@ import '../../../core/auth/token_store.dart';
 import '../../../core/geo/place_labeler.dart';
 import '../../../core/money.dart';
 import '../../../core/result.dart';
-import '../data/cancel_reason_repository.dart';
+import '../data/models/cancellation_quote.dart';
 import '../data/models/ride.dart';
 import '../data/models/ride_stop.dart';
 import '../data/models/waiting_policy.dart';
@@ -24,18 +24,26 @@ class TripState {
   /// must keep working when the stops call is the only thing that broke.
   final RideStops stops;
 
-  /// The widest free-cancellation window any driver reason offers, in
-  /// seconds. Read from `free_cancel_seconds` on `/cancellation-reasons`
-  /// rather than assumed: it is admin configuration, and `gracedPenalty`
-  /// waives the fee against exactly this number.
-  final int? freeCancelSeconds;
+  /// What cancelling this ride right now would cost, straight from the
+  /// server's own derivation.
+  ///
+  /// 🔴 THIS REPLACED A GUESS. The app used to take the NARROWEST
+  /// `free_cancel_seconds` across every driver reason, because the driver had
+  /// not picked one yet. That was the only honest guess available and it was
+  /// still a guess: the fee-bearing events are derived from ride state and
+  /// cannot be expressed per-reason at all, so no amount of reading the reason
+  /// list could produce the real number.
+  ///
+  /// Null only before the first read lands. [CancellationQuote.unknown] once
+  /// it has, if it failed — never null as a way of saying "free".
+  final CancellationQuote? quote;
 
   const TripState({
     this.ride,
     this.policy,
     this.isBusy = false,
     this.error,
-    this.freeCancelSeconds,
+    this.quote,
     this.stops = RideStops.empty,
   });
 
@@ -44,7 +52,7 @@ class TripState {
     WaitingPolicy? policy,
     bool? isBusy,
     ApiException? error,
-    int? freeCancelSeconds,
+    CancellationQuote? quote,
     RideStops? stops,
     bool clearError = false,
     bool clearPolicy = false,
@@ -54,30 +62,21 @@ class TripState {
         policy: clearPolicy ? null : (policy ?? this.policy),
         isBusy: isBusy ?? this.isBusy,
         error: clearError ? null : (error ?? this.error),
-        freeCancelSeconds: freeCancelSeconds ?? this.freeCancelSeconds,
+        quote: quote ?? this.quote,
         stops: stops ?? this.stops,
       );
 
   TripPhase get phase => ride?.phase ?? TripPhase.headingToPickup;
 
-  /// Seconds left before a driver cancellation starts carrying a charge.
+  /// Seconds left before cancelling starts carrying a charge, or null when
+  /// there is no clock to show.
   ///
-  /// The service anchors a `driver_cancel` grace window to `accepted_at`
-  /// (`gracedPenalty` compares `time.Since(anchor)` against
-  /// `free_cancel_seconds`), so both halves must be known — null means we
-  /// cannot say, and the UI shows nothing rather than a guess. Null once the
-  /// window has closed, so a countdown never sits at 00:00 implying free.
-  int? get freeCancelSecondsRemaining {
-    final accepted = ride?.acceptedAt;
-    final window = freeCancelSeconds;
-    if (accepted == null || window == null || window <= 0) return null;
-    final left = accepted
-        .toUtc()
-        .add(Duration(seconds: window))
-        .difference(DateTime.now().toUtc())
-        .inSeconds;
-    return left > 0 ? left : null;
-  }
+  /// Delegates to the quote. The app used to derive this from `accepted_at`
+  /// plus the narrowest configured reason window; `free_until` is the
+  /// server's own answer for THIS ride, against the same derivation the
+  /// cancel path runs. Null rather than zero once it has run out, so a
+  /// countdown never sits at 00:00 still implying free.
+  int? get freeCancelSecondsRemaining => quote?.freeSecondsRemaining;
 }
 
 /// Slower than the offer poll: a trip in progress changes on the driver's own
@@ -106,7 +105,7 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
       ok: (ride) async => TripState(
         ride: await _withRider(ride),
         policy: await _policyFor(ride),
-        freeCancelSeconds: await _freeCancelWindow(ride),
+        quote: await _quoteFor(ride),
         stops: await _stopsFor(ride),
       ),
       err: (e) async => TripState(error: e),
@@ -115,32 +114,27 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
     return loaded;
   }
 
-  /// The grace window a driver cancellation gets before it costs them.
+  /// What cancelling this ride right now would cost.
   ///
-  /// Reasons are admin-configured and each carries its own
-  /// `free_cancel_seconds`, and the driver has not picked one yet when this
-  /// countdown is on screen. The NARROWEST window is therefore the only
-  /// honest one: showing the widest would leave the clock still running while
-  /// a driver who picks a shorter-windowed reason is already being charged.
-  /// Under-promising costs them nothing; over-promising costs them money.
+  /// 🔴 THIS REPLACED A GUESS, AND THE GUESS WAS THE BEST ONE AVAILABLE.
+  /// The app used to take the NARROWEST `free_cancel_seconds` across every
+  /// driver reason, because the driver has not picked one when the countdown
+  /// is on screen — under-promising costs them nothing, over-promising costs
+  /// them money. That reasoning was right and it still could not produce the
+  /// real number: the fee-bearing events are DERIVED from ride state
+  /// (`driver_cancel`, `rider_mid_trip`), so they appear on no reason at all
+  /// and every option read as free while the server charged the derived
+  /// event.
   ///
-  /// A reason with no window configured is excluded rather than treated as
-  /// zero — null there means "no grace configured for this reason", which is
-  /// not the same as "the grace has run out".
+  /// The quote runs that same derivation server-side without cancelling.
   ///
-  /// Best-effort: a failed lookup means no countdown, never a broken trip
-  /// screen. The driver can still cancel; they just do it without the clock.
-  Future<int?> _freeCancelWindow(Ride ride) async {
+  /// Never returns null for a live ride: the repository answers with the free
+  /// fallback rather than an error, because a quote that cannot be produced
+  /// must not stop a driver escaping the ride.
+  Future<CancellationQuote?> _quoteFor(Ride ride) async {
     if (ride.isFinished) return null;
-    final result = await ref.read(cancelReasonRepositoryProvider).forDriver();
-    final reasons = result.valueOrNull;
-    if (reasons == null) return null;
-    final windows = reasons
-        .map((r) => r.freeCancelSeconds)
-        .whereType<int>()
-        .where((s) => s > 0);
-    if (windows.isEmpty) return null;
-    return windows.reduce((a, b) => a < b ? a : b);
+    final result = await _repo.cancellationQuote(ride.id);
+    return result.valueOrNull ?? CancellationQuote.unknown;
   }
 
   TripState get _current => state.value ?? const TripState();
@@ -234,9 +228,16 @@ class TripController extends FamilyAsyncNotifier<TripState, String> {
         // waiting clock the sheet prints is the server's, not ours.
         final stops = await _stopsFor(ride);
         if (_disposed) return;
+        // 🔴 THE QUOTE GOES STALE TWO WAYS. `free_until` runs out on the
+        // clock, and the fee-bearing event is derived from ride state — so
+        // accepted, arrived and in-trip each quote differently. A quote read
+        // once at build() would still be saying "free" after both had moved.
+        final quote = await _quoteFor(ride);
+        if (_disposed) return;
         _emit(_current.copyWith(
           ride: withRider,
           policy: policy,
+          quote: quote,
           stops: stops,
           clearPolicy: !waiting,
           clearError: true,

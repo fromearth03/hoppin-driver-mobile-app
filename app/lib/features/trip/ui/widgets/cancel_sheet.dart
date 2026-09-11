@@ -9,6 +9,7 @@ import '../../../../shared/widgets/app_buttons.dart';
 import '../../../../shared/widgets/app_loading.dart';
 import '../../data/cancel_reason_repository.dart';
 import '../../data/models/cancel_reason.dart';
+import '../../data/models/cancellation_quote.dart';
 
 /// What the sheet answers with: the picked reason (null for "Other reason" -
 /// `reason_id` is optional on the cancel handler) and the driver's own words,
@@ -27,15 +28,19 @@ class CancelChoice {
 /// `pickable` reasons ever reach here, so no slug is displayed and none is
 /// prettified client-side.
 class CancelSheet extends ConsumerStatefulWidget {
-  /// Seconds left in the free-cancellation window, when the caller knows it.
-  /// Drives the "Cancelling now won't affect your rating" footer the design
-  /// prints under the button — shown only while it is actually true.
-  final int? freeCancelRemaining;
+  /// What cancelling this ride right now would actually cost, from the
+  /// server's own derivation. Null before the first read lands.
+  ///
+  /// Replaced a seconds countdown derived from the reason list. The reasons
+  /// cannot express the fee-bearing events at all — they are derived from
+  /// ride state — so every option read as free while the server charged the
+  /// derived event anyway.
+  final CancellationQuote? quote;
 
-  const CancelSheet({super.key, this.freeCancelRemaining});
+  const CancelSheet({super.key, this.quote});
 
   static Future<CancelChoice?> show(BuildContext context,
-          {int? freeCancelRemaining}) =>
+          {CancellationQuote? quote}) =>
       showModalBottomSheet<CancelChoice>(
         context: context,
         isScrollControlled: true,
@@ -43,7 +48,7 @@ class CancelSheet extends ConsumerStatefulWidget {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
         ),
-        builder: (_) => CancelSheet(freeCancelRemaining: freeCancelRemaining),
+        builder: (_) => CancelSheet(quote: quote),
       );
 
   @override
@@ -88,8 +93,51 @@ class _CancelSheetState extends ConsumerState<CancelSheet> {
     _reasons = ref.read(cancelReasonRepositoryProvider).forDriver();
   }
 
-  bool get _isFree =>
-      widget.freeCancelRemaining != null && widget.freeCancelRemaining! > 0;
+  /// Free until the server says otherwise. An absent quote reads as free:
+  /// the ride must stay escapable, and inventing a charge we cannot prove
+  /// is the one direction that costs the driver money.
+  bool get _isFree => !(widget.quote?.charges ?? false);
+
+  /// The server's one-line explanation, or nothing. Never substituted with
+  /// copy of our own — if the service has no sentence, the sheet says
+  /// nothing rather than guessing at why.
+  String get _explain => widget.quote?.explain ?? '';
+
+  /// The quote, stated once, above the question.
+  ///
+  /// Tinted by consequence rather than by decoration: a charge is the one
+  /// case a driver must not skim past, and everything else is information
+  /// they can read at their own pace.
+  Widget _quoteLine() {
+    final charges = widget.quote?.charges ?? false;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: charges ? AppColors.tintRed : AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: charges ? AppColors.negative : AppColors.border,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            charges ? Icons.error_outline : Icons.info_outline,
+            size: 20,
+            color: charges ? AppColors.negative : AppColors.textSecondary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(_explain,
+                style: AppText.body.copyWith(
+                    fontSize: 14, color: AppColors.textPrimary)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Container(
@@ -179,6 +227,17 @@ class _CancelSheetState extends ConsumerState<CancelSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _header(),
+              // 🔴 THE SERVER'S OWN SENTENCE, SHOWN VERBATIM AND FIRST.
+              // The reason rows below can only ever price the reason a driver
+              // picks; the event that actually charges them is derived from
+              // ride state and appears on none of them. This line is the only
+              // thing on the sheet that knows the real answer, so it goes
+              // above the question rather than under the button, and it is
+              // never reworded here.
+              if (_explain.isNotEmpty) ...[
+                _quoteLine(),
+                const SizedBox(height: 14),
+              ],
               const Text('Why are you cancelling the ride?',
                   style: AppText.body),
               const SizedBox(height: 14),

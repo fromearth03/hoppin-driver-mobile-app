@@ -5,6 +5,7 @@ import 'package:hoppin_driver/core/api/api_exception.dart';
 import 'package:hoppin_driver/core/money.dart';
 import 'package:hoppin_driver/core/result.dart';
 import 'package:hoppin_driver/features/trip/data/cancel_reason_repository.dart';
+import 'package:hoppin_driver/features/trip/data/models/cancellation_quote.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride_stop.dart';
 import 'package:hoppin_driver/features/trip/data/trip_repository.dart';
@@ -234,6 +235,8 @@ void main() {
       when(() => reasons.forDriver()).thenAnswer((_) async => const Ok([]));
       when(() => repo.stops(any()))
           .thenAnswer((_) async => Ok(RideStops.fromJson(stopsPayload())));
+      when(() => repo.cancellationQuote(any())).thenAnswer(
+          (_) async => const Ok(CancellationQuote.unknown));
     });
 
     test('loads the breakdown alongside the ride', () async {

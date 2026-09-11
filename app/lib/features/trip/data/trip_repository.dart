@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/money.dart';
 import '../../../core/result.dart';
+import 'models/cancellation_quote.dart';
 import 'models/ride.dart';
 import 'models/ride_stop.dart';
 import 'models/waiting_policy.dart';
@@ -13,6 +14,25 @@ class TripRepository {
 
   Future<Result<Ride>> ride(String rideId) =>
       _rideCall(() => _api.get<Map<String, dynamic>>('/rides/$rideId'));
+
+  /// What cancelling this ride right now would cost the DRIVER.
+  ///
+  /// `actor` is not optional in practice: the handler defaults to the rider,
+  /// and a rider's quote is a different number against a different policy.
+  ///
+  /// Never returns Err. A quote that cannot be produced must not block the
+  /// cancel — the ride has to stay escapable — so a failure reads as the free
+  /// fallback rather than as an error the sheet would have to render.
+  Future<Result<CancellationQuote>> cancellationQuote(String rideId) async {
+    final r = await _api.get<Map<String, dynamic>>(
+      '/rides/$rideId/cancellation-quote',
+      query: {'actor': 'driver'},
+    );
+    return Ok(r.when(
+      ok: CancellationQuote.fromJson,
+      err: (_) => CancellationQuote.unknown,
+    ));
+  }
 
   Future<Result<Ride>> arrive(String rideId) =>
       _transition(rideId, '/rides/$rideId/arrive');

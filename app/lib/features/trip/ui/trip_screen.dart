@@ -496,7 +496,7 @@ class TripScreen extends ConsumerWidget {
   ) async {
     final choice = await CancelSheet.show(
       context,
-      freeCancelRemaining: state.freeCancelSecondsRemaining,
+      quote: state.quote,
     );
     if (choice == null || !context.mounted) return;
 

@@ -6,6 +6,7 @@ import 'package:hoppin_driver/core/auth/token_store.dart';
 import 'package:hoppin_driver/core/money.dart';
 import 'package:hoppin_driver/core/result.dart';
 import 'package:hoppin_driver/features/trip/data/cancel_reason_repository.dart';
+import 'package:hoppin_driver/features/trip/data/models/cancellation_quote.dart';
 import 'package:hoppin_driver/features/trip/data/models/cancel_reason.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride_stop.dart';
@@ -62,6 +63,17 @@ void main() {
     // a ride with no stops.
     when(() => trip.stops(any()))
         .thenAnswer((_) async => const Ok(RideStops.empty));
+    // A ride past arrival is chargeable, which is the case these tests are
+    // about: the per-reason charge, the other-reason warning and the
+    // confirmation panel all render only when the quote says the driver
+    // would actually pay. A free quote would suppress all three and the
+    // assertions would be testing nothing.
+    when(() => trip.cancellationQuote(any())).thenAnswer(
+        (_) async => const Ok(CancellationQuote(
+              free: false,
+              fee: Pence(5900),
+              explain: 'Cancelling now costs £59.00.',
+            )));
 
     when(() => trip.waitingPolicy(any())).thenAnswer((_) async => const Ok(
         WaitingPolicy(

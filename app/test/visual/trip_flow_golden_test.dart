@@ -15,6 +15,7 @@ import 'package:hoppin_driver/features/trip/data/models/ride_stop.dart';
 import 'package:hoppin_driver/features/trip/data/models/waiting_policy.dart';
 import 'package:hoppin_driver/features/trip/data/trip_repository.dart';
 import 'package:hoppin_driver/features/trip/ui/trip_screen.dart';
+import 'package:hoppin_driver/features/trip/data/models/cancellation_quote.dart';
 import 'package:hoppin_driver/features/trip/ui/widgets/cancel_sheet.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -93,6 +94,10 @@ void main() {
     // single-leg rides, which is what an empty breakdown means.
     when(() => trip.stops(any()))
         .thenAnswer((_) async => const Ok(RideStops.empty));
+    // Every live ride asks what cancelling would cost. The sheet renders the
+    // server's explain line verbatim, so the golden pins a real one.
+    when(() => trip.cancellationQuote(any()))
+        .thenAnswer((_) async => Ok(_freeQuote()));
     when(() => trip.riderContext(any())).thenAnswer(
         (_) async => Err(ApiException('NOT_FOUND', 'no rider context', 404)));
     when(() => trip.waitingPolicy(any())).thenAnswer((_) async => Ok(
@@ -200,7 +205,7 @@ void main() {
       overrides: [
         cancelReasonRepositoryProvider.overrideWithValue(reasons),
       ],
-      child: const MaterialApp(
+      child: MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
           backgroundColor: Colors.black26,
@@ -208,7 +213,7 @@ void main() {
           // aligning it here goldens it the way a driver actually sees it.
           body: Align(
             alignment: Alignment.bottomCenter,
-            child: CancelSheet(freeCancelRemaining: 157),
+            child: CancelSheet(quote: _freeQuote()),
           ),
         ),
       ),
@@ -225,3 +230,11 @@ void main() {
     await capture(t, 'trip_finish_summary');
   });
 }
+
+/// A free quote with a live grace window, so the sheet renders the server's
+/// explain line exactly as a driver would see it mid-ride.
+CancellationQuote _freeQuote() => CancellationQuote(
+      free: true,
+      explain: 'Cancelling this trip is free.',
+      freeUntil: DateTime.now().toUtc().add(const Duration(seconds: 157)),
+    );

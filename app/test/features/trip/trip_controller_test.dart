@@ -6,6 +6,7 @@ import 'package:hoppin_driver/core/money.dart';
 import 'package:hoppin_driver/core/result.dart';
 import 'package:hoppin_driver/features/trip/data/cancel_reason_repository.dart';
 import 'package:hoppin_driver/features/trip/data/models/cancel_reason.dart';
+import 'package:hoppin_driver/features/trip/data/models/cancellation_quote.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride_stop.dart';
 import 'package:hoppin_driver/features/trip/data/models/waiting_policy.dart';
@@ -41,6 +42,16 @@ void main() {
     reasons = MockReasonRepo();
     when(() => repo.waitingPolicy(any()))
         .thenAnswer((_) async => Ok(buildPolicy()));
+    // Every live ride now asks what cancelling would cost. Default to a free
+    // quote with a two-minute grace; tests that care override it.
+    when(() => repo.cancellationQuote(any())).thenAnswer((_) async => Ok(
+          CancellationQuote(
+            free: true,
+            explain: 'Cancelling this trip is free.',
+            freeUntil:
+                DateTime.now().toUtc().add(const Duration(seconds: 120)),
+          ),
+        ));
     // Every load reads the per-leg breakdown. These tests are single-leg
     // rides, which is exactly what an empty breakdown means.
     when(() => repo.stops(any()))
@@ -186,8 +197,9 @@ void main() {
     await expectLater(pending, completes);
   });
 
-  group('free-cancellation window', () {
-    test('takes the narrowest window any driver reason offers', () async {
+  group('cancellation quote', () {
+    test('takes the window from the server quote, not the reason list',
+        () async {
       when(() => repo.ride('r1')).thenAnswer((_) async => Ok(Ride(
             id: 'r1',
             status: 'accepted',
@@ -201,25 +213,27 @@ void main() {
       final c = container();
       final state = await c.read(tripControllerProvider('r1').future);
 
-      // 120 wins over 300: the driver has not picked a reason yet, so the
-      // clock may only promise "free" for as long as that is true of every
-      // reason on the table. Showing 300 would keep counting while a driver
-      // choosing the 120s reason was already being charged.
-      expect(state.freeCancelSeconds, 120);
+      // The window comes from the server's own quote now, not from the
+      // narrowest reason on the list. The reasons stubbed above offer 120 and
+      // 300; neither is what the driver is told, because neither can express
+      // the fee-bearing event that would actually fire.
+      expect(state.quote, isNotNull);
       expect(state.freeCancelSecondsRemaining, greaterThan(110));
     });
 
     test('says nothing once the window has closed', () async {
-      when(() => repo.ride('r1')).thenAnswer((_) async => Ok(Ride(
-            id: 'r1',
-            status: 'accepted',
-            acceptedAt:
-                DateTime.now().toUtc().subtract(const Duration(minutes: 30)),
-            geo: const RideGeo(
-              pickup: GeoPoint(lat: 1, lng: 2),
-              dropoff: GeoPoint(lat: 3, lng: 4),
+      when(() => repo.ride('r1'))
+          .thenAnswer((_) async => Ok(buildRide('accepted')));
+      when(() => repo.cancellationQuote(any())).thenAnswer((_) async => Ok(
+            CancellationQuote(
+              free: false,
+              fee: const Pence(800),
+              explain: 'Cancelling now costs GBP 8.00.',
+              freeUntil: DateTime.now()
+                  .toUtc()
+                  .subtract(const Duration(minutes: 30)),
             ),
-          )));
+          ));
 
       final c = container();
       final state = await c.read(tripControllerProvider('r1').future);
@@ -227,32 +241,43 @@ void main() {
       // Null, not zero — a countdown sitting at 00:00 would still read as
       // "free", and the service would charge them.
       expect(state.freeCancelSecondsRemaining, isNull);
+      expect(state.quote?.charges, isTrue);
     });
 
-    test('says nothing when the ride carries no accept time', () async {
+    test('says nothing when the quote carries no clock', () async {
       when(() => repo.ride('r1'))
           .thenAnswer((_) async => Ok(buildRide('accepted')));
+      when(() => repo.cancellationQuote(any())).thenAnswer((_) async =>
+          const Ok(CancellationQuote(
+              free: true, explain: 'Cancelling this trip is free.')));
 
       final c = container();
       final state = await c.read(tripControllerProvider('r1').future);
 
-      // The service anchors the grace window to accepted_at. Without it the
-      // app cannot compute the window and must not invent one.
+      // Free with no deadline: there is nothing to count down to, and a
+      // countdown invented here would start promising a window the server
+      // never offered.
       expect(state.freeCancelSecondsRemaining, isNull);
+      expect(state.quote?.free, isTrue);
     });
 
-    test('a failed reason lookup costs the countdown, not the trip screen',
-        () async {
+    test('a failed quote costs the countdown, not the trip screen', () async {
       when(() => repo.ride('r1'))
           .thenAnswer((_) async => Ok(buildRide('accepted')));
-      when(() => reasons.forDriver()).thenAnswer(
-          (_) async => Err(ApiException('INTERNAL', 'boom', 500)));
+      // The repository answers with the free fallback rather than an error,
+      // because a quote that cannot be produced must never block a driver
+      // escaping the ride.
+      when(() => repo.cancellationQuote(any()))
+          .thenAnswer((_) async => const Ok(CancellationQuote.unknown));
 
       final c = container();
       final state = await c.read(tripControllerProvider('r1').future);
 
       expect(state.ride, isNotNull);
-      expect(state.freeCancelSeconds, isNull);
+      // A quote that cannot be produced reads as free rather than as an
+      // error: the ride has to stay escapable.
+      expect(state.quote?.free, isTrue);
+      expect(state.freeCancelSecondsRemaining, isNull);
     });
   });
 

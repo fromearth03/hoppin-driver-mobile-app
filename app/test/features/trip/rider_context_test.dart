@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoppin_driver/core/api/api_exception.dart';
 import 'package:hoppin_driver/core/result.dart';
+import 'package:hoppin_driver/features/trip/data/models/cancellation_quote.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride.dart';
 import 'package:hoppin_driver/features/trip/data/models/ride_stop.dart';
 import 'package:hoppin_driver/features/trip/data/trip_repository.dart';
@@ -43,6 +44,8 @@ void main() {
     repo = MockTripRepo();
     when(() => repo.stops(any()))
         .thenAnswer((_) async => const Ok(RideStops.empty));
+    when(() => repo.cancellationQuote(any())).thenAnswer(
+        (_) async => const Ok(CancellationQuote.unknown));
     when(() => repo.waitingPolicy(any()))
         .thenAnswer((_) async => Err(ApiException('NOT_FOUND', '', 404)));
   });
